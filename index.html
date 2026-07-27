@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mis Cuentas</title>
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mis Cuentas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root{
+  --bg:#eef0f3; --surface:#ffffff; --ink:#14161b; --muted:#6b7280; --line:#e4e7ec;
+  --accent:#0f8f6f; --income:#16a34a; --expense:#e11d48; --debt:#d97706;
+  --mint:#eafaf3; --radius:16px; --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:'Inter',system-ui,sans-serif; color:var(--ink); background:var(--bg);
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+.num{font-family:'Space Grotesk',sans-serif; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.wrap{max-width:860px; margin:0 auto; padding:20px 16px 96px}
+h1,h2,h3{margin:0}
+button{font-family:inherit; cursor:pointer}
+input,select{font-family:inherit; font-size:15px}
+.hidden{display:none !important}
+
+/* ---------- Cards / generic ---------- */
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow)}
+.btn{border:none; background:var(--ink); color:#fff; border-radius:10px; padding:11px 16px; font-weight:600; font-size:14px}
+.btn:hover{opacity:.92}
+.btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--line)}
+.btn.sm{padding:7px 11px; font-size:13px; border-radius:8px}
+.field{display:flex; flex-direction:column; gap:6px}
+.field label{font-size:12px; color:var(--muted); font-weight:500}
+.field input,.field select{
+  border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#fff; color:var(--ink); width:100%;
+}
+.field input:focus,.field select:focus{outline:2px solid var(--accent); outline-offset:0; border-color:transparent}
+.row{display:flex; gap:12px; flex-wrap:wrap}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+
+/* ---------- Setup / Auth ---------- */
+.center{min-height:100vh; display:grid; place-items:center; padding:20px}
+.panel{width:100%; max-width:400px; padding:26px}
+.panel h1{font-family:'Space Grotesk'; font-size:24px; margin-bottom:4px}
+.panel p.sub{color:var(--muted); font-size:14px; margin:0 0 20px}
+.err{color:var(--expense); font-size:13px; min-height:18px; margin-top:4px}
+.linkbtn{background:none; border:none; color:var(--accent); font-weight:600; font-size:13px; padding:0}
+.setup-steps{font-size:13.5px; color:var(--muted); line-height:1.6; margin:0; padding-left:18px}
+.setup-steps code{background:#f1f3f5; padding:1px 5px; border-radius:5px; color:var(--ink); font-size:12.5px}
+
+/* ---------- Header ---------- */
+.top{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px}
+.brand{display:flex; align-items:center; gap:10px}
+.dot{width:30px; height:30px; border-radius:9px; background:var(--ink); display:grid; place-items:center; color:#fff; font-family:'Space Grotesk'; font-weight:700; font-size:15px}
+.brand h1{font-family:'Space Grotesk'; font-size:18px}
+.who{font-size:12px; color:var(--muted)}
+
+/* ---------- Hero total ---------- */
+.hero{background:linear-gradient(180deg,var(--mint),#fff); padding:22px; margin-bottom:16px}
+.hero .lbl{font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600}
+.hero .total{font-size:44px; font-weight:700; margin:6px 0 14px; line-height:1}
+.chips{display:flex; gap:8px; flex-wrap:wrap}
+.chip{background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 12px; min-width:120px}
+.chip .k{font-size:11px; color:var(--muted); font-weight:600}
+.chip .v{font-size:16px; font-weight:600; margin-top:2px}
+
+/* ---------- Tabs ---------- */
+.tabs{display:flex; gap:4px; background:#e6e8ec; padding:4px; border-radius:12px; margin-bottom:16px}
+.tabs button{flex:1; border:none; background:transparent; padding:9px; border-radius:9px; font-weight:600; font-size:13.5px; color:var(--muted)}
+.tabs button.active{background:#fff; color:var(--ink); box-shadow:var(--shadow)}
+
+/* ---------- Lists ---------- */
+.sec-title{font-family:'Space Grotesk'; font-size:15px; font-weight:600; margin:2px 0 10px}
+.list{display:flex; flex-direction:column}
+.item{display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:none}
+.item .meta{flex:1; min-width:0}
+.item .desc{font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.item .subm{font-size:12px; color:var(--muted); margin-top:2px}
+.item .amt{font-weight:600; font-size:15px; white-space:nowrap}
+.amt.in{color:var(--income)} .amt.out{color:var(--expense)}
+.badge{font-size:11px; padding:2px 8px; border-radius:999px; background:#f1f3f5; color:var(--muted); font-weight:600}
+.empty{color:var(--muted); font-size:14px; text-align:center; padding:26px 0}
+.pill-del{background:none; border:none; color:var(--muted); font-size:18px; line-height:1; padding:4px}
+.pill-del:hover{color:var(--expense)}
+
+.mono-tag{display:inline-flex; align-items:center; gap:6px}
+.tag-dot{width:8px; height:8px; border-radius:50%}
+.month-head{font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:14px 0 4px}
+.cta-add{width:100%; margin-top:2px}
+.pad{padding:16px}
+.mt{margin-top:16px}
+canvas{max-height:280px}
+.paid-btn{border:1px solid var(--line); background:#fff; border-radius:8px; padding:5px 9px; font-size:12px; font-weight:600; color:var(--muted)}
+.paid-btn.done{background:var(--income); color:#fff; border-color:transparent}
+@media(max-width:520px){ .hero .total{font-size:36px} .grid2{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<!-- ============ SETUP (si faltan las claves de Supabase) ============ -->
+<div id="setup" class="center hidden">
+  <div class="card panel">
+    <h1>Falta conectar Supabase</h1>
+    <p class="sub">Configuralo una sola vez para que la app tenga login y sincronice.</p>
+    <ol class="setup-steps">
+      <li>Creá una cuenta gratis en <code>supabase.com</code> y un proyecto nuevo.</li>
+      <li>En <code>SQL Editor</code> pegá y ejecutá el archivo <code>supabase-setup.sql</code>.</li>
+      <li>En <code>Authentication → Sign In / Providers → Email</code>, desactivá <code>Confirm email</code>.</li>
+      <li>En <code>Project Settings → API</code> copiá <code>Project URL</code> y <code>anon public key</code>.</li>
+      <li>Pegalas arriba de este archivo, en <code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code>.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ============ AUTH ============ -->
+<div id="auth" class="center hidden">
+  <div class="card panel">
+    <h1 id="auth-title">Ingresá</h1>
+    <p class="sub" id="auth-sub">Tus cuentas, en el celu y en la compu.</p>
+    <div class="field" style="margin-bottom:12px">
+      <label>Email</label>
+      <input id="au-email" type="email" autocomplete="email" placeholder="vos@email.com">
+    </div>
+    <div class="field" style="margin-bottom:6px">
+      <label>Contraseña</label>
+      <input id="au-pass" type="password" autocomplete="current-password" placeholder="••••••••">
+    </div>
+    <div class="err" id="au-err"></div>
+    <button class="btn" style="width:100%" id="au-submit">Entrar</button>
+    <p style="text-align:center; margin:14px 0 0; font-size:13px; color:var(--muted)">
+      <span id="au-switch-txt">¿Primera vez?</span>
+      <button class="linkbtn" id="au-switch">Crear cuenta</button>
+    </p>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="wrap hidden">
+  <div class="top">
+    <div class="brand">
+      <div class="dot">$</div>
+      <div><h1>Mis Cuentas</h1><div class="who" id="who"></div></div>
+    </div>
+    <button class="btn ghost sm" id="logout">Salir</button>
+  </div>
+
+  <!-- HERO -->
+  <div class="card hero">
+    <div class="lbl">Plata total</div>
+    <div class="total num" id="h-total">$0</div>
+    <div class="chips">
+      <div class="chip"><div class="k">MercadoPago</div><div class="v num" id="h-mp">$0</div></div>
+      <div class="chip"><div class="k">Santander</div><div class="v num" id="h-sant">$0</div></div>
+      <div class="chip"><div class="k">Deuda tarjetas</div><div class="v num" id="h-debt" style="color:var(--debt)">$0</div></div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button data-tab="mov" class="active">Movimientos</button>
+    <button data-tab="tar">Tarjetas</button>
+    <button data-tab="graf">Gráficos</button>
+  </div>
+
+  <!-- MOVIMIENTOS -->
+  <section id="tab-mov">
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="sec-title">Nuevo movimiento</div>
+      <div class="grid2">
+        <div class="field"><label>Fecha</label><input id="m-fecha" type="date"></div>
+        <div class="field"><label>Cuenta</label>
+          <select id="m-cuenta"><option value="mercadopago">MercadoPago</option><option value="santander">Santander</option></select>
+        </div>
+        <div class="field"><label>Tipo</label>
+          <select id="m-tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select>
+        </div>
+        <div class="field"><label>Monto</label><input id="m-monto" type="number" inputmode="decimal" placeholder="0"></div>
+        <div class="field"><label>Categoría</label>
+          <select id="m-cat"></select>
+        </div>
+        <div class="field"><label>Descripción</label><input id="m-desc" type="text" placeholder="Opcional"></div>
+      </div>
+      <button class="btn cta-add mt" id="m-add">Agregar movimiento</button>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">Últimos movimientos</div>
+      <div class="list" id="mov-list"><div class="empty">Todavía no hay movimientos.</div></div>
+    </div>
+  </section>
+
+  <!-- TARJETAS -->
+  <section id="tab-tar" class="hidden">
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="sec-title">Nueva compra con tarjeta</div>
+      <div class="grid2">
+        <div class="field"><label>Fecha de compra</label><input id="c-fecha" type="date"></div>
+        <div class="field"><label>Tarjeta</label>
+          <select id="c-tarjeta"><option>Santander</option><option>MercadoPago</option><option>Otra</option></select>
+        </div>
+        <div class="field"><label>Monto total</label><input id="c-monto" type="number" inputmode="decimal" placeholder="0"></div>
+        <div class="field"><label>Cuotas</label><input id="c-cuotas" type="number" inputmode="numeric" value="1" min="1"></div>
+        <div class="field"><label>Categoría</label><select id="c-cat"></select></div>
+        <div class="field"><label>Descripción</label><input id="c-desc" type="text" placeholder="Ej: Zapatillas"></div>
+      </div>
+      <div class="who" id="c-preview" style="margin-top:10px"></div>
+      <button class="btn cta-add mt" id="c-add">Agregar compra</button>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">Cuotas</div>
+      <div class="list" id="cuotas-list"><div class="empty">Todavía no hay compras en cuotas.</div></div>
+    </div>
+  </section>
+
+  <!-- GRÁFICOS -->
+  <section id="tab-graf" class="hidden">
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="sec-title">Ingresos vs. gastos por mes</div>
+      <canvas id="chart-flow"></canvas>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">Gastos por categoría</div>
+      <canvas id="chart-cat"></canvas>
+    </div>
+  </section>
+</div>
+
+<script>
+// ============================================================
+//  1) PEGÁ ACÁ TUS CLAVES DE SUPABASE
+// ============================================================
+const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
+// ============================================================
+
+const CATEGORIAS = ["Comida","Transporte","Servicios","Alquiler","Ocio","Salud","Compras","Sueldo","Otros"];
+const CAT_COLORS = ["#0f8f6f","#4f7cff","#e11d48","#d97706","#8b5cf6","#0ea5a0","#f59e0b","#16a34a","#6b7280"];
+const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
+const fmt2 = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(n||0);
+const $ = id => document.getElementById(id);
+const todayISO = () => new Date().toISOString().slice(0,10);
+
+let sb = null, user = null;
+let TX = [], PURCH = [], INST = [];
+let chartFlow = null, chartCat = null;
+
+// ---- Boot: verificar config ----
+function configured(){ return SUPABASE_URL.startsWith("http") && SUPABASE_ANON_KEY.length > 20; }
+
+function show(which){
+  ["setup","auth","app"].forEach(id => $(id).classList.toggle("hidden", id !== which));
+}
+
+if(!configured()){
+  show("setup");
+}else{
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  initCategorias();
+  $("m-fecha").value = todayISO();
+  $("c-fecha").value = todayISO();
+  sb.auth.getSession().then(({data}) => onSession(data.session));
+  sb.auth.onAuthStateChange((_e, session) => onSession(session));
+}
+
+function initCategorias(){
+  ["m-cat","c-cat"].forEach(id=>{
+    const s=$(id); s.innerHTML="";
+    CATEGORIAS.forEach(c=>{ const o=document.createElement("option"); o.value=c; o.textContent=c; s.appendChild(o); });
+  });
+}
+
+// ---- AUTH ----
+let authMode = "login";
+function renderAuthMode(){
+  $("auth-title").textContent = authMode==="login" ? "Ingresá" : "Crear cuenta";
+  $("au-submit").textContent = authMode==="login" ? "Entrar" : "Crear cuenta";
+  $("au-switch-txt").textContent = authMode==="login" ? "¿Primera vez?" : "¿Ya tenés cuenta?";
+  $("au-switch").textContent = authMode==="login" ? "Crear cuenta" : "Ingresá";
+  $("au-err").textContent = "";
+}
+$("au-switch").onclick = () => { authMode = authMode==="login" ? "signup" : "login"; renderAuthMode(); };
+$("au-submit").onclick = async () => {
+  const email = $("au-email").value.trim();
+  const pass = $("au-pass").value;
+  $("au-err").textContent = "";
+  if(!email || !pass){ $("au-err").textContent = "Completá email y contraseña."; return; }
+  $("au-submit").disabled = true;
+  try{
+    let res;
+    if(authMode==="login") res = await sb.auth.signInWithPassword({email, password:pass});
+    else res = await sb.auth.signUp({email, password:pass});
+    if(res.error) throw res.error;
+    if(authMode==="signup" && !res.data.session){
+      $("au-err").textContent = "Cuenta creada. Si te pide confirmar el mail, revisá tu casilla o desactivá 'Confirm email' en Supabase.";
+    }
+  }catch(err){
+    $("au-err").textContent = traducirError(err.message);
+  }finally{
+    $("au-submit").disabled = false;
+  }
+};
+function traducirError(m){
+  if(/Invalid login/i.test(m)) return "Email o contraseña incorrectos.";
+  if(/already registered/i.test(m)) return "Ese email ya tiene cuenta. Ingresá.";
+  if(/at least 6/i.test(m)) return "La contraseña necesita al menos 6 caracteres.";
+  return m;
+}
+
+async function onSession(session){
+  if(session && session.user){
+    user = session.user;
+    $("who").textContent = user.email;
+    show("app");
+    await loadAll();
+  }else{
+    user = null;
+    renderAuthMode();
+    show("auth");
+  }
+}
+$("logout").onclick = () => sb.auth.signOut();
+
+// ---- DATA ----
+async function loadAll(){
+  const [t,p,i] = await Promise.all([
+    sb.from("transactions").select("*").order("fecha",{ascending:false}),
+    sb.from("card_purchases").select("*").order("fecha_compra",{ascending:false}),
+    sb.from("card_installments").select("*").order("mes",{ascending:true}),
+  ]);
+  TX = t.data||[]; PURCH = p.data||[]; INST = i.data||[];
+  renderHero(); renderMov(); renderCuotas(); renderCharts();
+}
+
+// ---- HERO ----
+function renderHero(){
+  let mp=0, sant=0;
+  TX.forEach(t=>{
+    const v = t.tipo==="ingreso" ? Number(t.monto) : -Number(t.monto);
+    if(t.cuenta==="mercadopago") mp+=v; else if(t.cuenta==="santander") sant+=v;
+  });
+  const debt = INST.filter(x=>!x.pagada).reduce((a,x)=>a+Number(x.monto),0);
+  const total = mp + sant - debt;
+  $("h-mp").textContent = fmt(mp);
+  $("h-sant").textContent = fmt(sant);
+  $("h-debt").textContent = fmt(debt);
+  $("h-total").textContent = fmt(total);
+  $("h-total").style.color = total>=0 ? "var(--ink)" : "var(--expense)";
+}
+
+// ---- MOVIMIENTOS ----
+$("m-add").onclick = async () => {
+  const monto = parseFloat($("m-monto").value);
+  if(!(monto>0)){ alert("Poné un monto válido."); return; }
+  const rec = {
+    fecha: $("m-fecha").value || todayISO(),
+    cuenta: $("m-cuenta").value,
+    tipo: $("m-tipo").value,
+    monto, categoria: $("m-cat").value, descripcion: $("m-desc").value.trim(),
+    user_id: user.id
+  };
+  $("m-add").disabled = true;
+  const {error} = await sb.from("transactions").insert(rec);
+  $("m-add").disabled = false;
+  if(error){ alert("No se pudo guardar: "+error.message); return; }
+  $("m-monto").value=""; $("m-desc").value="";
+  await loadAll();
+};
+function renderMov(){
+  const el = $("mov-list");
+  if(!TX.length){ el.innerHTML='<div class="empty">Todavía no hay movimientos.</div>'; return; }
+  el.innerHTML = TX.slice(0,50).map(t=>{
+    const isIn = t.tipo==="ingreso";
+    const cuentaName = t.cuenta==="mercadopago" ? "MercadoPago" : "Santander";
+    return `<div class="item">
+      <div class="meta">
+        <div class="desc">${esc(t.descripcion)||t.categoria||"(sin detalle)"}</div>
+        <div class="subm">${fechaCorta(t.fecha)} · ${cuentaName} · <span class="badge">${esc(t.categoria)||"—"}</span></div>
+      </div>
+      <div class="amt ${isIn?'in':'out'} num">${isIn?'+':'−'}${fmt(t.monto)}</div>
+      <button class="pill-del" data-del-tx="${t.id}" title="Borrar">×</button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-del-tx]").forEach(b=>b.onclick=()=>delTx(b.dataset.delTx));
+}
+async function delTx(id){
+  if(!confirm("¿Borrar este movimiento?")) return;
+  await sb.from("transactions").delete().eq("id",id);
+  await loadAll();
+}
+
+// ---- TARJETAS / CUOTAS ----
+function cuotaPreview(){
+  const total = parseFloat($("c-monto").value)||0;
+  const n = parseInt($("c-cuotas").value)||1;
+  if(total>0 && n>=1){ $("c-preview").textContent = `${n} cuota(s) de ${fmt2(total/n)}`; }
+  else $("c-preview").textContent = "";
+}
+["c-monto","c-cuotas"].forEach(id=>$(id).addEventListener("input",cuotaPreview));
+
+function addMonths(iso, k){
+  const d = new Date(iso+"T00:00:00");
+  d.setMonth(d.getMonth()+k);
+  d.setDate(1);
+  return d.toISOString().slice(0,10);
+}
+$("c-add").onclick = async () => {
+  const total = parseFloat($("c-monto").value);
+  const n = parseInt($("c-cuotas").value);
+  if(!(total>0)){ alert("Poné un monto válido."); return; }
+  if(!(n>=1)){ alert("Cuotas inválidas."); return; }
+  $("c-add").disabled = true;
+  const purchase = {
+    fecha_compra: $("c-fecha").value || todayISO(),
+    tarjeta: $("c-tarjeta").value,
+    descripcion: $("c-desc").value.trim(),
+    categoria: $("c-cat").value,
+    monto_total: total, cuotas: n, user_id: user.id
+  };
+  const {data, error} = await sb.from("card_purchases").insert(purchase).select().single();
+  if(error){ $("c-add").disabled=false; alert("Error: "+error.message); return; }
+
+  // repartir el monto en cuotas (la última ajusta el redondeo)
+  const base = Math.round((total/n)*100)/100;
+  const rows = [];
+  let acum = 0;
+  for(let i=1;i<=n;i++){
+    let m = (i===n) ? Math.round((total-acum)*100)/100 : base;
+    acum += base;
+    rows.push({ purchase_id:data.id, nro_cuota:i, monto:m, mes:addMonths(purchase.fecha_compra, i), pagada:false, user_id:user.id });
+  }
+  const {error:e2} = await sb.from("card_installments").insert(rows);
+  $("c-add").disabled = false;
+  if(e2){ alert("Compra guardada pero fallaron las cuotas: "+e2.message); }
+  $("c-monto").value=""; $("c-desc").value=""; $("c-cuotas").value="1"; $("c-preview").textContent="";
+  await loadAll();
+};
+
+function renderCuotas(){
+  const el = $("cuotas-list");
+  if(!INST.length){ el.innerHTML='<div class="empty">Todavía no hay compras en cuotas.</div>'; return; }
+  const pMap = Object.fromEntries(PURCH.map(p=>[p.id,p]));
+  // agrupar por mes
+  const groups = {};
+  INST.forEach(x=>{ (groups[x.mes] ||= []).push(x); });
+  const meses = Object.keys(groups).sort();
+  el.innerHTML = meses.map(mes=>{
+    const items = groups[mes].map(x=>{
+      const p = pMap[x.purchase_id]||{};
+      return `<div class="item">
+        <div class="meta">
+          <div class="desc">${esc(p.descripcion)||"Compra"} <span class="badge">${x.nro_cuota}/${p.cuotas||'?'}</span></div>
+          <div class="subm">${esc(p.tarjeta)||''} · ${esc(p.categoria)||'—'}</div>
+        </div>
+        <div class="amt num" style="color:${x.pagada?'var(--muted)':'var(--debt)'}">${fmt(x.monto)}</div>
+        <button class="paid-btn ${x.pagada?'done':''}" data-paid="${x.id}" data-val="${x.pagada?1:0}">${x.pagada?'Pagada':'Pagar'}</button>
+      </div>`;
+    }).join("");
+    return `<div class="month-head">${mesLargo(mes)}</div>${items}`;
+  }).join("");
+  el.querySelectorAll("[data-paid]").forEach(b=>b.onclick=()=>togglePaid(b.dataset.paid, b.dataset.val==="1"));
+}
+async function togglePaid(id, isPaid){
+  await sb.from("card_installments").update({pagada: !isPaid}).eq("id",id);
+  await loadAll();
+}
+
+// ---- CHARTS ----
+function renderCharts(){
+  // flujo mensual
+  const months = {};
+  TX.forEach(t=>{
+    const k = t.fecha.slice(0,7);
+    (months[k] ||= {ing:0,gas:0});
+    if(t.tipo==="ingreso") months[k].ing+=Number(t.monto); else months[k].gas+=Number(t.monto);
+  });
+  const keys = Object.keys(months).sort().slice(-6);
+  const flowData = {
+    labels: keys.map(mesCorto),
+    datasets:[
+      {label:"Ingresos", data:keys.map(k=>months[k].ing), backgroundColor:"#16a34a", borderRadius:6},
+      {label:"Gastos",   data:keys.map(k=>months[k].gas), backgroundColor:"#e11d48", borderRadius:6},
+    ]
+  };
+  if(chartFlow) chartFlow.destroy();
+  chartFlow = new Chart($("chart-flow"),{type:"bar",data:flowData,options:{
+    responsive:true, plugins:{legend:{position:"bottom"}},
+    scales:{y:{ticks:{callback:v=>fmt(v)}}}
+  }});
+
+  // gastos por categoría
+  const cats = {};
+  TX.filter(t=>t.tipo==="gasto").forEach(t=>{ const c=t.categoria||"Otros"; cats[c]=(cats[c]||0)+Number(t.monto); });
+  const ck = Object.keys(cats);
+  const catData = {
+    labels: ck,
+    datasets:[{ data:ck.map(c=>cats[c]), backgroundColor:ck.map((_,i)=>CAT_COLORS[i%CAT_COLORS.length]) }]
+  };
+  if(chartCat) chartCat.destroy();
+  if(ck.length){
+    chartCat = new Chart($("chart-cat"),{type:"doughnut",data:catData,options:{
+      responsive:true, plugins:{legend:{position:"right"},tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)}`}}}
+    }});
+  }
+}
+
+// ---- TABS ----
+document.querySelectorAll(".tabs button").forEach(b=>{
+  b.onclick = () => {
+    document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    ["mov","tar","graf"].forEach(t=>$("tab-"+t).classList.toggle("hidden", t!==b.dataset.tab));
+  };
+});
+
+// ---- helpers ----
+function esc(s){ return (s||"").replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fechaCorta(iso){ const d=new Date(iso+"T00:00:00"); return d.toLocaleDateString('es-AR',{day:'2-digit',month:'short'}); }
+function mesLargo(iso){ const d=new Date(iso+"T00:00:00"); return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'}); }
+function mesCorto(k){ const d=new Date(k+"-01T00:00:00"); return d.toLocaleDateString('es-AR',{month:'short',year:'2-digit'}); }
+</script>
+</body>
+</html>
