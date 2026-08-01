@@ -222,11 +222,7 @@ canvas{max-height:280px}
   <div class="card hero">
     <div class="lbl">Plata total</div>
     <div class="total num" id="h-total">$0</div>
-    <div class="chips">
-      <div class="chip"><div class="k">MercadoPago</div><div class="v num" id="h-mp">$0</div></div>
-      <div class="chip"><div class="k">Santander</div><div class="v num" id="h-sant">$0</div></div>
-      <div class="chip"><div class="k">Deuda tarjetas</div><div class="v num" id="h-debt" style="color:var(--debt)">$0</div></div>
-    </div>
+    <div class="chips" id="hero-chips"></div>
   </div>
 
   <div class="card msum">
@@ -248,13 +244,22 @@ canvas{max-height:280px}
   <!-- MOVIMIENTOS -->
   <section id="tab-mov">
     <div class="card pad" style="margin-bottom:14px">
+      <div class="sec-title">Mis cuentas / bancos</div>
+      <p class="hint" style="margin-top:0">Agregá los que uses (MercadoPago, Santander, Brubank…) y borrá los que no.</p>
+      <div class="filters" style="margin-top:10px">
+        <input id="acc-nombre" type="text" placeholder="Ej: Brubank">
+        <button class="btn sm" id="acc-add">Agregar</button>
+      </div>
+      <div class="list" id="accounts-list" style="margin-top:6px"></div>
+    </div>
+    <div class="card pad" style="margin-bottom:14px">
       <div class="sec-title">Nuevo movimiento</div>
       <div class="grid2">
         <div class="field"><label>Fecha</label><input id="m-fecha" type="date"></div>
         <div class="field"><label>Tipo</label><select id="m-tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option><option value="transferencia">Transferencia</option></select></div>
-        <div class="field" id="m-cuenta-wrap"><label>Cuenta</label><select id="m-cuenta"><option value="mercadopago">MercadoPago</option><option value="santander">Santander</option></select></div>
-        <div class="field hidden" id="m-orig-wrap"><label>De</label><select id="m-orig"><option value="mercadopago">MercadoPago</option><option value="santander">Santander</option></select></div>
-        <div class="field hidden" id="m-dest-wrap"><label>A</label><select id="m-dest"><option value="santander">Santander</option><option value="mercadopago">MercadoPago</option></select></div>
+        <div class="field" id="m-cuenta-wrap"><label>Cuenta</label><select id="m-cuenta"></select></div>
+        <div class="field hidden" id="m-orig-wrap"><label>De</label><select id="m-orig"></select></div>
+        <div class="field hidden" id="m-dest-wrap"><label>A</label><select id="m-dest"></select></div>
         <div class="field"><label>Monto</label><input id="m-monto" type="number" inputmode="decimal" placeholder="0"></div>
         <div class="field" id="m-cat-wrap"><label>Categoría</label><select id="m-cat"></select></div>
         <div class="field"><label>Descripción</label><input id="m-desc" type="text" placeholder="Opcional"></div>
@@ -268,7 +273,7 @@ canvas{max-height:280px}
       </div>
       <div class="filters">
         <input id="f-text" type="text" placeholder="Buscar…">
-        <select id="f-cuenta"><option value="">Todas</option><option value="mercadopago">MercadoPago</option><option value="santander">Santander</option></select>
+        <select id="f-cuenta"><option value="">Todas</option></select>
         <select id="f-mes"><option value="">Todos los meses</option></select>
       </div>
       <div class="list" id="mov-list"><div class="empty">Todavía no hay movimientos.</div></div>
@@ -367,7 +372,7 @@ canvas{max-height:280px}
     <div class="card pad" style="margin-bottom:14px">
       <div class="sec-title">Nuevo gasto/ingreso fijo</div>
       <div class="grid2">
-        <div class="field"><label>Cuenta</label><select id="r-cuenta"><option value="mercadopago">MercadoPago</option><option value="santander">Santander</option></select></div>
+        <div class="field"><label>Cuenta</label><select id="r-cuenta"></select></div>
         <div class="field"><label>Tipo</label><select id="r-tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select></div>
         <div class="field"><label>Monto</label><input id="r-monto" type="number" inputmode="decimal" placeholder="0"></div>
         <div class="field"><label>Categoría</label><select id="r-cat"></select></div>
@@ -425,7 +430,7 @@ canvas{max-height:280px}
     <h3>Editar movimiento</h3>
     <div class="grid2">
       <div class="field"><label>Fecha</label><input id="e-fecha" type="date"></div>
-      <div class="field"><label>Cuenta</label><select id="e-cuenta"><option value="mercadopago">MercadoPago</option><option value="santander">Santander</option></select></div>
+      <div class="field"><label>Cuenta</label><select id="e-cuenta"></select></div>
       <div class="field"><label>Tipo</label><select id="e-tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select></div>
       <div class="field"><label>Monto</label><input id="e-monto" type="number" inputmode="decimal"></div>
       <div class="field"><label>Categoría</label><select id="e-cat"></select></div>
@@ -459,7 +464,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const CATEGORIAS = ["Comida","Transporte","Servicios","Alquiler","Ocio","Salud","Compras","Sueldo","Otros"];
 const CAT_COLORS = ["#1dea00","#4f7cff","#fb6b86","#f0a63b","#a78bfa","#2dd4bf","#f59e0b","#37d067","#94a3b8"];
-const CTA_NOMBRE = {mercadopago:"MercadoPago", santander:"Santander"};
+let CTA_NOMBRE = {};
 const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
 const fmt2 = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(n||0);
 const $ = id => document.getElementById(id);
@@ -468,7 +473,7 @@ const curMonth = () => new Date().toISOString().slice(0,7);
 const prevMonth = () => { const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return d.toISOString().slice(0,7); };
 
 let sb=null, user=null, PROFILE=null;
-let TX=[], PURCH=[], INST=[], BUD=[], REC=[], TRF=[], CARDS=[], PAIRS=[], STXN=[], OTHERPROF={};
+let TX=[], PURCH=[], INST=[], BUD=[], REC=[], TRF=[], CARDS=[], PAIRS=[], STXN=[], OTHERPROF={}, ACCOUNTS=[];
 let activePairId=null, linkFound=null, editingShared=null;
 let chartFlow=null, chartCat=null, chartProj=null;
 let editing=null, calMonth=curMonth();
@@ -517,7 +522,7 @@ async function onSession(s){ if(s&&s.user){ user=s.user; $("who").textContent=us
 // DATA
 async function loadAll(){
   await sb.from("profiles").upsert({user_id:user.id, email:user.email},{onConflict:"user_id"});
-  const [t,p,i,b,r,tr,pa,st,ca,pr]=await Promise.all([
+  const [t,p,i,b,r,tr,pa,st,ca,pr,ac]=await Promise.all([
     sb.from("transactions").select("*").order("fecha",{ascending:false}),
     sb.from("card_purchases").select("*").order("fecha_compra",{ascending:false}),
     sb.from("card_installments").select("*").order("mes",{ascending:true}),
@@ -528,11 +533,15 @@ async function loadAll(){
     sb.from("shared_txns").select("*").order("fecha",{ascending:false}),
     sb.from("cards").select("*").order("created_at",{ascending:true}),
     sb.from("profiles").select("*").eq("user_id",user.id).maybeSingle(),
+    sb.from("accounts").select("*").order("created_at",{ascending:true}),
   ]);
-  TX=t.data||[]; PURCH=p.data||[]; INST=i.data||[]; BUD=b.data||[]; REC=r.data||[]; TRF=tr.data||[]; PAIRS=pa.data||[]; STXN=st.data||[]; CARDS=ca.data||[]; PROFILE=pr.data||null;
+  TX=t.data||[]; PURCH=p.data||[]; INST=i.data||[]; BUD=b.data||[]; REC=r.data||[]; TRF=tr.data||[]; PAIRS=pa.data||[]; STXN=st.data||[]; CARDS=ca.data||[]; PROFILE=pr.data||null; ACCOUNTS=ac.data||[];
+  if(!ACCOUNTS.length){ await sb.from("accounts").insert([{user_id:user.id,key:"mercadopago",nombre:"MercadoPago"},{user_id:user.id,key:"santander",nombre:"Santander"}]);
+    const {data}=await sb.from("accounts").select("*").order("created_at",{ascending:true}); ACCOUNTS=data||[]; }
+  CTA_NOMBRE={}; ACCOUNTS.forEach(a=>{ CTA_NOMBRE[a.key]=a.nombre; });
   const otherIds=[...new Set(PAIRS.map(p=> p.a===user.id?p.b:p.a))];
   OTHERPROF={}; if(otherIds.length){ const {data}=await sb.rpc("perfiles_de",{ids:otherIds}); (data||[]).forEach(x=>{ OTHERPROF[x.user_id]={apodo:x.apodo,foto_url:x.foto_url}; }); }
-  fillMonthFilter(); fillCardSelect(); renderMe();
+  fillMonthFilter(); fillCardSelect(); fillAccountSelects(); renderAccounts(); renderMe();
   renderHero(); renderMonthSummary(); renderMov(); renderCuotas(); renderCards(); renderFijos(); renderBudgets(); renderDividir(); renderCalendar(); renderCharts();
 }
 
@@ -563,14 +572,39 @@ $("pf-save").onclick=async()=>{
 
 $("logout")&&($("logout").onclick=()=>sb.auth.signOut());
 
-// BALANCES
+// BALANCES / CUENTAS
 function accountBalance(acc){ let v=0;
   TX.forEach(t=>{ if(t.cuenta===acc) v+= t.tipo==="ingreso"?Number(t.monto):-Number(t.monto); });
   TRF.forEach(t=>{ if(t.origen===acc) v-=Number(t.monto); if(t.destino===acc) v+=Number(t.monto); }); return v; }
-function renderHero(){ const mp=accountBalance("mercadopago"), sant=accountBalance("santander");
-  const debt=INST.filter(x=>!x.pagada).reduce((a,x)=>a+Number(x.monto),0); const total=mp+sant-debt;
-  $("h-mp").textContent=fmt(mp); $("h-sant").textContent=fmt(sant); $("h-debt").textContent=fmt(debt);
+function renderHero(){
+  const debt=INST.filter(x=>!x.pagada).reduce((a,x)=>a+Number(x.monto),0);
+  let saldo=0; TX.forEach(t=>{ saldo+= t.tipo==="ingreso"?Number(t.monto):-Number(t.monto); });
+  const total=saldo-debt;
+  let chips=ACCOUNTS.map(a=>`<div class="chip"><div class="k">${esc(a.nombre)}</div><div class="v num">${fmt(accountBalance(a.key))}</div></div>`).join("");
+  chips+=`<div class="chip"><div class="k">Deuda tarjetas</div><div class="v num" style="color:var(--debt)">${fmt(debt)}</div></div>`;
+  $("hero-chips").innerHTML=chips;
   $("h-total").textContent=fmt(total); $("h-total").style.color= total>=0?"var(--ink)":"var(--expense)"; }
+
+function slug(s){ return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); }
+function fillAccountSelects(){
+  const opts=ACCOUNTS.map(a=>`<option value="${a.key}">${esc(a.nombre)}</option>`).join("");
+  ["m-cuenta","m-orig","m-dest","e-cuenta","r-cuenta"].forEach(id=>{ const s=$(id); if(!s) return; const cur=s.value; s.innerHTML=opts; if([...s.options].some(o=>o.value===cur)) s.value=cur; });
+  const f=$("f-cuenta"); const curf=f.value; f.innerHTML='<option value="">Todas</option>'+opts; if([...f.options].some(o=>o.value===curf)) f.value=curf;
+}
+function renderAccounts(){ const el=$("accounts-list");
+  el.innerHTML=ACCOUNTS.length ? ACCOUNTS.map(a=>`<div class="item"><div class="meta"><div class="desc">${esc(a.nombre)}</div>
+    <div class="subm">Saldo: ${fmt(accountBalance(a.key))}</div></div><button class="iconx" data-del-acc="${a.id}">🗑</button></div>`).join("")
+    : '<div class="empty">Agregá tus cuentas.</div>';
+  el.querySelectorAll("[data-del-acc]").forEach(b=>b.onclick=()=>delAccount(b.dataset.delAcc)); }
+$("acc-add").onclick=async()=>{ const nombre=$("acc-nombre").value.trim(); if(!nombre){ alert("Poné un nombre."); return; }
+  const key=slug(nombre); if(!key){ alert("Nombre inválido."); return; }
+  if(ACCOUNTS.some(a=>a.key===key)){ alert("Ya tenés una cuenta con ese nombre."); return; }
+  const {error}=await sb.from("accounts").insert({user_id:user.id,key,nombre}); if(error){ alert("Error: "+error.message); return; }
+  $("acc-nombre").value=""; await loadAll(); };
+async function delAccount(id){ const a=ACCOUNTS.find(x=>x.id===id); if(!a) return;
+  if(ACCOUNTS.length<=1){ alert("Dejá al menos una cuenta."); return; }
+  if(!confirm(`¿Borrar "${a.nombre}"? Los movimientos ya cargados con esa cuenta no se borran.`)) return;
+  await sb.from("accounts").delete().eq("id",id); await loadAll(); }
 function renderMonthSummary(){ const cm=curMonth(), pm=prevMonth(); let ing=0,gas=0,gasPrev=0;
   TX.forEach(t=>{ const m=t.fecha.slice(0,7); if(m===cm){ if(t.tipo==="ingreso") ing+=Number(t.monto); else gas+=Number(t.monto); } if(m===pm && t.tipo==="gasto") gasPrev+=Number(t.monto); });
   $("s-ing").textContent=fmt(ing); $("s-gas").textContent=fmt(gas); const aho=ing-gas; $("s-aho").textContent=fmt(aho); $("s-aho").style.color= aho>=0?"var(--income)":"var(--expense)";
