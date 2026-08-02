@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es" data-theme="verde-noche">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -14,24 +14,53 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-:root{
+/* ===== 5 paletas planas (flat). Se elige en Configuración > Colores ===== */
+:root{ --glass:none; --radius:20px; }
+
+/* 1 · Verde Noche (por defecto) */
+:root,[data-theme="verde-noche"]{
   color-scheme:dark;
-  --ink:#f3f5f7; --muted:#9aa3ad; --line:rgba(255,255,255,.10);
-  --surface:rgba(255,255,255,.055); --surface-2:rgba(255,255,255,.03); --solid:#151920;
+  --ink:#f3f5f7; --muted:#9aa3ad; --line:#232830;
+  --surface:#14181e; --surface-2:#1a1f26; --solid:#14181e;
   --accent:#1dea00; --accent-ink:#062a00; --income:#37d067; --expense:#fb6b86; --debt:#f0a63b; --transfer:#2dd4bf;
-  --field:#141821; --hover:rgba(255,255,255,.06);
-  --glass:blur(20px) saturate(150%); --radius:20px;
-  --shadow:0 8px 30px rgba(0,0,0,.35);
-  --bggrad:radial-gradient(1100px 560px at 82% -12%, rgba(29,234,0,.12), transparent 60%), radial-gradient(900px 500px at 0% 8%, rgba(29,234,0,.05), transparent 55%), linear-gradient(180deg,#0b0e12,#090b0f);
+  --field:#1a1f26; --hover:#232830;
+  --shadow:none; --bggrad:#0d1013; --themecolor:#0d1013;
 }
-[data-theme="light"]{
+/* 2 · Teal Claro */
+[data-theme="teal-claro"]{
   color-scheme:light;
-  --ink:#12151b; --muted:#667085; --line:#e6e8ec;
-  --surface:#ffffff; --surface-2:#f7f8fa; --solid:#ffffff;
-  --accent:#0f9f56; --accent-ink:#ffffff; --income:#16a34a; --expense:#e11d48; --debt:#c2740a; --transfer:#0e9aa0;
-  --field:#ffffff; --hover:#f1f3f5;
-  --glass:none; --shadow:0 1px 2px rgba(16,24,40,.06),0 10px 26px rgba(16,24,40,.06);
-  --bggrad:linear-gradient(180deg,#eef1f4,#e9edf1);
+  --ink:#12352c; --muted:#6b8078; --line:#dfe7e3;
+  --surface:#ffffff; --surface-2:#f1f6f4; --solid:#ffffff;
+  --accent:#2f6f5e; --accent-ink:#ffffff; --income:#2f8f6d; --expense:#e07a7a; --debt:#d99a3d; --transfer:#3aa8a0;
+  --field:#ffffff; --hover:#eaf2ef;
+  --shadow:0 1px 2px rgba(18,53,44,.06); --bggrad:#f4f8f6; --themecolor:#2f6f5e;
+}
+/* 3 · Coral Suave */
+[data-theme="coral-suave"]{
+  color-scheme:light;
+  --ink:#4a2b2b; --muted:#9b7a76; --line:#f3ddd7;
+  --surface:#ffffff; --surface-2:#fdf1ee; --solid:#ffffff;
+  --accent:#e8837a; --accent-ink:#ffffff; --income:#5fae8c; --expense:#e05c5c; --debt:#e0a04a; --transfer:#4fa8b8;
+  --field:#ffffff; --hover:#fbe8e3;
+  --shadow:0 1px 2px rgba(74,43,43,.06); --bggrad:#fdf5f2; --themecolor:#e8837a;
+}
+/* 4 · Azul Intenso */
+[data-theme="azul-intenso"]{
+  color-scheme:dark;
+  --ink:#eaf1fb; --muted:#8ba0bd; --line:#22334d;
+  --surface:#14243a; --surface-2:#1a2c46; --solid:#14243a;
+  --accent:#2f8fff; --accent-ink:#04182e; --income:#3ecf8e; --expense:#ff6b8a; --debt:#ffb347; --transfer:#4dd0e1;
+  --field:#1a2c46; --hover:#22334d;
+  --shadow:none; --bggrad:#0f1b2d; --themecolor:#0f1b2d;
+}
+/* 5 · Arena Serena */
+[data-theme="arena-serena"]{
+  color-scheme:light;
+  --ink:#3a2f22; --muted:#8a7a63; --line:#e6dccb;
+  --surface:#ffffff; --surface-2:#f6f1e9; --solid:#ffffff;
+  --accent:#b98a4e; --accent-ink:#ffffff; --income:#6f9457; --expense:#c2593f; --debt:#c99a3c; --transfer:#5b8f92;
+  --field:#ffffff; --hover:#f0e8da;
+  --shadow:0 1px 2px rgba(58,47,34,.07); --bggrad:#f9f5ee; --themecolor:#b98a4e;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -145,7 +174,7 @@ input.lim{width:120px; border:1px solid var(--line); border-radius:10px; padding
 /* tarjetas */
 .cardchip{width:34px; height:22px; border-radius:5px; display:inline-grid; place-items:center; background:var(--surface-2); border:1px solid var(--line)}
 .brand-visa{font-family:'Space Grotesk'; font-style:italic; font-weight:700; color:#1a1f71; background:#fff; border-radius:4px; padding:1px 5px; font-size:11px}
-[data-theme="dark"] .brand-visa{color:#1434cb; background:#eef1ff}
+[data-theme="verde-noche"] .brand-visa,[data-theme="azul-intenso"] .brand-visa{color:#1434cb; background:#eef1ff}
 
 /* calendario */
 .calnav{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px}
@@ -179,6 +208,26 @@ input.lim{width:120px; border:1px solid var(--line); border-radius:10px; padding
 canvas{max-height:280px}
 .hint{font-size:12.5px; color:var(--muted); margin-top:8px}
 .total-fijos{font-size:13px; color:var(--muted); margin-top:10px}
+
+/* ===== Configuración ===== */
+.cfg-head{display:flex; align-items:center; gap:12px; margin-bottom:18px; padding-top:6px}
+.cfg-head .back{width:40px; height:40px; border-radius:12px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-size:20px; display:grid; place-items:center}
+.cfg-head h2{font-family:'Space Grotesk'; font-size:18px; flex:1; text-align:center}
+.cfg-row{display:flex; align-items:center; gap:14px; padding:18px; width:100%; text-align:left;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:12px; color:var(--ink)}
+.cfg-row:hover{background:var(--hover)}
+.cfg-ico{width:46px; height:46px; border-radius:13px; background:var(--surface-2); border:1px solid var(--line); display:grid; place-items:center; font-size:20px; flex-shrink:0}
+.cfg-row .t{flex:1; min-width:0}
+.cfg-row .t b{display:block; font-family:'Space Grotesk'; font-size:16px; font-weight:600}
+.cfg-row .t span{display:block; font-size:12.5px; color:var(--muted); margin-top:2px}
+.cfg-row .arr{color:var(--muted); font-size:20px}
+.cat-emoji{width:70px; text-align:center; font-size:19px}
+.theme-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.theme-card{border:2px solid var(--line); border-radius:16px; padding:14px; background:var(--surface-2); text-align:left; color:var(--ink)}
+.theme-card.on{border-color:var(--accent)}
+.theme-card .nm{font-weight:700; font-size:13.5px; margin-bottom:9px}
+.theme-dots{display:flex; gap:6px}
+.theme-dots i{width:20px; height:20px; border-radius:6px; display:block; border:1px solid rgba(128,128,128,.25)}
 @media(max-width:520px){ .hero .total{font-size:38px} .divhero .big{font-size:34px} .grid2{grid-template-columns:1fr} .msum .v{font-size:16px} }
 </style>
 </head>
@@ -222,7 +271,7 @@ canvas{max-height:280px}
     </div>
     <div class="top-actions">
       <button class="me-btn" id="me-btn" title="Perfil">?</button>
-      <button class="icon-btn" id="theme-btn" title="Tema">☀️</button>
+      <button class="icon-btn" id="config-btn" title="Configuración">⚙️</button>
     </div>
   </div>
 
@@ -251,16 +300,6 @@ canvas{max-height:280px}
 
   <!-- MOVIMIENTOS -->
   <section id="tab-mov">
-    <div class="card pad" style="margin-bottom:14px">
-      <div class="sec-title">Mis cuentas / bancos</div>
-      <p class="hint" style="margin-top:0">Agregá los que uses (MercadoPago, Santander, Brubank, Binance…) y elegí en qué moneda trabaja cada uno.</p>
-      <div class="filters" style="margin-top:10px">
-        <input id="acc-nombre" type="text" placeholder="Ej: Brubank">
-        <select id="acc-moneda" title="Moneda de la cuenta"></select>
-        <button class="btn sm" id="acc-add">Agregar</button>
-      </div>
-      <div class="list" id="accounts-list" style="margin-top:6px"></div>
-    </div>
     <div class="card pad" style="margin-bottom:14px">
       <div class="sec-title">Nuevo movimiento</div>
       <div class="grid2">
@@ -318,18 +357,6 @@ canvas{max-height:280px}
 
   <!-- TARJETAS -->
   <section id="tab-tar" class="hidden">
-    <div class="card pad" style="margin-bottom:14px">
-      <div class="sec-title">Mis tarjetas</div>
-      <div class="grid2">
-        <div class="field"><label>Marca</label><select id="k-marca"><option value="visa">Visa</option><option value="mastercard">Mastercard</option><option value="otra">Otra</option></select></div>
-        <div class="field"><label>Últimos 3 dígitos</label><input id="k-ult3" type="text" inputmode="numeric" maxlength="3" placeholder="123"></div>
-        <div class="field"><label>Banco (opcional)</label><input id="k-banco" type="text" placeholder="Santander"></div>
-        <div class="field"><label>Nombre (opcional)</label><input id="k-nombre" type="text" placeholder="Ej: la del sueldo"></div>
-      </div>
-      <button class="btn cta mt" id="k-add">Agregar tarjeta</button>
-      <div class="list" id="cards-list" style="margin-top:10px"></div>
-    </div>
-
     <div class="card pad" style="margin-bottom:14px">
       <div class="sec-title">Nueva compra con tarjeta</div>
       <div class="grid2">
@@ -419,6 +446,86 @@ canvas{max-height:280px}
 
 </div>
 
+<!-- ===================== CONFIGURACIÓN ===================== -->
+<div id="config" class="wrap hidden">
+  <div class="cfg-head">
+    <button class="back" id="cfg-back">‹</button>
+    <h2 id="cfg-title">Configuración</h2>
+    <button class="me-btn" id="cfg-me">?</button>
+  </div>
+
+  <!-- menú -->
+  <div id="cfg-menu">
+    <button class="cfg-row" data-cfg="cats"><div class="cfg-ico">🏷️</div><div class="t"><b>Categorías</b><span id="cfg-cats-sub">—</span></div><div class="arr">›</div></button>
+    <button class="cfg-row" data-cfg="bal"><div class="cfg-ico">🧮</div><div class="t"><b>Mi balance</b><span id="cfg-bal-sub">Cuentas, bancos y monedas</span></div><div class="arr">›</div></button>
+    <button class="cfg-row" data-cfg="cards"><div class="cfg-ico">💳</div><div class="t"><b>Mis tarjetas</b><span id="cfg-cards-sub">—</span></div><div class="arr">›</div></button>
+    <button class="cfg-row" data-cfg="colors"><div class="cfg-ico">🎨</div><div class="t"><b>Colores</b><span id="cfg-colors-sub">—</span></div><div class="arr">›</div></button>
+  </div>
+
+  <!-- categorías -->
+  <div id="cfg-cats" class="hidden">
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="sec-title">Nueva categoría</div>
+      <div class="filters" style="margin-top:4px">
+        <input id="cat-emoji" class="cat-emoji" type="text" maxlength="4" placeholder="🍕">
+        <input id="cat-nombre" type="text" placeholder="Nombre de la categoría">
+        <button class="btn sm" id="cat-add">Agregar</button>
+      </div>
+      <p class="hint" style="margin-top:2px">El emoji es opcional. Podés copiar y pegar cualquiera.</p>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">Mis categorías</div>
+      <div class="filters"><input id="cat-search" type="text" placeholder="¿Qué categoría buscás?"></div>
+      <div class="list" id="cats-list"></div>
+    </div>
+  </div>
+
+  <!-- balance: cuentas y monedas -->
+  <div id="cfg-bal" class="hidden">
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="sec-title">Agregar cuenta / banco</div>
+      <p class="hint" style="margin-top:0">MercadoPago, Santander, Brubank, Uala, Binance… Elegí en qué moneda trabaja cada una.</p>
+      <div class="filters" style="margin-top:10px">
+        <input id="acc-nombre" type="text" placeholder="Ej: Brubank">
+        <select id="acc-moneda" title="Moneda de la cuenta"></select>
+        <button class="btn sm" id="acc-add">Agregar</button>
+      </div>
+    </div>
+    <div class="card pad">
+      <div class="sec-title">Mis cuentas</div>
+      <p class="hint" style="margin-top:0">Podés cambiarle la moneda a cualquier cuenta desde acá.</p>
+      <div class="list" id="accounts-list" style="margin-top:6px"></div>
+    </div>
+  </div>
+
+  <!-- tarjetas -->
+  <div id="cfg-cards" class="hidden">
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="sec-title">Agregar tarjeta</div>
+      <div class="grid2">
+        <div class="field"><label>Marca</label><select id="k-marca"><option value="visa">Visa</option><option value="mastercard">Mastercard</option><option value="otra">Otra</option></select></div>
+        <div class="field"><label>Últimos 3 dígitos</label><input id="k-ult3" type="text" inputmode="numeric" maxlength="3" placeholder="123"></div>
+        <div class="field"><label>Banco (opcional)</label><input id="k-banco" type="text" placeholder="Santander"></div>
+        <div class="field"><label>Nombre (opcional)</label><input id="k-nombre" type="text" placeholder="Ej: la del sueldo"></div>
+      </div>
+      <button class="btn cta mt" id="k-add">Agregar tarjeta</button>
+      <p class="hint">Nunca guardamos el número completo: solo marca y últimos 3 dígitos.</p>
+    </div>
+    <div class="card pad"><div class="sec-title">Mis tarjetas</div>
+      <div class="list" id="cards-list" style="margin-top:6px"></div></div>
+  </div>
+
+  <!-- colores -->
+  <div id="cfg-colors" class="hidden">
+    <div class="card pad">
+      <div class="sec-title">Elegí tu paleta</div>
+      <p class="hint" style="margin-top:0">Se guarda en tu cuenta, así que te sigue en el celu y en la compu.</p>
+      <div class="theme-grid" id="theme-grid" style="margin-top:12px"></div>
+      <button class="btn ghost cta mt" id="theme-reset">Restablecer color por defecto</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL perfil -->
 <div id="profile-overlay" class="overlay hidden">
   <div class="modal">
@@ -494,8 +601,34 @@ const LOGO_PATHS = '<path fill="currentColor" d="M893.99,723.18c98.18-67.22,182.
   + '<path fill="currentColor" d="M908.52,632.89c-38.57,16.5-82.51,12.03-117.18-10.23-21.64-13.89-37.09-33.43-47.44-57.09-16.41-37.53-13.84-80.09,8.46-116.73,18.76-30.82,52.55-53.92,91.24-58.69,41.68-5.14,81.82,10.07,109.79,41.42,20.9,23.43,31.69,53.13,31.38,84.77-.15,15.08-2.15,28.46-7.59,42.66-12.44,32.42-35.77,59.82-68.66,73.89ZM871.5,596.15c11.14-1.64,20.08-3.41,29.2-7.57,17.04-7.78,27.09-24.05,26.13-42.79-1.46-28.79-28.04-39.57-54.43-46.57l-.03-35.82c7.56,3.6,11.69,8.44,15.46,14.71,5.51,10.08,18.9,12.89,27.81,5.32,10.14-8.61,2.73-28.16-13-37.24-9.31-5.37-19.23-7.87-30.15-9.79l-.08-23.97-24.15.04-.45,23.06c-12.21,1.22-23.22,3.77-33.25,9.84-12.88,7.8-20.76,21.54-19.95,36.31s9.35,27,22.79,33.84l29.19,11.92-.34,40.83c-17.92-4.37-20.04-19.95-27.56-27.06-4.54-4.29-11.16-4.44-16.93-2.2-4.35,1.68-9.35,6.65-9.68,12.62-1.49,27.42,28.61,41.05,54.39,44.65l.03,23.03,24.97-.02.02-23.15Z"/>'
   + '<path fill="currentColor" d="M0,546.93l38.67,10.14c33.45,6.28,67.07,7.88,100.92,2.18,67-11.29,125.83-42.89,177.76-86.16,48.17-40.13,90.39-86.52,125.22-138.55l32.18-48.09c-6.82,19.49-15.85,35.94-24.66,53.6-40.83,80.04-93.16,148.86-162.42,206.38-25.81,21.43-53.46,38.77-84.19,51.89-21.73,9.27-43.44,14.76-66.91,17.23-47.9,5.02-94.12-13.6-124.28-51.07l-12.28-17.54Z"/>';
 
-const CATEGORIAS = ["Comida","Transporte","Servicios","Alquiler","Ocio","Salud","Compras","Sueldo","Otros"];
-const CAT_COLORS = ["#1dea00","#4f7cff","#fb6b86","#f0a63b","#a78bfa","#2dd4bf","#f59e0b","#37d067","#94a3b8"];
+// Categorías originales + emoji. Los nombres NO cambian: los movimientos ya cargados
+// guardan el texto ("Comida"), así que siguen matcheando igual. El emoji es solo visual.
+const CATS_DEFAULT = [
+  {nombre:"Comida",     emoji:"🍽️"},
+  {nombre:"Transporte", emoji:"🚌"},
+  {nombre:"Servicios",  emoji:"💡"},
+  {nombre:"Alquiler",   emoji:"🏠"},
+  {nombre:"Ocio",       emoji:"🎉"},
+  {nombre:"Salud",      emoji:"💊"},
+  {nombre:"Compras",    emoji:"🛍️"},
+  {nombre:"Sueldo",     emoji:"💰"},
+  {nombre:"Otros",      emoji:"📦"}
+];
+let CATS = CATS_DEFAULT.slice();
+const catNames = () => CATS.map(c=>c.nombre);
+const catEmoji = n => { const c=CATS.find(x=>x.nombre===n); return (c&&c.emoji)||""; };
+const catLabel = n => { const e=catEmoji(n); return (e?e+" ":"")+n; };
+const CAT_COLORS = ["#1dea00","#4f7cff","#fb6b86","#f0a63b","#a78bfa","#2dd4bf","#f59e0b","#37d067","#94a3b8","#e879f9","#38bdf8","#fb923c"];
+
+// Paletas planas
+const TEMAS = [
+  {id:"verde-noche",  n:"Verde Noche",  dots:["#0d1013","#1dea00","#14181e","#f3f5f7"]},
+  {id:"teal-claro",   n:"Teal Claro",   dots:["#f4f8f6","#2f6f5e","#ffffff","#12352c"]},
+  {id:"coral-suave",  n:"Coral Suave",  dots:["#fdf5f2","#e8837a","#ffffff","#4a2b2b"]},
+  {id:"azul-intenso", n:"Azul Intenso", dots:["#0f1b2d","#2f8fff","#14243a","#eaf1fb"]},
+  {id:"arena-serena", n:"Arena Serena", dots:["#f9f5ee","#b98a4e","#ffffff","#3a2f22"]}
+];
+const TEMA_DEFAULT = "verde-noche";
 
 // ---------- países y monedas ----------
 const PAISES = [
@@ -584,16 +717,35 @@ function fillMonedaSelect(sel, valor){
 }
 
 function configured(){ return SUPABASE_URL.startsWith("http") && SUPABASE_ANON_KEY.length>20; }
-function show(w){ ["setup","auth","recovery","app"].forEach(id=>$(id).classList.toggle("hidden", id!==w)); }
+function show(w){ ["setup","auth","recovery","app"].forEach(id=>$(id).classList.toggle("hidden", id!==w)); $("config").classList.add("hidden"); }
 let recoveryMode = /type=recovery/.test(window.location.hash);
 
 // logo
 $("logo-auth").innerHTML = LOGO_PATHS;
 $("logo-top").innerHTML  = LOGO_PATHS;
 
-function applyTheme(t){ document.documentElement.setAttribute("data-theme", t); $("theme-btn").textContent = t==="dark"?"☀️":"🌙"; document.querySelector('meta[name=theme-color]').setAttribute('content', t==="dark"?"#0a0c10":"#eef1f4"); }
-(function(){ let t="dark"; try{ t=localStorage.getItem("theme")||"dark"; }catch(e){} applyTheme(t); })();
-$("theme-btn").onclick=()=>{ const cur=document.documentElement.getAttribute("data-theme"); const t=cur==="dark"?"light":"dark"; applyTheme(t); try{localStorage.setItem("theme",t);}catch(e){} if(user) renderCharts(); };
+// ---------- temas ----------
+function temaValido(t){ return TEMAS.some(x=>x.id===t) ? t : (t==="light" ? "teal-claro" : TEMA_DEFAULT); } // "dark"/"light" viejos se migran
+function applyTheme(t){
+  t=temaValido(t);
+  document.documentElement.setAttribute("data-theme", t);
+  const col=getComputedStyle(document.documentElement).getPropertyValue('--themecolor').trim();
+  if(col) document.querySelector('meta[name=theme-color]').setAttribute('content', col);
+  renderThemeGrid();
+}
+(function(){ let t=TEMA_DEFAULT; try{ t=localStorage.getItem("theme")||TEMA_DEFAULT; }catch(e){} applyTheme(t); })();
+function renderThemeGrid(){
+  const g=$("theme-grid"); if(!g) return;
+  const cur=document.documentElement.getAttribute("data-theme");
+  g.innerHTML=TEMAS.map(t=>`<button class="theme-card ${t.id===cur?'on':''}" data-tema="${t.id}">
+    <div class="nm">${t.n}</div><div class="theme-dots">${t.dots.map(d=>`<i style="background:${d}"></i>`).join("")}</div></button>`).join("");
+  g.querySelectorAll("[data-tema]").forEach(b=>b.onclick=()=>setTheme(b.dataset.tema));
+}
+async function setTheme(t){
+  applyTheme(t); try{ localStorage.setItem("theme",t); }catch(e){}
+  if(user){ await sb.from("profiles").upsert({user_id:user.id, tema:t},{onConflict:"user_id"}); if(PROFILE) PROFILE.tema=t; renderCharts(); }
+}
+$("theme-reset").onclick=()=>setTheme(TEMA_DEFAULT);
 
 if(!configured()){ show("setup"); }
 else{
@@ -608,7 +760,9 @@ else{
   sb.auth.onAuthStateChange((event,s)=>{ if(event==="PASSWORD_RECOVERY"){ recoveryMode=true; show("recovery"); return; } if(recoveryMode && event!=="SIGNED_OUT") return; onSession(s); });
 }
 function paisHint(selId, hintId){ const p=PAIS_MAP[$(selId).value]; if(p) $(hintId).textContent="Tu moneda va a ser: "+monedaLabel(p.cur); }
-function fillCats(ids){ ids.forEach(id=>{ const s=$(id); if(!s) return; s.innerHTML=""; CATEGORIAS.forEach(c=>{ const o=document.createElement("option"); o.value=c; o.textContent=c; s.appendChild(o); }); }); }
+function fillCats(ids){ ids.forEach(id=>{ const s=$(id); if(!s) return; const prev=s.value; s.innerHTML="";
+  CATS.forEach(c=>{ const o=document.createElement("option"); o.value=c.nombre; o.textContent=(c.emoji?c.emoji+" ":"")+c.nombre; s.appendChild(o); });
+  if([...s.options].some(o=>o.value===prev)) s.value=prev; }); }
 
 // AUTH
 let authMode="login";
@@ -643,7 +797,7 @@ async function onSession(s){ if(s&&s.user){ user=s.user; $("who").textContent=us
 // DATA
 async function loadAll(){
   await sb.from("profiles").upsert({user_id:user.id, email:user.email},{onConflict:"user_id"});
-  const [t,p,i,b,r,tr,pa,st,ca,pr,ac]=await Promise.all([
+  const [t,p,i,b,r,tr,pa,st,ca,pr,ac,cat]=await Promise.all([
     sb.from("transactions").select("*").order("fecha",{ascending:false}),
     sb.from("card_purchases").select("*").order("fecha_compra",{ascending:false}),
     sb.from("card_installments").select("*").order("mes",{ascending:true}),
@@ -655,8 +809,11 @@ async function loadAll(){
     sb.from("cards").select("*").order("created_at",{ascending:true}),
     sb.from("profiles").select("*").eq("user_id",user.id).maybeSingle(),
     sb.from("accounts").select("*").order("created_at",{ascending:true}),
+    sb.from("categories").select("*").order("orden",{ascending:true}),
   ]);
   TX=t.data||[]; PURCH=p.data||[]; INST=i.data||[]; BUD=b.data||[]; REC=r.data||[]; TRF=tr.data||[]; PAIRS=pa.data||[]; STXN=st.data||[]; CARDS=ca.data||[]; PROFILE=pr.data||null; ACCOUNTS=ac.data||[];
+  await syncCategorias(cat.data||[]);
+  if(PROFILE && PROFILE.tema) applyTheme(PROFILE.tema); else renderThemeGrid();
 
   // Cuenta NUEVA: el país/moneda elegido al registrarse viaja en user_metadata.
   // Cuenta VIEJA: no tiene metadata -> no se toca nada, sigue en ARS como siempre.
@@ -673,10 +830,113 @@ async function loadAll(){
   CTA_NOMBRE={}; ACCOUNTS.forEach(a=>{ CTA_NOMBRE[a.key]=a.nombre; });
   const otherIds=[...new Set(PAIRS.map(p=> p.a===user.id?p.b:p.a))];
   OTHERPROF={}; if(otherIds.length){ const {data}=await sb.rpc("perfiles_de",{ids:otherIds}); (data||[]).forEach(x=>{ OTHERPROF[x.user_id]={apodo:x.apodo,foto_url:x.foto_url}; }); }
-  fillMonedaSelect("acc-moneda", mainCur());
+  fillMonedaSelect("acc-moneda", mainCur()); fillCats(["m-cat","c-cat","r-cat","e-cat"]);
   fillMonthFilter(); fillCardSelect(); fillAccountSelects(); renderAccounts(); renderMe(); montoHint();
   renderHero(); renderMonthSummary(); renderMov(); renderCuotas(); renderCards(); renderFijos(); renderBudgets(); renderDividir(); renderCalendar(); renderCharts();
+  renderCatsList(); renderConfigMenu();
 }
+
+// ---------- CATEGORÍAS (tabla propia; los movimientos siguen guardando el nombre en texto) ----------
+async function syncCategorias(rows){
+  let cats = rows || [];
+  if(!cats.length){
+    await sb.from("categories").insert(CATS_DEFAULT.map((c,i)=>({user_id:user.id, nombre:c.nombre, emoji:c.emoji, orden:i})));
+    const {data}=await sb.from("categories").select("*").order("orden",{ascending:true}); cats=data||[];
+  }
+  // Si en tus datos viejos hay alguna categoría que no está en la tabla, se agrega sola.
+  const usadas=new Set();
+  TX.forEach(x=>x.categoria&&usadas.add(x.categoria));
+  REC.forEach(x=>x.categoria&&usadas.add(x.categoria));
+  PURCH.forEach(x=>x.categoria&&usadas.add(x.categoria));
+  BUD.forEach(x=>x.categoria&&usadas.add(x.categoria));
+  const faltan=[...usadas].filter(n=>!cats.some(c=>c.nombre===n));
+  if(faltan.length){
+    const base=cats.length;
+    const conEmoji=n=>{ const d=CATS_DEFAULT.find(x=>x.nombre===n); return d?d.emoji:null; };
+    await sb.from("categories").insert(faltan.map((n,i)=>({user_id:user.id, nombre:n, emoji:conEmoji(n), orden:base+i})));
+    const {data}=await sb.from("categories").select("*").order("orden",{ascending:true}); cats=data||cats;
+  }
+  CATS = cats.length ? cats.map(c=>({id:c.id, nombre:c.nombre, emoji:c.emoji||""})) : CATS_DEFAULT.slice();
+}
+function catEnUso(nombre){
+  return TX.some(x=>x.categoria===nombre) || REC.some(x=>x.categoria===nombre)
+      || PURCH.some(x=>x.categoria===nombre) || BUD.some(x=>x.categoria===nombre && Number(x.monto)>0);
+}
+function renderCatsList(){
+  const el=$("cats-list"); if(!el) return;
+  const q=($("cat-search").value||"").toLowerCase();
+  const rows=CATS.filter(c=>c.nombre.toLowerCase().includes(q));
+  if(!rows.length){ el.innerHTML='<div class="empty">No hay categorías con ese nombre.</div>'; return; }
+  el.innerHTML=rows.map(c=>{ const uso=catEnUso(c.nombre);
+    return `<div class="item"><div style="font-size:20px; width:30px; text-align:center">${c.emoji||"·"}</div>
+      <div class="meta"><div class="desc">${esc(c.nombre)}</div><div class="subm">${uso?"En uso en tus movimientos":"Sin usar"}</div></div>
+      <button class="iconx" data-cat-edit="${c.id}" title="Editar">✏️</button>
+      <button class="iconx" data-cat-del="${c.id}" title="${uso?'No se puede borrar: está en uso':'Borrar'}" ${uso?'style="opacity:.35"':''}>🗑</button></div>`; }).join("");
+  el.querySelectorAll("[data-cat-edit]").forEach(b=>b.onclick=()=>editCat(b.dataset.catEdit));
+  el.querySelectorAll("[data-cat-del]").forEach(b=>b.onclick=()=>delCat(b.dataset.catDel));
+}
+$("cat-search").addEventListener("input", renderCatsList);
+$("cat-add").onclick=async()=>{
+  const nombre=$("cat-nombre").value.trim(), emoji=$("cat-emoji").value.trim();
+  if(!nombre){ alert("Poné un nombre."); return; }
+  if(CATS.some(c=>c.nombre.toLowerCase()===nombre.toLowerCase())){ alert("Ya tenés una categoría con ese nombre."); return; }
+  const {error}=await sb.from("categories").insert({user_id:user.id, nombre, emoji:emoji||null, orden:CATS.length});
+  if(error){ alert("Error: "+error.message); return; }
+  $("cat-nombre").value=""; $("cat-emoji").value=""; await loadAll(); openConfig("cats");
+};
+async function editCat(id){
+  const c=CATS.find(x=>x.id===id); if(!c) return;
+  const emoji=prompt("Emoji para “"+c.nombre+"” (dejalo vacío para sacarlo):", c.emoji||"");
+  if(emoji===null) return;
+  const nombre=prompt("Nombre de la categoría:", c.nombre);
+  if(nombre===null) return;
+  const nuevo=nombre.trim(); if(!nuevo){ alert("El nombre no puede quedar vacío."); return; }
+  if(nuevo!==c.nombre){
+    if(CATS.some(x=>x.id!==id && x.nombre.toLowerCase()===nuevo.toLowerCase())){ alert("Ya existe otra categoría con ese nombre."); return; }
+    if(catEnUso(c.nombre) && !confirm(`“${c.nombre}” está en uso. Al renombrarla, tus movimientos van a pasar a llamarse “${nuevo}”. Los montos no cambian. ¿Seguimos?`)) return;
+    for(const tabla of ["transactions","recurring","card_purchases","budgets"]){
+      await sb.from(tabla).update({categoria:nuevo}).eq("categoria",c.nombre).eq("user_id",user.id);
+    }
+  }
+  const {error}=await sb.from("categories").update({nombre:nuevo, emoji:emoji.trim()||null}).eq("id",id);
+  if(error){ alert("Error: "+error.message); return; }
+  await loadAll(); openConfig("cats");
+}
+async function delCat(id){
+  const c=CATS.find(x=>x.id===id); if(!c) return;
+  if(catEnUso(c.nombre)){ alert(`No se puede borrar “${c.nombre}”: ya tenés movimientos con esa categoría. Podés renombrarla con el lápiz.`); return; }
+  if(CATS.length<=1){ alert("Dejá al menos una categoría."); return; }
+  if(!confirm(`¿Borrar la categoría “${c.nombre}”?`)) return;
+  await sb.from("categories").delete().eq("id",id); await loadAll(); openConfig("cats");
+}
+
+// ---------- pantalla de Configuración ----------
+let cfgView="menu";
+const CFG_TITULOS={menu:"Configuración", cats:"Categorías", bal:"Mi balance", cards:"Mis tarjetas", colors:"Colores"};
+function openConfig(v){
+  cfgView=v||"menu";
+  $("app").classList.add("hidden"); $("config").classList.remove("hidden");
+  ["menu","cats","bal","cards","colors"].forEach(k=>$("cfg-"+k).classList.toggle("hidden", k!==cfgView));
+  $("cfg-title").textContent=CFG_TITULOS[cfgView]||"Configuración";
+  if(cfgView==="menu") renderConfigMenu();
+  if(cfgView==="colors") renderThemeGrid();
+  if(cfgView==="cats") renderCatsList();
+  window.scrollTo(0,0);
+}
+function closeConfig(){ $("config").classList.add("hidden"); $("app").classList.remove("hidden"); window.scrollTo(0,0); }
+function renderConfigMenu(){
+  if(!$("cfg-cats-sub")) return;
+  $("cfg-cats-sub").textContent = CATS.length+(CATS.length===1?" categoría":" categorías");
+  $("cfg-bal-sub").textContent  = ACCOUNTS.length+(ACCOUNTS.length===1?" cuenta":" cuentas")+" · moneda principal "+mainCur();
+  $("cfg-cards-sub").textContent= CARDS.length? CARDS.length+(CARDS.length===1?" tarjeta":" tarjetas") : "Ninguna todavía";
+  const t=TEMAS.find(x=>x.id===document.documentElement.getAttribute("data-theme"));
+  $("cfg-colors-sub").textContent = t? t.n : "—";
+  $("cfg-me").innerHTML = $("me-btn").innerHTML;
+}
+$("config-btn").onclick=()=>openConfig("menu");
+$("cfg-back").onclick=()=>{ if(cfgView==="menu") closeConfig(); else openConfig("menu"); };
+$("cfg-me").onclick=()=>$("me-btn").click();
+document.querySelectorAll("[data-cfg]").forEach(b=>b.onclick=()=>openConfig(b.dataset.cfg));
 
 // AVATAR / STORAGE
 function avatarInner(fotoUrl, name){ return fotoUrl ? `<img src="${fotoUrl}" alt="">` : esc(initials(name)); }
@@ -751,11 +1011,17 @@ function fillAccountSelects(){
 }
 function montoHint(){ const k=$("m-cuenta").value; $("m-monto-lbl").textContent = k ? ("Monto ("+accCur(k)+")") : "Monto"; }
 $("m-cuenta").onchange=montoHint;
-function renderAccounts(){ const el=$("accounts-list"); const mc=mainCur();
+function renderAccounts(){ const el=$("accounts-list"); if(!el) return; const mc=mainCur();
   el.innerHTML=ACCOUNTS.length ? ACCOUNTS.map(a=>{ const c=a.moneda||mc;
-    return `<div class="item"><div class="meta"><div class="desc">${esc(a.nombre)}<span class="curbadge">${c}</span></div>
-    <div class="subm">Saldo: ${fmt(accountBalance(a.key), c)}</div></div><button class="iconx" data-del-acc="${a.id}">🗑</button></div>`; }).join("")
+    return `<div class="item"><div class="meta"><div class="desc">${esc(a.nombre)}</div>
+    <div class="subm">Saldo: ${fmt(accountBalance(a.key), c)}</div></div>
+    <select class="lim" data-cur-acc="${a.id}" style="width:auto; text-align:left" title="Moneda de la cuenta"></select>
+    <button class="iconx" data-del-acc="${a.id}">🗑</button></div>`; }).join("")
     : '<div class="empty">Agregá tus cuentas.</div>';
+  el.querySelectorAll("[data-cur-acc]").forEach(s=>{ const a=ACCOUNTS.find(x=>x.id===s.dataset.curAcc); if(!a) return;
+    s.innerHTML=MONEDAS.map(m=>`<option value="${m.c}">${m.c}</option>`).join(""); s.value=a.moneda||mc;
+    s.onchange=async()=>{ const {error}=await sb.from("accounts").update({moneda:s.value}).eq("id",a.id);
+      if(error){ alert("Error: "+error.message); return; } await loadAll(); openConfig("bal"); }; });
   el.querySelectorAll("[data-del-acc]").forEach(b=>b.onclick=()=>delAccount(b.dataset.delAcc)); }
 $("acc-add").onclick=async()=>{ const nombre=$("acc-nombre").value.trim(); if(!nombre){ alert("Poné un nombre."); return; }
   const key=slug(nombre); if(!key){ alert("Nombre inválido."); return; }
@@ -802,7 +1068,7 @@ function renderMov(){ const el=$("mov-list"), q=$("f-text").value.toLowerCase(),
       <div class="amt tr num">${fmt(r.monto, accCur(r.origen))}</div>
       <button class="iconx" data-edit-tr="${r.id}">✏️</button><button class="iconx" data-del-tr="${r.id}">🗑</button></div>`;
     const isIn=r.tipo==="ingreso"; return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||r.categoria||"(sin detalle)"}</div>
-      <div class="subm">${fechaCorta(r.fecha)} · ${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${esc(r.categoria)||"—"}</span></div></div>
+      <div class="subm">${fechaCorta(r.fecha)} · ${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${r.categoria?esc(catLabel(r.categoria)):"—"}</span></div></div>
       <div class="amt ${isIn?'in':'out'} num">${isIn?'+':'−'}${fmt(r.monto, accCur(r.cuenta))}</div>
       <button class="iconx" data-edit="${r.id}">✏️</button><button class="iconx" data-del-tx="${r.id}">🗑</button></div>`; }).join("");
   el.querySelectorAll("[data-del-tx]").forEach(b=>b.onclick=()=>delRow("transactions",b.dataset.delTx));
@@ -893,7 +1159,7 @@ function renderCalendar(){
   mel.innerHTML = movs.length ? movs.map(r=>{ if(r._k==="tr") return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||"Transferencia"}</div>
       <div class="subm">${fechaCorta(r.fecha)} · ${CTA_NOMBRE[r.origen]||r.origen} → ${CTA_NOMBRE[r.destino]||r.destino}</div></div><div class="amt tr num">${fmt(r.monto, accCur(r.origen))}</div></div>`;
     const isIn=r.tipo==="ingreso"; return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||r.categoria||"(sin detalle)"}</div>
-      <div class="subm">${fechaCorta(r.fecha)} · ${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${esc(r.categoria)||"—"}</span></div></div>
+      <div class="subm">${fechaCorta(r.fecha)} · ${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${r.categoria?esc(catLabel(r.categoria)):"—"}</span></div></div>
       <div class="amt ${isIn?'in':'out'} num">${isIn?'+':'−'}${fmt(r.monto, accCur(r.cuenta))}</div></div>`; }).join("") : '<div class="empty">Sin movimientos este mes.</div>';
   const cuotas=INST.filter(x=>x.mes.slice(0,7)===calMonth);
   const cuotasPend=cuotas.filter(x=>!x.pagada).reduce((a,x)=>a+Number(x.monto),0);
@@ -1006,7 +1272,7 @@ $("r-add").onclick=async()=>{ const monto=parseFloat($("r-monto").value); if(!(m
   if(error){ alert("Error: "+error.message); return; } $("r-monto").value=""; $("r-desc").value=""; await loadAll(); };
 function renderFijos(){ const el=$("fijos-list"); if(!REC.length){ el.innerHTML='<div class="empty">Todavía no cargaste fijos.</div>'; $("fijos-total").textContent=""; return; }
   el.innerHTML=REC.map(r=>{ const isIn=r.tipo==="ingreso"; return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||r.categoria||"Fijo"}</div>
-    <div class="subm">${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${esc(r.categoria)||'—'}</span></div></div>
+    <div class="subm">${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${r.categoria?esc(catLabel(r.categoria)):'—'}</span></div></div>
     <div class="amt ${isIn?'in':'out'} num">${isIn?'+':'−'}${fmt(r.monto, accCur(r.cuenta))}</div>
     <button class="paid-btn" data-reg="${r.id}">Registrar</button><button class="iconx" data-del-rec="${r.id}">🗑</button></div>`; }).join("");
   const g=REC.filter(r=>r.tipo==="gasto" && esMonedaPrincipal(r.cuenta)).reduce((a,r)=>a+Number(r.monto),0),
@@ -1021,8 +1287,8 @@ $("r-all").onclick=async()=>{ if(!REC.length) return; if(!confirm("¿Registrar t
 function renderBudgets(){ const cm=curMonth(); const spent={};
   TX.forEach(t=>{ if(t.tipo==="gasto" && t.fecha.slice(0,7)===cm && esMonedaPrincipal(t.cuenta)){ spent[t.categoria]=(spent[t.categoria]||0)+Number(t.monto); } });
   const bmap=Object.fromEntries(BUD.map(b=>[b.categoria,Number(b.monto)]));
-  $("budget-list").innerHTML=CATEGORIAS.filter(c=>c!=="Sueldo").map(cat=>{ const lim=bmap[cat]||0, sp=spent[cat]||0; const pct=lim>0?Math.min(100,Math.round(sp/lim*100)):0; const over=lim>0&&sp>lim;
-    return `<div class="brow"><div class="bhead"><span class="bname">${cat}</span><span><input class="lim num" type="number" inputmode="decimal" value="${lim||''}" placeholder="0" data-cat="${cat}"></span></div>
+  $("budget-list").innerHTML=catNames().map(cat=>{ const lim=bmap[cat]||0, sp=spent[cat]||0; const pct=lim>0?Math.min(100,Math.round(sp/lim*100)):0; const over=lim>0&&sp>lim;
+    return `<div class="brow"><div class="bhead"><span class="bname">${esc(catLabel(cat))}</span><span><input class="lim num" type="number" inputmode="decimal" value="${lim||''}" placeholder="0" data-cat="${cat}"></span></div>
       ${lim>0?`<div class="bar ${over?'over':''}"><span style="width:${pct}%"></span></div><div class="bmeta">${fmt(sp)} de ${fmt(lim)} ${over?'· te pasaste':`· queda ${fmt(lim-sp)}`}</div>`:''}</div>`; }).join("");
   $("budget-list").querySelectorAll("input.lim").forEach(inp=>inp.onchange=()=>saveBudget(inp.dataset.cat,inp.value)); }
 async function saveBudget(cat,val){ const monto=parseFloat(val)||0; await sb.from("budgets").upsert({user_id:user.id,categoria:cat,monto},{onConflict:"user_id,categoria"}); await loadAll(); }
@@ -1042,10 +1308,10 @@ function renderCharts(){
   const ck=Object.keys(cats).sort((a,b)=>cats[b]-cats[a]); const totalGas=ck.reduce((a,c)=>a+cats[c],0);
   if(chartCat) chartCat.destroy();
   if(ck.length){
-    chartCat=new Chart($("chart-cat"),{type:"pie",data:{labels:ck,datasets:[{data:ck.map(c=>cats[c]),backgroundColor:ck.map((_,i)=>CAT_COLORS[i%CAT_COLORS.length]),borderWidth:0}]},
+    chartCat=new Chart($("chart-cat"),{type:"pie",data:{labels:ck.map(catLabel),datasets:[{data:ck.map(c=>cats[c]),backgroundColor:ck.map((_,i)=>CAT_COLORS[i%CAT_COLORS.length]),borderWidth:0}]},
       options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)} (${totalGas?Math.round(c.raw/totalGas*100):0}%)`}}}}});
     $("cat-legend").innerHTML=ck.map((c,i)=>{ const pct=totalGas?Math.round(cats[c]/totalGas*100):0;
-      return `<div class="legrow"><span class="swatch" style="background:${CAT_COLORS[i%CAT_COLORS.length]}"></span><span class="lname">${esc(c)}</span><span class="lval">${fmt(cats[c])} · ${pct}%</span></div>`; }).join("");
+      return `<div class="legrow"><span class="swatch" style="background:${CAT_COLORS[i%CAT_COLORS.length]}"></span><span class="lname">${esc(catLabel(c))}</span><span class="lval">${fmt(cats[c])} · ${pct}%</span></div>`; }).join("");
   } else { $("cat-legend").innerHTML='<div class="empty">Sin gastos este mes.</div>'; }
   const proj={}, cmk=curMonth(); INST.filter(x=>!x.pagada && x.mes.slice(0,7)>=cmk).forEach(x=>{ const k=x.mes.slice(0,7); proj[k]=(proj[k]||0)+Number(x.monto); });
   const pk=Object.keys(proj).sort().slice(0,8); if(chartProj) chartProj.destroy();
