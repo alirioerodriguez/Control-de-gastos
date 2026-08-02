@@ -268,6 +268,37 @@ canvas{max-height:280px}
 .cdots i{width:6px; height:6px; border-radius:50%; display:block}
 .calsum{display:flex; gap:8px; flex-wrap:wrap; margin:16px 0 10px}
 
+/* ===== Registro con calculadora ===== */
+#reg{padding:0; max-width:none}
+.reg-top{background:var(--regcol); color:#fff; padding:14px 16px 30px; min-height:230px; display:flex; flex-direction:column}
+.reg-bar{display:flex; align-items:center; gap:10px}
+.reg-bar button{border:none; background:transparent; color:#fff; font-size:26px; line-height:1; padding:0 6px}
+.reg-bar h2{flex:1; text-align:center; font-family:'Space Grotesk'; font-size:19px; color:#fff}
+.reg-amt{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:18px 6px 0}
+.reg-amt .cap{font-size:15px; font-weight:600; opacity:.95}
+.reg-amt .big{font-family:'Space Grotesk',sans-serif; font-size:46px; font-weight:700; letter-spacing:-.01em; word-break:break-all; text-align:center; line-height:1.05}
+.reg-amt .op{font-size:13px; opacity:.85; min-height:17px}
+.reg-row{display:flex; align-items:center; justify-content:center; gap:10px; width:100%}
+.del{border:none; background:rgba(255,255,255,.28); color:#fff; border-radius:10px; padding:7px 12px; font-size:16px; line-height:1}
+.reg-sheet{background:var(--solid); border-radius:26px 26px 0 0; margin-top:-22px; padding:20px 16px calc(28px + env(safe-area-inset-bottom)); min-height:60vh}
+.chiprow{display:flex; gap:9px; flex-wrap:wrap; margin-bottom:20px}
+.chipbtn{border:1px solid var(--line); background:transparent; color:var(--muted); border-radius:999px; padding:10px 17px; font-weight:600; font-size:14px}
+.chipbtn.on{background:var(--regcol); border-color:transparent; color:#fff}
+.chipbtn.soft.on{background:color-mix(in srgb, var(--regcol) 22%, var(--solid)); color:var(--regcol); border-color:transparent}
+.keys{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; max-width:420px; margin:0 auto}
+.keys button{aspect-ratio:1/1; border-radius:50%; border:1px solid var(--line); background:transparent; color:var(--regcol);
+  font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:600}
+.keys button.act{background:var(--regcol); border-color:transparent; color:#fff; font-size:26px}
+.keys button:active{filter:brightness(.92)}
+.reg-cta{width:100%; margin-top:22px; padding:16px; border-radius:14px; border:none; background:var(--regcol); color:#fff; font-weight:700; font-size:16px}
+.reg-lbl{font-size:17px; font-weight:700; margin:0 0 10px}
+.reg-note{font-size:12.5px; color:var(--muted); margin:-4px 0 16px}
+.detin{width:100%; border:1px solid var(--line); border-radius:14px; padding:16px 14px; background:var(--field); color:var(--ink); font-size:15px; margin-bottom:20px}
+.catpick{display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:20px}
+.catlist .item{cursor:pointer}
+.searchbox{display:flex; align-items:center; gap:9px; background:var(--surface-2); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:6px}
+.searchbox input{flex:1; border:none; background:transparent; color:var(--ink); outline:none}
+
 /* ===== Configuración ===== */
 .cfg-head{display:flex; align-items:center; gap:12px; margin-bottom:18px; padding-top:6px}
 .cfg-head .back{width:40px; height:40px; border-radius:12px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-size:20px; display:grid; place-items:center}
@@ -332,7 +363,7 @@ canvas{max-height:280px}
   <!-- INICIO -->
   <section id="tab-home">
     <div class="balhead">
-      <div><div class="lbl">Balance Mensual</div><div class="total num" id="h-bal">$0</div></div>
+      <div><div class="lbl">Balance Mensual</div><div class="total num" id="h-bal">$0</div><div class="other" id="h-bal-other"></div></div>
       <button class="roundadd" id="add-top" title="Agregar movimiento">+</button>
     </div>
 
@@ -511,26 +542,88 @@ canvas{max-height:280px}
   </div>
 </div>
 
-<!-- ===================== REGISTRO (alta de movimiento) ===================== -->
-<div id="reg" class="wrap hidden">
-  <div class="cfg-head">
-    <button class="back" id="reg-back">‹</button>
-    <h2>Registro</h2>
-    <div style="width:40px"></div>
-  </div>
-  <div class="card pad">
-    <div class="grid2">
-      <div class="field"><label>Fecha</label><input id="m-fecha" type="date"></div>
-      <div class="field"><label>Tipo</label><select id="m-tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option><option value="transferencia">Transferencia</option></select></div>
-      <div class="field" id="m-cuenta-wrap"><label>Cuenta</label><select id="m-cuenta"></select></div>
-      <div class="field hidden" id="m-orig-wrap"><label>De</label><select id="m-orig"></select></div>
-      <div class="field hidden" id="m-dest-wrap"><label>A</label><select id="m-dest"></select></div>
-      <div class="field"><label id="m-monto-lbl">Monto</label><input id="m-monto" type="number" inputmode="decimal" placeholder="0"></div>
-      <div class="field" id="m-cat-wrap"><label>Categoría</label><select id="m-cat"></select></div>
-      <div class="field"><label>Descripción</label><input id="m-desc" type="text" placeholder="Opcional"></div>
+<!-- ===================== REGISTRO (calculadora + detalle) ===================== -->
+<div id="reg" class="hidden">
+  <div class="reg-top">
+    <div class="reg-bar"><button id="reg-back">‹</button><h2>Registro</h2><span style="width:34px"></span></div>
+    <div class="reg-amt">
+      <div class="cap" id="reg-cap"></div>
+      <div class="reg-row"><div class="big" id="reg-disp">$0,00</div><button class="del hidden" id="reg-del">⌫</button></div>
+      <div class="op" id="reg-op"></div>
     </div>
-    <button class="btn cta mt" id="m-add">Listo</button>
   </div>
+
+  <!-- paso 1: calculadora -->
+  <div class="reg-sheet" id="reg-step1">
+    <div class="chiprow" id="reg-tipos"></div>
+    <div class="keys">
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="act" data-op="/">÷</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button class="act" data-op="*">×</button>
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="act" data-op="-">−</button>
+      <button data-k="0">0</button><button data-k=",">,</button><button class="act" data-op="=">=</button><button class="act" data-op="+">+</button>
+    </div>
+    <button class="reg-cta" id="reg-continuar">Continuar</button>
+  </div>
+
+  <!-- paso 2: detalle -->
+  <div class="reg-sheet hidden" id="reg-step2">
+    <p class="reg-lbl">Categoría</p>
+    <div class="catpick" id="reg-catpick"></div>
+
+    <p class="reg-lbl" id="reg-cta-lbl">Detalle</p>
+    <input class="detin" id="reg-desc" type="text" placeholder="Opcional">
+
+    <p class="reg-lbl">Cuenta</p>
+    <div class="chiprow" id="reg-cuentas"></div>
+
+    <div id="reg-tarjeta-wrap" class="hidden">
+      <p class="reg-lbl">Tarjeta y cuotas</p>
+      <div class="grid2" style="margin-bottom:20px">
+        <div class="field"><select id="reg-card"></select></div>
+        <div class="field"><input id="reg-cuotas" type="number" inputmode="numeric" min="1" value="1" placeholder="Cuotas"></div>
+      </div>
+      <p class="reg-note" id="reg-cuotas-prev"></p>
+    </div>
+
+    <div id="reg-fijo-wrap">
+      <p class="reg-lbl">Tipo de gasto</p>
+      <div class="chiprow">
+        <button class="chipbtn soft" data-fijo="1">Fijo</button>
+        <button class="chipbtn soft on" data-fijo="0">Variable</button>
+      </div>
+    </div>
+
+    <p class="reg-lbl">Fecha</p>
+    <div class="chiprow">
+      <button class="chipbtn soft on" data-fecha="hoy">Hoy</button>
+      <button class="chipbtn soft" data-fecha="ayer">Ayer</button>
+      <button class="chipbtn soft" data-fecha="otra">Otra…</button>
+      <input id="reg-fecha" type="date" style="border:1px solid var(--line); border-radius:999px; padding:9px 13px; background:var(--field); color:var(--ink)">
+    </div>
+
+    <button class="reg-cta" id="reg-listo">Listo &nbsp;›</button>
+  </div>
+
+  <!-- paso 3: elegir categoría -->
+  <div class="reg-sheet hidden" id="reg-step3">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px">
+      <p class="reg-lbl" style="margin:0">Categorías</p>
+      <button class="roundadd sm" id="reg-cat-new" style="background:var(--regcol); color:#fff">+</button>
+    </div>
+    <div class="searchbox">🔍<input id="reg-cat-search" type="text" placeholder="¿Qué categoría buscás?"></div>
+    <div class="list catlist" id="reg-cat-list"></div>
+  </div>
+</div>
+
+<!-- campos ocultos que reutiliza el guardado -->
+<div class="hidden">
+  <input id="m-fecha" type="date"><select id="m-tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option><option value="transferencia">Transferencia</option></select>
+  <span id="m-cuenta-wrap"><select id="m-cuenta"></select></span>
+  <span id="m-orig-wrap"><select id="m-orig"></select></span>
+  <span id="m-dest-wrap"><select id="m-dest"></select></span>
+  <label id="m-monto-lbl"></label><input id="m-monto" type="number">
+  <span id="m-cat-wrap"><select id="m-cat"></select></span>
+  <input id="m-desc" type="text"><button id="m-add"></button>
 </div>
 
 <!-- ===================== CONFIGURACIÓN ===================== -->
@@ -1051,7 +1144,7 @@ function fillMonthSelect(){
   s.value=VMONTH;
 }
 function setMonth(m){ VMONTH=m; calDay=null; fillMonthSelect(); renderMonthly(); }
-function renderMonthly(){ renderMonthSummary(); renderBudgets(); renderCalendar(); renderCharts(); if(!$("detail").classList.contains("hidden")) renderDetail(); }
+function renderMonthly(){ renderHero(); renderMonthSummary(); renderBudgets(); renderCalendar(); renderCharts(); if(!$("detail").classList.contains("hidden")) renderDetail(); }
 $("hm-mes").onchange=()=>setMonth($("hm-mes").value);
 
 // ---------- barra inferior ----------
@@ -1062,28 +1155,182 @@ document.querySelectorAll(".botnav button").forEach(b=>{ b.onclick=()=>{
   goto("app");
 }; });
 
-// ---------- botón + ----------
-function openReg(fechaISO){
-  goto("reg");
-  $("m-fecha").value = fechaISO || (VMONTH===curMonth() ? todayISO() : VMONTH+"-01");
-  $("m-monto").value=""; $("m-desc").value=""; toggleTipo(); montoHint();
+// ================== REGISTRO: calculadora + detalle ==================
+const REG_TIPOS=[
+  {k:"gasto",   n:"Gastos",   col:"var(--expense)", cap:"Valor del gasto:"},
+  {k:"tarjeta", n:"Tarjetas", col:"var(--debt)",    cap:"Valor de la compra:"},
+  {k:"ingreso", n:"Ingresos", col:"var(--income)",  cap:"Valor del ingreso:"},
+  {k:"ahorro",  n:"Ahorros",  col:"var(--transfer)",cap:"Valor del ahorro:"}
+];
+const CAT_AHORRO="Ahorro";
+let R = {tipo:"gasto", buf:"0", acum:null, op:null, listo:false, cat:null, cuenta:null, fijo:false, fecha:todayISO(), paso:1};
+
+function regColor(){ const t=REG_TIPOS.find(x=>x.k===R.tipo); return t?t.col:"var(--expense)"; }
+function bufNum(){ return parseFloat((R.buf||"0").replace(",",".")) || 0; }
+function bufFmt(){
+  const [ent,dec]=(R.buf||"0").split(",");
+  const e=new Intl.NumberFormat(mainLoc(),{maximumFractionDigits:0}).format(parseInt(ent||"0",10)||0);
+  const sim=fmt(0).replace(/[\d.,\s]/g,"") || "$";
+  return sim + e + (dec!==undefined ? ","+dec : "");
 }
+function openReg(fechaISO, tipo){
+  R={tipo:tipo||"gasto", buf:"0", acum:null, op:null, listo:false, cat:null, cuenta:null, fijo:false,
+     fecha: fechaISO || (VMONTH===curMonth() ? todayISO() : VMONTH+"-01"), paso:1};
+  goto("reg"); renderReg();
+}
+function renderReg(){
+  document.documentElement.style.setProperty("--regcol", regColor());
+  const t=REG_TIPOS.find(x=>x.k===R.tipo);
+  $("reg-cap").textContent = R.paso>1 ? (t?t.cap:"") : "";
+  $("reg-disp").textContent = R.paso>1 ? fmt2(regTotal()) : bufFmt();
+  $("reg-del").classList.toggle("hidden", R.paso!==1);
+  $("reg-op").textContent = (R.paso===1 && R.op) ? `${new Intl.NumberFormat(mainLoc()).format(R.acum)} ${({'+':'+','-':'−','*':'×','/':'÷'})[R.op]}` : "";
+  ["reg-step1","reg-step2","reg-step3"].forEach((id,i)=>$(id).classList.toggle("hidden", i+1!==R.paso));
+  $("reg-tipos").innerHTML=REG_TIPOS.map(x=>`<button class="chipbtn ${x.k===R.tipo?'on':''}" data-rt="${x.k}">${x.n}</button>`).join("");
+  $("reg-tipos").querySelectorAll("[data-rt]").forEach(b=>b.onclick=()=>{ R.tipo=b.dataset.rt; R.cat=null; renderReg(); });
+  if(R.paso===2) renderRegStep2();
+  if(R.paso===3) renderRegCatList();
+}
+function regTotal(){ return R.acum!==null && R.op ? aplicar(R.acum, bufNum(), R.op) : bufNum(); }
+function aplicar(a,b,op){ const r = op==="+"?a+b : op==="-"?a-b : op==="*"?a*b : (b===0?a:a/b); return Math.round(r*100)/100; }
+
+// teclado
+document.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{
+  const k=b.dataset.k;
+  if(R.listo){ R.buf="0"; R.listo=false; }
+  if(k===","){ if(!R.buf.includes(",")) R.buf+=","; }
+  else if((R.buf.split(",")[1]||"").length<2){ R.buf = (R.buf==="0") ? k : R.buf+k; }
+  renderReg();
+});
+$("reg-del").onclick=()=>{ R.buf = R.buf.length>1 ? R.buf.slice(0,-1) : "0"; if(R.buf===""||R.buf===",") R.buf="0"; renderReg(); };
+document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>{
+  const op=b.dataset.op;
+  if(op==="="){ const r=regTotal(); R.buf=String(r).replace(".",","); R.acum=null; R.op=null; R.listo=true; }
+  else { R.acum=regTotal(); R.op=op; R.buf="0"; R.listo=false; }
+  renderReg();
+});
+$("reg-continuar").onclick=()=>{
+  const total=regTotal();
+  if(!(total>0)){ alert("Poné un monto mayor a cero."); return; }
+  R.buf=String(total).replace(".",","); R.acum=null; R.op=null;
+  if(R.tipo==="ahorro" && !CATS.some(c=>c.nombre===CAT_AHORRO)) R.cat=null;
+  if(R.tipo==="ahorro") R.cat=CAT_AHORRO;
+  if(!R.cat) R.cat = catNames()[0];
+  if(!R.cuenta) R.cuenta = (ACCOUNTS[0]||{}).key;
+  R.paso=2; renderReg();
+};
+$("reg-back").onclick=()=>{ if(R.paso===1) goto("app"); else if(R.paso===3){ R.paso=2; renderReg(); } else { R.paso=1; renderReg(); } };
+
+function renderRegStep2(){
+  const esTarjeta = R.tipo==="tarjeta";
+  $("reg-cta-lbl").textContent = R.tipo==="ingreso" ? "Detalle del ingreso" : (esTarjeta?"Detalle de la compra":"Detalle del gasto");
+  // categoría: chips con las últimas usadas + botón para abrir la lista completa
+  const recientes=[...new Set(TX.filter(t=>t.categoria).slice(0,40).map(t=>t.categoria))].slice(0,2);
+  const chips=[...new Set([R.cat, ...recientes].filter(Boolean))].slice(0,3);
+  $("reg-catpick").innerHTML = chips.map(c=>`<button class="chipbtn soft ${c===R.cat?'on':''}" data-rc="${esc(c)}">${esc(catLabel(c))}</button>`).join("")
+    + `<button class="roundadd sm" id="reg-cat-more" style="background:var(--regcol); color:#fff">+</button>`;
+  $("reg-catpick").querySelectorAll("[data-rc]").forEach(b=>b.onclick=()=>{ R.cat=b.dataset.rc; renderReg(); });
+  $("reg-cat-more").onclick=()=>{ R.paso=3; renderReg(); };
+  // cuentas
+  $("reg-cuentas").innerHTML = ACCOUNTS.map(a=>`<button class="chipbtn soft ${a.key===R.cuenta?'on':''}" data-rcu="${a.key}">${esc(a.nombre)} · ${a.moneda||mainCur()}</button>`).join("");
+  $("reg-cuentas").querySelectorAll("[data-rcu]").forEach(b=>b.onclick=()=>{ R.cuenta=b.dataset.rcu; renderReg(); });
+  // tarjeta
+  $("reg-tarjeta-wrap").classList.toggle("hidden", !esTarjeta);
+  $("reg-fijo-wrap").classList.toggle("hidden", esTarjeta || R.tipo==="ingreso");
+  if(esTarjeta){
+    const s=$("reg-card"); const prev=s.value;
+    s.innerHTML=CARDS.map(c=>`<option value="${c.id}">${cardLabel(c)}</option>`).join("")+`<option value="">Otra (sin registrar)</option>`;
+    if([...s.options].some(o=>o.value===prev)) s.value=prev;
+    const n=parseInt($("reg-cuotas").value)||1;
+    $("reg-cuotas-prev").textContent = n>1 ? `${n} cuotas de ${fmt2(regTotal()/n)}` : "Un solo pago";
+  }
+  document.querySelectorAll("[data-fijo]").forEach(b=>b.classList.toggle("on", (b.dataset.fijo==="1")===R.fijo));
+  $("reg-fecha").value=R.fecha;
+  const hoy=todayISO(); const ay=new Date(); ay.setDate(ay.getDate()-1); const ayer=ay.toISOString().slice(0,10);
+  document.querySelectorAll("[data-fecha]").forEach(b=>{
+    const on = b.dataset.fecha==="hoy" ? R.fecha===hoy : b.dataset.fecha==="ayer" ? R.fecha===ayer : (R.fecha!==hoy && R.fecha!==ayer);
+    b.classList.toggle("on", on); });
+}
+document.querySelectorAll("[data-fijo]").forEach(b=>b.onclick=()=>{ R.fijo = b.dataset.fijo==="1"; renderReg(); });
+document.querySelectorAll("[data-fecha]").forEach(b=>b.onclick=()=>{
+  if(b.dataset.fecha==="hoy") R.fecha=todayISO();
+  else if(b.dataset.fecha==="ayer"){ const d=new Date(); d.setDate(d.getDate()-1); R.fecha=d.toISOString().slice(0,10); }
+  else { $("reg-fecha").showPicker ? $("reg-fecha").showPicker() : $("reg-fecha").focus(); return; }
+  renderReg(); });
+$("reg-fecha").onchange=()=>{ if($("reg-fecha").value){ R.fecha=$("reg-fecha").value; renderReg(); } };
+$("reg-cuotas").addEventListener("input", ()=>{ if(R.paso===2) renderRegStep2(); });
+
+// paso 3: lista completa de categorías
+function renderRegCatList(){
+  const q=($("reg-cat-search").value||"").toLowerCase();
+  const rows=CATS.filter(c=>c.nombre.toLowerCase().includes(q));
+  $("reg-cat-list").innerHTML = rows.length ? rows.map(c=>`<div class="item" data-pick="${esc(c.nombre)}">
+    <div style="font-size:21px; width:32px; text-align:center">${c.emoji||"·"}</div>
+    <div class="meta"><div class="desc">${esc(c.nombre)}</div></div>
+    <button class="iconx" data-rcat-edit="${c.id}">✏️</button></div>`).join("")
+    : '<div class="empty">No hay categorías con ese nombre. Tocá + para crear una.</div>';
+  $("reg-cat-list").querySelectorAll("[data-pick]").forEach(el=>el.onclick=e=>{
+    if(e.target.closest("[data-rcat-edit]")) return; R.cat=el.dataset.pick; R.paso=2; renderReg(); });
+  $("reg-cat-list").querySelectorAll("[data-rcat-edit]").forEach(b=>b.onclick=async e=>{ e.stopPropagation(); await editCat(b.dataset.rcatEdit); });
+}
+$("reg-cat-search").addEventListener("input", renderRegCatList);
+$("reg-cat-new").onclick=async()=>{
+  const emoji=prompt("Emoji de la categoría (opcional):",""); if(emoji===null) return;
+  const nombre=prompt("Nombre de la categoría:",""); if(nombre===null) return;
+  const n=nombre.trim(); if(!n){ alert("Poné un nombre."); return; }
+  if(CATS.some(c=>c.nombre.toLowerCase()===n.toLowerCase())){ alert("Ya existe esa categoría."); return; }
+  const {error}=await sb.from("categories").insert({user_id:user.id, nombre:n, emoji:emoji.trim()||null, orden:CATS.length});
+  if(error){ alert("Error: "+error.message); return; }
+  await loadAll(); R.cat=n; R.paso=2; goto("reg"); renderReg();
+};
+
+// guardar
+$("reg-listo").onclick=async()=>{
+  const total=regTotal(); if(!(total>0)){ alert("Monto inválido."); return; }
+  $("reg-listo").disabled=true;
+  try{
+    if(R.tipo==="tarjeta"){
+      const n=Math.max(1, parseInt($("reg-cuotas").value)||1);
+      const sel=$("reg-card"); const cardId=sel.value||null;
+      const tarjetaLabel = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : "Otra";
+      const {data,error}=await sb.from("card_purchases").insert({fecha_compra:R.fecha, tarjeta:tarjetaLabel, card_id:cardId,
+        descripcion:$("reg-desc").value.trim(), categoria:R.cat, monto_total:total, cuotas:n, user_id:user.id}).select().single();
+      if(error) throw error;
+      const base=Math.round((total/n)*100)/100; const rows=[]; let acum=0;
+      for(let i=1;i<=n;i++){ const m=(i===n)?Math.round((total-acum)*100)/100:base; acum+=base;
+        rows.push({purchase_id:data.id, nro_cuota:i, monto:m, mes:addMonths(R.fecha,i), pagada:false, user_id:user.id}); }
+      const {error:e2}=await sb.from("card_installments").insert(rows); if(e2) throw e2;
+    } else {
+      const tipo = R.tipo==="ingreso" ? "ingreso" : "gasto";
+      const cat  = R.tipo==="ahorro" ? CAT_AHORRO : R.cat;
+      if(R.tipo==="ahorro" && !CATS.some(c=>c.nombre===CAT_AHORRO)){
+        await sb.from("categories").insert({user_id:user.id, nombre:CAT_AHORRO, emoji:"🐷", orden:CATS.length});
+      }
+      const {error}=await sb.from("transactions").insert({fecha:R.fecha, cuenta:R.cuenta, tipo, monto:total,
+        categoria:cat, descripcion:$("reg-desc").value.trim(), es_fijo:!!R.fijo, user_id:user.id});
+      if(error) throw error;
+    }
+    if(R.fecha.slice(0,7)!==VMONTH) VMONTH=R.fecha.slice(0,7);
+    $("reg-desc").value=""; goto("app"); await loadAll();
+  }catch(err){ alert("No se pudo guardar: "+err.message); }
+  finally{ $("reg-listo").disabled=false; }
+};
+
 $("fab").onclick=()=>openReg(calDay);
 $("add-top").onclick=()=>openReg(null);
-$("reg-back").onclick=()=>goto("app");
-$("det-add").onclick=()=>openReg(null);
+$("det-add").onclick=()=>openReg(null, detStat==="ingreso"?"ingreso":(detStat==="ahorro"?"ahorro":"gasto"));
 
 // ---------- pantalla de detalle ----------
 const DET_TIT={ingreso:"Ingresos del mes", gasto:"Gastos del mes", ahorro:"Ahorros del mes"};
 function openDetail(stat){ detStat=stat; goto("detail"); renderDetail(); }
 function renderDetail(){
   $("det-title").textContent=DET_TIT[detStat]||"Movimientos";
-  let ing=0, gas=0;
+  let ing=0, gas=0, aho=0;
   TX.forEach(t=>{ if(!esMonedaPrincipal(t.cuenta)) return; if(t.fecha.slice(0,7)!==VMONTH) return;
-    if(t.tipo==="ingreso") ing+=Number(t.monto); else gas+=Number(t.monto); });
-  const tot = detStat==="ingreso"?ing:(detStat==="gasto"?gas:ing-gas);
+    if(t.tipo==="ingreso") ing+=Number(t.monto); else if(esAhorro(t)) aho+=Number(t.monto); else gas+=Number(t.monto); });
+  const tot = detStat==="ingreso"?ing:(detStat==="gasto"?gas:aho);
   $("det-total").textContent=fmt(tot);
-  $("det-total").style.color = detStat==="ingreso"?"var(--income)":(detStat==="gasto"?"var(--expense)":(tot>=0?"var(--income)":"var(--expense)"));
+  $("det-total").style.color = detStat==="ingreso"?"var(--income)":(detStat==="gasto"?"var(--expense)":"var(--debt)");
   renderMov();
 }
 $("det-back").onclick=()=>goto("app");
@@ -1150,9 +1397,12 @@ function renderHero(){
   if(huerfano) byCur[mc]=(byCur[mc]||0)+huerfano;
 
   const total=(byCur[mc]||0)-debt;
-  $("h-total").textContent=fmt(total, mc); $("h-total").style.color= total>=0?"var(--ink)":"var(--expense)";
   const otras=Object.keys(byCur).filter(c=>c!==mc && byCur[c]!==0);
-  $("h-other").textContent = otras.length ? "Además: "+otras.map(c=>fmt(byCur[c],c)).join(" · ") : "";
+  const extra = otras.length ? "Además: "+otras.map(c=>fmt(byCur[c],c)).join(" · ") : "";
+  [["h-total","h-other"],["h-bal","h-bal-other"]].forEach(([a,b])=>{
+    const el=$(a); if(el){ el.textContent=fmt(total, mc); el.style.color= total>=0?"var(--ink)":"var(--expense)"; }
+    const eb=$(b); if(eb) eb.textContent=extra;
+  });
 
   let chips=ACCOUNTS.map(a=>{ const c=a.moneda||mc;
     return `<div class="chip"><div class="k">${esc(a.nombre)}<span class="curbadge">${c}</span></div><div class="v num">${fmt(accountBalance(a.key), c)}</div></div>`; }).join("");
@@ -1191,14 +1441,13 @@ async function delAccount(id){ const a=ACCOUNTS.find(x=>x.id===id); if(!a) retur
   if(!confirm(`¿Borrar "${a.nombre}"? Los movimientos ya cargados con esa cuenta no se borran.`)) return;
   await sb.from("accounts").delete().eq("id",id); await loadAll(); }
 function mesAnterior(m){ const d=new Date(m+"-01T00:00:00"); d.setMonth(d.getMonth()-1); return d.toISOString().slice(0,7); }
-function renderMonthSummary(){ const cm=VMONTH, pm=mesAnterior(VMONTH); let ing=0,gas=0,gasPrev=0;
+function esAhorro(t){ return t.tipo==="gasto" && t.categoria===CAT_AHORRO; }
+function renderMonthSummary(){ const cm=VMONTH, pm=mesAnterior(VMONTH); let ing=0,gas=0,aho=0,gasPrev=0;
   // solo cuentas en la moneda principal, para no sumar peras con manzanas
   TX.forEach(t=>{ if(!esMonedaPrincipal(t.cuenta)) return; const m=t.fecha.slice(0,7);
-    if(m===cm){ if(t.tipo==="ingreso") ing+=Number(t.monto); else gas+=Number(t.monto); }
-    if(m===pm && t.tipo==="gasto") gasPrev+=Number(t.monto); });
-  const aho=ing-gas;
+    if(m===cm){ if(t.tipo==="ingreso") ing+=Number(t.monto); else if(esAhorro(t)) aho+=Number(t.monto); else gas+=Number(t.monto); }
+    if(m===pm && t.tipo==="gasto" && !esAhorro(t)) gasPrev+=Number(t.monto); });
   $("st-ing").textContent=fmt(ing); $("st-gas").textContent=fmt(gas); $("st-aho").textContent=fmt(aho);
-  $("h-bal").textContent=fmt(aho); $("h-bal").style.color= aho>=0?"var(--ink)":"var(--expense)";
   const d=$("s-delta"); if(gasPrev>0){ const pct=Math.round((gas-gasPrev)/gasPrev*100); d.textContent=(pct>=0?"▲ ":"▼ ")+Math.abs(pct)+"% vs. mes ant."; d.className="delta "+(pct>=0?"up":"down"); } else d.textContent=""; }
 
 // MOVIMIENTOS
@@ -1222,7 +1471,8 @@ function renderMov(){ const el=$("mov-list"); if(!el) return;
   const q=$("f-text").value.toLowerCase(), fc=$("f-cuenta").value; let rows=mergedMovs();
   rows=rows.filter(r=>r.fecha.slice(0,7)===VMONTH);
   if(detStat==="ingreso") rows=rows.filter(r=>r.tipo==="ingreso");
-  else if(detStat==="gasto") rows=rows.filter(r=>r.tipo==="gasto");
+  else if(detStat==="gasto") rows=rows.filter(r=>r.tipo==="gasto" && r.categoria!==CAT_AHORRO);
+  else if(detStat==="ahorro") rows=rows.filter(r=>r.tipo==="gasto" && r.categoria===CAT_AHORRO);
   if(fc) rows=rows.filter(r=> r._k==="tx"?r.cuenta===fc:(r.origen===fc||r.destino===fc));
   if(q) rows=rows.filter(r=>((r.descripcion||"")+" "+(r.categoria||"")).toLowerCase().includes(q));
   if(!rows.length){ el.innerHTML='<div class="empty">Sin movimientos para ese filtro.</div>'; return; }
