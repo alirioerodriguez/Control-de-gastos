@@ -270,27 +270,29 @@ canvas{max-height:280px}
 
 /* ===== Registro con calculadora ===== */
 #reg{padding:0; max-width:none}
-.reg-top{background:var(--regcol); color:#fff; padding:14px 16px 30px; min-height:230px; display:flex; flex-direction:column}
+/* el registro usa el color de la paleta elegida */
+#reg{--regcol:var(--accent); --regink:var(--accent-ink)}
+.reg-top{background:var(--regcol); color:var(--regink); padding:14px 16px 30px; min-height:230px; display:flex; flex-direction:column}
 .reg-bar{display:flex; align-items:center; gap:10px}
-.reg-bar button{border:none; background:transparent; color:#fff; font-size:26px; line-height:1; padding:0 6px}
-.reg-bar h2{flex:1; text-align:center; font-family:'Space Grotesk'; font-size:19px; color:#fff}
+.reg-bar button{border:none; background:transparent; color:var(--regink); font-size:26px; line-height:1; padding:0 6px}
+.reg-bar h2{flex:1; text-align:center; font-family:'Space Grotesk'; font-size:19px; color:var(--regink)}
 .reg-amt{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:18px 6px 0}
 .reg-amt .cap{font-size:15px; font-weight:600; opacity:.95}
 .reg-amt .big{font-family:'Space Grotesk',sans-serif; font-size:46px; font-weight:700; letter-spacing:-.01em; word-break:break-all; text-align:center; line-height:1.05}
 .reg-amt .op{font-size:13px; opacity:.85; min-height:17px}
 .reg-row{display:flex; align-items:center; justify-content:center; gap:10px; width:100%}
-.del{border:none; background:rgba(255,255,255,.28); color:#fff; border-radius:10px; padding:7px 12px; font-size:16px; line-height:1}
+.del{border:none; background:color-mix(in srgb, var(--regink) 24%, transparent); color:var(--regink); border-radius:10px; padding:7px 12px; font-size:16px; line-height:1}
 .reg-sheet{background:var(--solid); border-radius:26px 26px 0 0; margin-top:-22px; padding:20px 16px calc(28px + env(safe-area-inset-bottom)); min-height:60vh}
 .chiprow{display:flex; gap:9px; flex-wrap:wrap; margin-bottom:20px}
 .chipbtn{border:1px solid var(--line); background:transparent; color:var(--muted); border-radius:999px; padding:10px 17px; font-weight:600; font-size:14px}
-.chipbtn.on{background:var(--regcol); border-color:transparent; color:#fff}
+.chipbtn.on{background:var(--regcol); border-color:transparent; color:var(--regink)}
 .chipbtn.soft.on{background:color-mix(in srgb, var(--regcol) 22%, var(--solid)); color:var(--regcol); border-color:transparent}
 .keys{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; max-width:420px; margin:0 auto}
 .keys button{aspect-ratio:1/1; border-radius:50%; border:1px solid var(--line); background:transparent; color:var(--regcol);
   font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:600}
-.keys button.act{background:var(--regcol); border-color:transparent; color:#fff; font-size:26px}
+.keys button.act{background:var(--regcol); border-color:transparent; color:var(--regink); font-size:26px}
 .keys button:active{filter:brightness(.92)}
-.reg-cta{width:100%; margin-top:22px; padding:16px; border-radius:14px; border:none; background:var(--regcol); color:#fff; font-weight:700; font-size:16px}
+.reg-cta{width:100%; margin-top:22px; padding:16px; border-radius:14px; border:none; background:var(--regcol); color:var(--regink); font-weight:700; font-size:16px}
 .reg-lbl{font-size:17px; font-weight:700; margin:0 0 10px}
 .reg-note{font-size:12.5px; color:var(--muted); margin:-4px 0 16px}
 .detin{width:100%; border:1px solid var(--line); border-radius:14px; padding:16px 14px; background:var(--field); color:var(--ink); font-size:15px; margin-bottom:20px}
@@ -384,30 +386,10 @@ canvas{max-height:280px}
     </button>
 
     <div class="sec-title" style="margin:22px 0 12px; font-size:17px">Mis Presupuestos</div>
-    <div class="card pad" style="margin-bottom:14px">
-      <p class="hint" style="margin-top:0">Poné un límite por categoría y la barra muestra cuánto llevás en el mes elegido.</p>
-      <div id="budget-list" style="margin-top:8px"></div>
-    </div>
-
-    <div class="sec-title" style="margin:22px 0 12px; font-size:17px">Gastos e ingresos fijos</div>
-    <div class="card pad" style="margin-bottom:14px">
-      <div class="grid2">
-        <div class="field"><label>Cuenta</label><select id="r-cuenta"></select></div>
-        <div class="field"><label>Tipo</label><select id="r-tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select></div>
-        <div class="field"><label>Monto</label><input id="r-monto" type="number" inputmode="decimal" placeholder="0"></div>
-        <div class="field"><label>Categoría</label><select id="r-cat"></select></div>
-        <div class="field" style="grid-column:1 / -1"><label>Descripción</label><input id="r-desc" type="text" placeholder="Ej: Alquiler, Netflix, Sueldo"></div>
-      </div>
-      <button class="btn cta mt" id="r-add">Guardar fijo</button>
-      <p class="hint">Son plantillas. Cada mes tocás “Registrar” para sumarlas a tus movimientos.</p>
-    </div>
-    <div class="card pad">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
-        <div class="sec-title" style="margin:0">Mis fijos</div>
-        <button class="btn sm" id="r-all">Registrar todos</button>
-      </div>
-      <div class="list" id="fijos-list"><div class="empty">Todavía no cargaste fijos.</div></div>
-      <div class="total-fijos" id="fijos-total"></div>
+    <div class="card pad" style="margin-bottom:14px; text-align:center; padding:34px 18px">
+      <div style="font-size:34px; line-height:1">🚧</div>
+      <div style="font-family:'Space Grotesk'; font-size:17px; font-weight:600; margin-top:10px">Próximamente</div>
+      <p class="hint" style="max-width:320px; margin:6px auto 0">Acá vas a poder ponerle un límite mensual a cada categoría y ver cuánto llevás gastado.</p>
     </div>
   </section>
 
@@ -591,6 +573,7 @@ canvas{max-height:280px}
         <button class="chipbtn soft" data-fijo="1">Fijo</button>
         <button class="chipbtn soft on" data-fijo="0">Variable</button>
       </div>
+      <p class="reg-note" id="reg-fijo-note"></p>
     </div>
 
     <p class="reg-lbl">Fecha</p>
@@ -624,6 +607,9 @@ canvas{max-height:280px}
   <label id="m-monto-lbl"></label><input id="m-monto" type="number">
   <span id="m-cat-wrap"><select id="m-cat"></select></span>
   <input id="m-desc" type="text"><button id="m-add"></button>
+  <select id="r-cuenta"></select><select id="r-tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select>
+  <input id="r-monto" type="number"><select id="r-cat"></select><input id="r-desc" type="text"><button id="r-add"></button>
+  <div id="budget-list"></div>
 </div>
 
 <!-- ===================== CONFIGURACIÓN ===================== -->
@@ -639,7 +625,22 @@ canvas{max-height:280px}
     <button class="cfg-row" data-cfg="cats"><div class="cfg-ico">🏷️</div><div class="t"><b>Categorías</b><span id="cfg-cats-sub">—</span></div><div class="arr">›</div></button>
     <button class="cfg-row" data-cfg="bal"><div class="cfg-ico">🧮</div><div class="t"><b>Mi balance</b><span id="cfg-bal-sub">Cuentas, bancos y monedas</span></div><div class="arr">›</div></button>
     <button class="cfg-row" data-cfg="cards"><div class="cfg-ico">💳</div><div class="t"><b>Mis tarjetas</b><span id="cfg-cards-sub">—</span></div><div class="arr">›</div></button>
+    <button class="cfg-row" data-cfg="fijos"><div class="cfg-ico">🔁</div><div class="t"><b>Mis fijos</b><span id="cfg-fijos-sub">—</span></div><div class="arr">›</div></button>
     <button class="cfg-row" data-cfg="colors"><div class="cfg-ico">🎨</div><div class="t"><b>Colores</b><span id="cfg-colors-sub">—</span></div><div class="arr">›</div></button>
+    <p class="hint" style="text-align:center; margin-top:18px">Mis Cuentas · versión <b id="app-ver">—</b></p>
+  </div>
+
+  <!-- fijos -->
+  <div id="cfg-fijos" class="hidden">
+    <div class="card pad">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+        <div class="sec-title" style="margin:0">Plantillas guardadas</div>
+        <button class="btn sm" id="r-all">Registrar todos</button>
+      </div>
+      <p class="hint" style="margin-top:0">Se crean solas cuando marcás “Fijo” al cargar un movimiento. Tocá “Registrar” para sumarlas al mes.</p>
+      <div class="list" id="fijos-list" style="margin-top:8px"><div class="empty">Todavía no cargaste fijos.</div></div>
+      <div class="total-fijos" id="fijos-total"></div>
+    </div>
   </div>
 
   <!-- categorías -->
@@ -783,6 +784,7 @@ const LOGO_PATHS = '<path fill="currentColor" d="M893.99,723.18c98.18-67.22,182.
 
 // Categorías originales + emoji. Los nombres NO cambian: los movimientos ya cargados
 // guardan el texto ("Comida"), así que siguen matcheando igual. El emoji es solo visual.
+const APP_VERSION = "2026.08.02-06";
 const CATS_DEFAULT = [
   {nombre:"Comida",     emoji:"🍽️"},
   {nombre:"Transporte", emoji:"🚌"},
@@ -922,6 +924,7 @@ let recoveryMode = /type=recovery/.test(window.location.hash);
 
 // logo
 ["logo-auth","logo-top"].forEach(id=>{ const el=$(id); if(el) el.innerHTML=LOGO_PATHS; });
+if($("app-ver")) $("app-ver").textContent=APP_VERSION;
 
 // ---------- temas ----------
 function temaValido(t){ return TEMAS.some(x=>x.id===t) ? t : (t==="light" ? "teal-claro" : TEMA_DEFAULT); } // "dark"/"light" viejos se migran
@@ -1111,10 +1114,10 @@ async function delCat(id){
 
 // ---------- pantalla de Configuración ----------
 let cfgView="menu";
-const CFG_TITULOS={menu:"Configuración", cats:"Categorías", bal:"Mi balance", cards:"Mis tarjetas", colors:"Colores"};
+const CFG_TITULOS={menu:"Configuración", cats:"Categorías", bal:"Mi balance", cards:"Mis tarjetas", fijos:"Mis fijos", colors:"Colores"};
 function openConfig(v){
   cfgView=v||"menu"; goto("config");
-  ["menu","cats","bal","cards","colors"].forEach(k=>$("cfg-"+k).classList.toggle("hidden", k!==cfgView));
+  ["menu","cats","bal","cards","fijos","colors"].forEach(k=>$("cfg-"+k).classList.toggle("hidden", k!==cfgView));
   $("cfg-title").textContent=CFG_TITULOS[cfgView]||"Configuración";
   if(cfgView==="menu") renderConfigMenu();
   if(cfgView==="colors") renderThemeGrid();
@@ -1126,6 +1129,7 @@ function renderConfigMenu(){
   $("cfg-cats-sub").textContent = CATS.length+(CATS.length===1?" categoría":" categorías");
   $("cfg-bal-sub").textContent  = ACCOUNTS.length+(ACCOUNTS.length===1?" cuenta":" cuentas")+" · moneda principal "+mainCur();
   $("cfg-cards-sub").textContent= CARDS.length? CARDS.length+(CARDS.length===1?" tarjeta":" tarjetas") : "Ninguna todavía";
+  $("cfg-fijos-sub").textContent= REC.length? REC.length+(REC.length===1?" plantilla":" plantillas") : "Ninguna todavía";
   const t=TEMAS.find(x=>x.id===document.documentElement.getAttribute("data-theme"));
   $("cfg-colors-sub").textContent = t? t.n : "—";
 }
@@ -1165,7 +1169,7 @@ const REG_TIPOS=[
 const CAT_AHORRO="Ahorro";
 let R = {tipo:"gasto", buf:"0", acum:null, op:null, listo:false, cat:null, cuenta:null, fijo:false, fecha:todayISO(), paso:1};
 
-function regColor(){ const t=REG_TIPOS.find(x=>x.k===R.tipo); return t?t.col:"var(--expense)"; }
+// el registro toma el color de la paleta activa (no un color fijo por tipo)
 function bufNum(){ return parseFloat((R.buf||"0").replace(",",".")) || 0; }
 function bufFmt(){
   const [ent,dec]=(R.buf||"0").split(",");
@@ -1179,7 +1183,6 @@ function openReg(fechaISO, tipo){
   goto("reg"); renderReg();
 }
 function renderReg(){
-  document.documentElement.style.setProperty("--regcol", regColor());
   const t=REG_TIPOS.find(x=>x.k===R.tipo);
   $("reg-cap").textContent = R.paso>1 ? (t?t.cap:"") : "";
   $("reg-disp").textContent = R.paso>1 ? fmt2(regTotal()) : bufFmt();
@@ -1245,6 +1248,7 @@ function renderRegStep2(){
     $("reg-cuotas-prev").textContent = n>1 ? `${n} cuotas de ${fmt2(regTotal()/n)}` : "Un solo pago";
   }
   document.querySelectorAll("[data-fijo]").forEach(b=>b.classList.toggle("on", (b.dataset.fijo==="1")===R.fijo));
+  $("reg-fijo-note").textContent = R.fijo ? "Además se guarda como plantilla en Mis fijos, para repetirlo cada mes." : "";
   $("reg-fecha").value=R.fecha;
   const hoy=todayISO(); const ay=new Date(); ay.setDate(ay.getDate()-1); const ayer=ay.toISOString().slice(0,10);
   document.querySelectorAll("[data-fecha]").forEach(b=>{
@@ -1306,9 +1310,15 @@ $("reg-listo").onclick=async()=>{
       if(R.tipo==="ahorro" && !CATS.some(c=>c.nombre===CAT_AHORRO)){
         await sb.from("categories").insert({user_id:user.id, nombre:CAT_AHORRO, emoji:"🐷", orden:CATS.length});
       }
+      const desc=$("reg-desc").value.trim();
       const {error}=await sb.from("transactions").insert({fecha:R.fecha, cuenta:R.cuenta, tipo, monto:total,
-        categoria:cat, descripcion:$("reg-desc").value.trim(), es_fijo:!!R.fijo, user_id:user.id});
+        categoria:cat, descripcion:desc, es_fijo:!!R.fijo, user_id:user.id});
       if(error) throw error;
+      // marcarlo como Fijo también lo guarda como plantilla, si no existe ya una igual
+      if(R.fijo){
+        const yaEsta=REC.some(r=>r.cuenta===R.cuenta && r.tipo===tipo && Number(r.monto)===total && (r.descripcion||"")===desc);
+        if(!yaEsta) await sb.from("recurring").insert({cuenta:R.cuenta, tipo, monto:total, categoria:cat, descripcion:desc, user_id:user.id});
+      }
     }
     if(R.fecha.slice(0,7)!==VMONTH) VMONTH=R.fecha.slice(0,7);
     $("reg-desc").value=""; goto("app"); await loadAll();
