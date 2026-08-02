@@ -22,7 +22,8 @@
   color-scheme:dark;
   --ink:#f3f5f7; --muted:#9aa3ad; --line:#232830;
   --surface:#14181e; --surface-2:#1a1f26; --solid:#14181e;
-  --accent:#1dea00; --accent-ink:#062a00; --income:#37d067; --expense:#fb6b86; --debt:#f0a63b; --transfer:#2dd4bf;
+  --accent:#1dea00; --accent-ink:#062a00;
+  --income:#37d067; --expense:#fb6b86; --debt:#f5c445; --transfer:#2dd4bf; --cardcol:#4f92ff;
   --field:#1a1f26; --hover:#232830;
   --shadow:none; --bggrad:#0d1013; --themecolor:#0d1013;
 }
@@ -31,7 +32,8 @@
   color-scheme:light;
   --ink:#12352c; --muted:#6b8078; --line:#dfe7e3;
   --surface:#ffffff; --surface-2:#f1f6f4; --solid:#ffffff;
-  --accent:#2f6f5e; --accent-ink:#ffffff; --income:#2f8f6d; --expense:#e07a7a; --debt:#d99a3d; --transfer:#3aa8a0;
+  --accent:#2f6f5e; --accent-ink:#ffffff;
+  --income:#2f8f6d; --expense:#d9534f; --debt:#d9a520; --transfer:#3aa8a0; --cardcol:#3a7ca5;
   --field:#ffffff; --hover:#eaf2ef;
   --shadow:0 1px 2px rgba(18,53,44,.06); --bggrad:#f4f8f6; --themecolor:#2f6f5e;
 }
@@ -40,7 +42,8 @@
   color-scheme:light;
   --ink:#4a2b2b; --muted:#9b7a76; --line:#f3ddd7;
   --surface:#ffffff; --surface-2:#fdf1ee; --solid:#ffffff;
-  --accent:#e8837a; --accent-ink:#ffffff; --income:#5fae8c; --expense:#e05c5c; --debt:#e0a04a; --transfer:#4fa8b8;
+  --accent:#e8837a; --accent-ink:#ffffff;
+  --income:#4fa87d; --expense:#e05c5c; --debt:#e3a72c; --transfer:#4fa8b8; --cardcol:#5b8fd6;
   --field:#ffffff; --hover:#fbe8e3;
   --shadow:0 1px 2px rgba(74,43,43,.06); --bggrad:#fdf5f2; --themecolor:#e8837a;
 }
@@ -49,7 +52,8 @@
   color-scheme:dark;
   --ink:#eaf1fb; --muted:#8ba0bd; --line:#22334d;
   --surface:#14243a; --surface-2:#1a2c46; --solid:#14243a;
-  --accent:#2f8fff; --accent-ink:#04182e; --income:#3ecf8e; --expense:#ff6b8a; --debt:#ffb347; --transfer:#4dd0e1;
+  --accent:#2f8fff; --accent-ink:#04182e;
+  --income:#3ecf8e; --expense:#ff5c72; --debt:#ffc94d; --transfer:#4dd0e1; --cardcol:#5aa9ff;
   --field:#1a2c46; --hover:#22334d;
   --shadow:none; --bggrad:#0f1b2d; --themecolor:#0f1b2d;
 }
@@ -58,7 +62,8 @@
   color-scheme:light;
   --ink:#3a2f22; --muted:#8a7a63; --line:#e6dccb;
   --surface:#ffffff; --surface-2:#f6f1e9; --solid:#ffffff;
-  --accent:#b98a4e; --accent-ink:#ffffff; --income:#6f9457; --expense:#c2593f; --debt:#c99a3c; --transfer:#5b8f92;
+  --accent:#b98a4e; --accent-ink:#ffffff;
+  --income:#5f9455; --expense:#c2493f; --debt:#c9a02c; --transfer:#5b8f92; --cardcol:#5a7d9a;
   --field:#ffffff; --hover:#f0e8da;
   --shadow:0 1px 2px rgba(58,47,34,.07); --bggrad:#f9f5ee; --themecolor:#b98a4e;
 }
@@ -270,8 +275,13 @@ canvas{max-height:280px}
 
 /* ===== Registro con calculadora ===== */
 #reg{padding:0; max-width:none}
-/* el registro usa el color de la paleta elegida */
-#reg{--regcol:var(--accent); --regink:var(--accent-ink)}
+/* El registro se pinta según el tipo de movimiento, con la variante de cada paleta:
+   gasto = rojo · tarjeta = azul · ingreso = verde · ahorro = amarillo */
+#reg{--regcol:var(--expense); --regink:#fff}
+#reg[data-rt="gasto"]  {--regcol:var(--expense)}
+#reg[data-rt="tarjeta"]{--regcol:var(--cardcol)}
+#reg[data-rt="ingreso"]{--regcol:var(--income)}
+#reg[data-rt="ahorro"] {--regcol:var(--debt)}
 .reg-top{background:var(--regcol); color:var(--regink); padding:14px 16px 30px; min-height:230px; display:flex; flex-direction:column}
 .reg-bar{display:flex; align-items:center; gap:10px}
 .reg-bar button{border:none; background:transparent; color:var(--regink); font-size:26px; line-height:1; padding:0 6px}
@@ -488,7 +498,7 @@ canvas{max-height:280px}
   <div class="calsum">
     <div class="chip"><div class="k">Ingresos del mes</div><div class="v num" id="cal-ing-tot" style="color:var(--income)">$0</div></div>
     <div class="chip"><div class="k">Gastos del mes</div><div class="v num" id="cal-gas-tot" style="color:var(--expense)">$0</div></div>
-    <div class="chip"><div class="k">Cuotas del mes</div><div class="v num" id="cal-cuotas-tot" style="color:var(--debt)">$0</div></div>
+    <div class="chip"><div class="k">Cuotas del mes</div><div class="v num" id="cal-cuotas-tot" style="color:var(--cardcol)">$0</div></div>
   </div>
   <div id="cal-day" class="hidden">
     <div class="card pad" style="margin-bottom:14px">
@@ -784,7 +794,7 @@ const LOGO_PATHS = '<path fill="currentColor" d="M893.99,723.18c98.18-67.22,182.
 
 // Categorías originales + emoji. Los nombres NO cambian: los movimientos ya cargados
 // guardan el texto ("Comida"), así que siguen matcheando igual. El emoji es solo visual.
-const APP_VERSION = "2026.08.02-06";
+const APP_VERSION = "2026.08.02-07";
 const CATS_DEFAULT = [
   {nombre:"Comida",     emoji:"🍽️"},
   {nombre:"Transporte", emoji:"🚌"},
@@ -1183,6 +1193,7 @@ function openReg(fechaISO, tipo){
   goto("reg"); renderReg();
 }
 function renderReg(){
+  $("reg").setAttribute("data-rt", R.tipo);
   const t=REG_TIPOS.find(x=>x.k===R.tipo);
   $("reg-cap").textContent = R.paso>1 ? (t?t.cap:"") : "";
   $("reg-disp").textContent = R.paso>1 ? fmt2(regTotal()) : bufFmt();
@@ -1416,7 +1427,7 @@ function renderHero(){
 
   let chips=ACCOUNTS.map(a=>{ const c=a.moneda||mc;
     return `<div class="chip"><div class="k">${esc(a.nombre)}<span class="curbadge">${c}</span></div><div class="v num">${fmt(accountBalance(a.key), c)}</div></div>`; }).join("");
-  chips+=`<div class="chip"><div class="k">Deuda tarjetas<span class="curbadge">${mc}</span></div><div class="v num" style="color:var(--debt)">${fmt(debt, mc)}</div></div>`;
+  chips+=`<div class="chip"><div class="k">Deuda tarjetas<span class="curbadge">${mc}</span></div><div class="v num" style="color:var(--cardcol)">${fmt(debt, mc)}</div></div>`;
   $("hero-chips").innerHTML=chips;
 }
 
@@ -1560,7 +1571,7 @@ function renderCuotas(){ const el=$("cuotas-list"); if(!INST.length){ el.innerHT
   el.innerHTML=Object.keys(groups).sort().map(mes=>{ const items=groups[mes].map(x=>{ const p=pMap[x.purchase_id]||{}; const c=cMap[p.card_id]; const logo=c?brandLogo(c.marca):"";
     return `<div class="item"><div class="meta"><div class="desc">${logo} ${esc(p.descripcion)||"Compra"} <span class="badge">${x.nro_cuota}/${p.cuotas||'?'}</span></div>
       <div class="subm">${esc(p.tarjeta)||''} · ${esc(p.categoria)||'—'}</div></div>
-      <div class="amt num" style="color:${x.pagada?'var(--muted)':'var(--debt)'}">${fmt(x.monto)}</div>
+      <div class="amt num" style="color:${x.pagada?'var(--muted)':'var(--cardcol)'}">${fmt(x.monto)}</div>
       <button class="paid-btn ${x.pagada?'done':''}" data-paid="${x.id}" data-val="${x.pagada?1:0}">${x.pagada?'Pagada':'Pagar'}</button></div>`; }).join("");
     return `<div class="month-head">${mesLargo(mes)}</div>${items}`; }).join("");
   el.querySelectorAll("[data-paid]").forEach(b=>b.onclick=()=>togglePaid(b.dataset.paid,b.dataset.val==="1")); }
@@ -1604,7 +1615,7 @@ function renderCalendar(){
   const pMap=Object.fromEntries(PURCH.map(p=>[p.id,p]));
   $("cal-cuotas").innerHTML = cuotas.length ? cuotas.map(x=>{ const p=pMap[x.purchase_id]||{};
     return `<div class="item"><div class="meta"><div class="desc">${esc(p.descripcion)||"Compra"} <span class="badge">${x.nro_cuota}/${p.cuotas||'?'}</span></div>
-      <div class="subm">${esc(p.tarjeta)||''}</div></div><div class="amt num" style="color:${x.pagada?'var(--muted)':'var(--debt)'}">${fmt(x.monto)}${x.pagada?' ✓':''}</div></div>`; }).join("")
+      <div class="subm">${esc(p.tarjeta)||''}</div></div><div class="amt num" style="color:${x.pagada?'var(--muted)':'var(--cardcol)'}">${fmt(x.monto)}${x.pagada?' ✓':''}</div></div>`; }).join("")
     : '<div class="empty">Sin cuotas este mes.</div>';
 
   if(calDay && calDay.slice(0,7)===VMONTH) renderDay(); else { calDay=null; $("cal-day").classList.add("hidden"); }
@@ -1748,15 +1759,16 @@ function renderBudgets(){ const cm=VMONTH; const spent={};
 async function saveBudget(cat,val){ const monto=parseFloat(val)||0; await sb.from("budgets").upsert({user_id:user.id,categoria:cat,monto},{onConflict:"user_id,categoria"}); await loadAll(); }
 
 // CHARTS
-function axisColor(){ return getComputedStyle(document.documentElement).getPropertyValue('--muted').trim()||'#888'; }
+function axisColor(){ return cssVar('--muted')||'#888'; }
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 function renderCharts(){
   const gc=axisColor();
   const months={}; TX.forEach(t=>{ if(!esMonedaPrincipal(t.cuenta)) return; const k=t.fecha.slice(0,7); (months[k] ||= {ing:0,gas:0}); if(t.tipo==="ingreso") months[k].ing+=Number(t.monto); else months[k].gas+=Number(t.monto); });
   const keys=Object.keys(months).sort().slice(-6);
   if(chartFlow) chartFlow.destroy();
   chartFlow=new Chart($("chart-flow"),{type:"bar",data:{labels:keys.map(mesCorto),datasets:[
-    {label:"Ingresos",data:keys.map(k=>months[k].ing),backgroundColor:"#37d067",borderRadius:6},
-    {label:"Gastos",data:keys.map(k=>months[k].gas),backgroundColor:"#fb6b86",borderRadius:6}]},
+    {label:"Ingresos",data:keys.map(k=>months[k].ing),backgroundColor:cssVar('--income'),borderRadius:6},
+    {label:"Gastos",data:keys.map(k=>months[k].gas),backgroundColor:cssVar('--expense'),borderRadius:6}]},
     options:{responsive:true,plugins:{legend:{position:"bottom",labels:{color:gc}}},scales:{x:{ticks:{color:gc}},y:{ticks:{color:gc,callback:v=>fmt(v)}}}}});
   const cm=VMONTH, cats={}; TX.filter(t=>t.tipo==="gasto"&&t.fecha.slice(0,7)===cm&&esMonedaPrincipal(t.cuenta)).forEach(t=>{ const c=t.categoria||"Otros"; cats[c]=(cats[c]||0)+Number(t.monto); });
   const ck=Object.keys(cats).sort((a,b)=>cats[b]-cats[a]); const totalGas=ck.reduce((a,c)=>a+cats[c],0);
@@ -1769,7 +1781,7 @@ function renderCharts(){
   } else { $("cat-legend").innerHTML='<div class="empty">Sin gastos este mes.</div>'; }
   const proj={}, cmk=curMonth(); INST.filter(x=>!x.pagada && x.mes.slice(0,7)>=cmk).forEach(x=>{ const k=x.mes.slice(0,7); proj[k]=(proj[k]||0)+Number(x.monto); });
   const pk=Object.keys(proj).sort().slice(0,8); if(chartProj) chartProj.destroy();
-  if(pk.length){ chartProj=new Chart($("chart-proj"),{type:"bar",data:{labels:pk.map(mesCorto),datasets:[{label:"A pagar",data:pk.map(k=>proj[k]),backgroundColor:"#f0a63b",borderRadius:6}]},
+  if(pk.length){ chartProj=new Chart($("chart-proj"),{type:"bar",data:{labels:pk.map(mesCorto),datasets:[{label:"A pagar",data:pk.map(k=>proj[k]),backgroundColor:cssVar('--cardcol'),borderRadius:6}]},
     options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:gc}},y:{ticks:{color:gc,callback:v=>fmt(v)}}}}});
     $("proj-hint").textContent=`Total pendiente en cuotas: ${fmt(pk.reduce((a,k)=>a+proj[k],0))}`; }
   else $("proj-hint").textContent="No tenés cuotas pendientes.";
