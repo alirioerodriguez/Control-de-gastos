@@ -273,6 +273,37 @@ canvas{max-height:280px}
 .cdots i{width:6px; height:6px; border-radius:50%; display:block}
 .calsum{display:flex; gap:8px; flex-wrap:wrap; margin:16px 0 10px}
 
+/* ===== Iconos y animaciones (portado de "Mis Cuentas · Iconos y Animaciones") ===== */
+@keyframes mc-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes mc-fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes mc-toast{0%{opacity:0;transform:translateY(18px) scale(.94)}100%{opacity:1;transform:none}}
+@keyframes mc-shimmer{0%{background-position:-180px 0}100%{background-position:280px 0}}
+@keyframes mc-pop{0%{transform:scale(.5);opacity:0}62%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+
+.ic{display:inline-block; vertical-align:middle; flex-shrink:0;
+  transition:transform .28s cubic-bezier(.34,1.3,.44,1), opacity .28s cubic-bezier(.2,0,0,1)}
+.ic svg{display:block}
+button:hover > .ic, button:hover .ic{transform:translateY(-1.5px) scale(1.06)}
+button:active > .ic, button:active .ic{transform:scale(.94)}
+
+.statcard{animation:mc-in .5s cubic-bezier(.34,1.3,.44,1) both}
+.statcard:nth-of-type(1){animation-delay:.04s}
+.statcard:nth-of-type(2){animation-delay:.10s}
+.statcard:nth-of-type(3){animation-delay:.16s}
+.cfg-row{animation:mc-in .44s cubic-bezier(.34,1.3,.44,1) both}
+.cfg-row:nth-of-type(2){animation-delay:.05s}
+.cfg-row:nth-of-type(3){animation-delay:.10s}
+.cfg-row:nth-of-type(4){animation-delay:.15s}
+.cfg-row:nth-of-type(5){animation-delay:.20s}
+.balhead,.chip,.theme-card,.calpill,.searchbox{animation:mc-fade .36s cubic-bezier(.2,0,0,1) both}
+.list .item{animation:mc-fade .36s cubic-bezier(.2,0,0,1) both}
+.roundadd,.fab{animation:mc-pop .55s cubic-bezier(.34,1.4,.44,1) both}
+.calgrid button{animation:mc-fade .28s cubic-bezier(.2,0,0,1) both}
+@media(prefers-reduced-motion:reduce){
+  .statcard,.cfg-row,.balhead,.chip,.theme-card,.calpill,.searchbox,.list .item,.roundadd,.fab,.calgrid button{animation:none}
+  .ic{transition:none}
+}
+
 /* ===== Registro con calculadora ===== */
 #reg{padding:0; max-width:none}
 /* El registro se pinta según el tipo de movimiento, con la variante de cada paleta:
@@ -367,9 +398,9 @@ canvas{max-height:280px}
 
 <div id="app" class="wrap hidden">
   <div class="apphead">
-    <button class="icon-btn" id="cal-btn" title="Calendario">📅</button>
+    <button class="icon-btn" id="cal-btn" title="Calendario" data-ic="calendario"></button>
     <div class="monthsel"><select id="hm-mes"></select></div>
-    <button class="icon-btn" id="config-btn" title="Configuración">⚙️</button>
+    <button class="icon-btn" id="config-btn" title="Configuración" data-ic="ajustes"></button>
   </div>
 
   <!-- INICIO -->
@@ -380,24 +411,24 @@ canvas{max-height:280px}
     </div>
 
     <button class="statcard" data-stat="ingreso" style="background:color-mix(in srgb, var(--income) 16%, var(--surface))">
-      <div class="sico" style="background:color-mix(in srgb, var(--income) 28%, transparent); color:var(--income)">💰</div>
+      <div class="sico" data-ic="ingreso" data-ic-size="22" style="background:color-mix(in srgb, var(--income) 28%, transparent); color:var(--income)"></div>
       <div class="st"><b style="color:var(--income)">Ingresos</b><span class="v" id="st-ing">$0</span></div>
       <div class="arr" style="color:var(--income)">›</div>
     </button>
     <button class="statcard" data-stat="gasto" style="background:color-mix(in srgb, var(--expense) 16%, var(--surface))">
-      <div class="sico" style="background:color-mix(in srgb, var(--expense) 28%, transparent); color:var(--expense)">🔻</div>
+      <div class="sico" data-ic="gasto" data-ic-size="22" style="background:color-mix(in srgb, var(--expense) 28%, transparent); color:var(--expense)"></div>
       <div class="st"><b style="color:var(--expense)">Gastos</b><span class="v" id="st-gas">$0</span><span class="delta" id="s-delta"></span></div>
       <div class="arr" style="color:var(--expense)">›</div>
     </button>
     <button class="statcard" data-stat="ahorro" style="background:color-mix(in srgb, var(--debt) 16%, var(--surface))">
-      <div class="sico" style="background:color-mix(in srgb, var(--debt) 28%, transparent); color:var(--debt)">🏦</div>
+      <div class="sico" data-ic="billetera" data-ic-size="22" style="background:color-mix(in srgb, var(--debt) 28%, transparent); color:var(--debt)"></div>
       <div class="st"><b style="color:var(--debt)">Ahorros</b><span class="v" id="st-aho">$0</span></div>
       <div class="arr" style="color:var(--debt)">›</div>
     </button>
 
     <div class="sec-title" style="margin:22px 0 12px; font-size:17px">Mis Presupuestos</div>
     <div class="card pad" style="margin-bottom:14px; text-align:center; padding:34px 18px">
-      <div style="font-size:34px; line-height:1">🚧</div>
+      <div style="color:var(--muted)" data-ic="alerta" data-ic-size="34"></div>
       <div style="font-family:'Space Grotesk'; font-size:17px; font-weight:600; margin-top:10px">Próximamente</div>
       <p class="hint" style="max-width:320px; margin:6px auto 0">Acá vas a poder ponerle un límite mensual a cada categoría y ver cuánto llevás gastado.</p>
     </div>
@@ -464,7 +495,7 @@ canvas{max-height:280px}
     <div class="card pad" style="margin-bottom:14px">
       <div style="display:flex; justify-content:space-between; align-items:center">
         <div class="sec-title" style="margin:0">Descargar tu reporte</div>
-        <button class="btn ghost sm" id="export-btn">⬇ CSV</button>
+        <button class="btn ghost sm" id="export-btn" style="display:flex; align-items:center; gap:7px"><span data-ic="exportar" data-ic-size="16"></span>CSV</button>
       </div>
       <p class="hint">Se baja todo tu historial de movimientos, con la moneda de cada cuenta.</p>
     </div>
@@ -480,10 +511,10 @@ canvas{max-height:280px}
 
 <!-- barra inferior + botón flotante -->
 <nav class="botnav hidden" id="botnav">
-  <button data-tab="home" class="active"><span class="bi">🏠</span>Inicio</button>
-  <button data-tab="tar"><span class="bi">💳</span>Tarjetas</button>
-  <button data-tab="div"><span class="bi">👥</span>Dividir</button>
-  <button data-tab="graf"><span class="bi">📊</span>Gráficos</button>
+  <button data-tab="home" class="active"><span class="bi" data-ic="casa" data-ic-size="21"></span>Inicio</button>
+  <button data-tab="tar"><span class="bi" data-ic="tarjeta" data-ic-size="21"></span>Tarjetas</button>
+  <button data-tab="div"><span class="bi" data-ic="dividir" data-ic-size="21"></span>Dividir</button>
+  <button data-tab="graf"><span class="bi" data-ic="grafico" data-ic-size="21"></span>Gráficos</button>
 </nav>
 <button class="fab hidden" id="fab" title="Agregar movimiento">+</button>
 
@@ -603,7 +634,7 @@ canvas{max-height:280px}
       <p class="reg-lbl" style="margin:0">Categorías</p>
       <button class="roundadd sm" id="reg-cat-new" style="background:var(--regcol); color:#fff">+</button>
     </div>
-    <div class="searchbox">🔍<input id="reg-cat-search" type="text" placeholder="¿Qué categoría buscás?"></div>
+    <div class="searchbox"><span data-ic="buscar" data-ic-size="18"></span><input id="reg-cat-search" type="text" placeholder="¿Qué categoría buscás?"></div>
     <div class="list catlist" id="reg-cat-list"></div>
   </div>
 </div>
@@ -632,11 +663,11 @@ canvas{max-height:280px}
 
   <!-- menú -->
   <div id="cfg-menu">
-    <button class="cfg-row" data-cfg="cats"><div class="cfg-ico">🏷️</div><div class="t"><b>Categorías</b><span id="cfg-cats-sub">—</span></div><div class="arr">›</div></button>
-    <button class="cfg-row" data-cfg="bal"><div class="cfg-ico">🧮</div><div class="t"><b>Mi balance</b><span id="cfg-bal-sub">Cuentas, bancos y monedas</span></div><div class="arr">›</div></button>
-    <button class="cfg-row" data-cfg="cards"><div class="cfg-ico">💳</div><div class="t"><b>Mis tarjetas</b><span id="cfg-cards-sub">—</span></div><div class="arr">›</div></button>
-    <button class="cfg-row" data-cfg="fijos"><div class="cfg-ico">🔁</div><div class="t"><b>Mis fijos</b><span id="cfg-fijos-sub">—</span></div><div class="arr">›</div></button>
-    <button class="cfg-row" data-cfg="colors"><div class="cfg-ico">🎨</div><div class="t"><b>Colores</b><span id="cfg-colors-sub">—</span></div><div class="arr">›</div></button>
+    <button class="cfg-row" data-cfg="cats"><div class="cfg-ico" data-ic="filtro" data-ic-size="22"></div><div class="t"><b>Categorías</b><span id="cfg-cats-sub">—</span></div><div class="arr">›</div></button>
+    <button class="cfg-row" data-cfg="bal"><div class="cfg-ico" data-ic="billetera" data-ic-size="22"></div><div class="t"><b>Mi balance</b><span id="cfg-bal-sub">Cuentas, bancos y monedas</span></div><div class="arr">›</div></button>
+    <button class="cfg-row" data-cfg="cards"><div class="cfg-ico" data-ic="tarjeta" data-ic-size="22"></div><div class="t"><b>Mis tarjetas</b><span id="cfg-cards-sub">—</span></div><div class="arr">›</div></button>
+    <button class="cfg-row" data-cfg="fijos"><div class="cfg-ico" data-ic="fijos" data-ic-size="22"></div><div class="t"><b>Mis fijos</b><span id="cfg-fijos-sub">—</span></div><div class="arr">›</div></button>
+    <button class="cfg-row" data-cfg="colors"><div class="cfg-ico" data-ic="tema" data-ic-size="22"></div><div class="t"><b>Colores</b><span id="cfg-colors-sub">—</span></div><div class="arr">›</div></button>
     <p class="hint" style="text-align:center; margin-top:18px">Mis Cuentas · versión <b id="app-ver">—</b></p>
   </div>
 
@@ -794,7 +825,47 @@ const LOGO_PATHS = '<path fill="currentColor" d="M893.99,723.18c98.18-67.22,182.
 
 // Categorías originales + emoji. Los nombres NO cambian: los movimientos ya cargados
 // guardan el texto ("Comida"), así que siguen matcheando igual. El emoji es solo visual.
-const APP_VERSION = "2026.08.02-07";
+const APP_VERSION = "2026.08.02-08";
+
+// ===== Set de iconos (geometría tomada del HTML "Iconos y Animaciones") =====
+// Trazo 2.1, viewBox 24, puntas redondeadas. Las CATEGORÍAS siguen usando emoji.
+const ICON_D = {
+  borrar:    'M4.5 7.5h15|M6.5 7.5l.9 11a2 2 0 0 0 2 1.9h5.2a2 2 0 0 0 2-1.9l.9-11|M10 11.5v5M14 11.5v5|M9.5 7.5V5.4A1.4 1.4 0 0 1 10.9 4h2.2a1.4 1.4 0 0 1 1.4 1.4v2.1',
+  editar:    'M4.5 19.5h5l9.2-9.2a2.4 2.4 0 0 0 0-3.4l-1.6-1.6a2.4 2.4 0 0 0-3.4 0L4.5 14.5z|M13.2 6.9l3.9 3.9',
+  tema:      'M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6#C12,12,4',
+  tarjeta:   'M3 10h18|M7 14.6h3.6#R3,5.5,18,13,3',
+  perfil:    'M5.2 20a6.8 6.8 0 0 1 13.6 0#C12,8.8,3.7',
+  agregar:   'M12 5.2v13.6M5.2 12h13.6',
+  exportar:  'M12 3.6v10.2|M8 10.2l4 3.9 4-3.9|M4.4 16.4v2.2a2 2 0 0 0 2 2h11.2a2 2 0 0 0 2-2v-2.2',
+  buscar:    'M15.3 15.3L20.2 20.2#C10.6,10.6,6.4',
+  filtro:    'M4 7h16|M4 12h16|M4 17h16',
+  calendario:'M8.4 3.4v4M15.6 3.4v4|M3.6 10.4h16.8|M9 14.6l2.4 2.4 4-4.4#R3.6,5.6,16.8,15,3',
+  grafico:   'M4 20.2h16|M7.4 20.2V13|M12 20.2V7.4|M16.6 20.2v-9.6',
+  fijos:     'M4.6 10.4a7.6 7.6 0 0 1 12.6-3.6l2.4 2.2|M19.4 4.6v4.6h-4.6|M19.4 13.6A7.6 7.6 0 0 1 6.8 17.2l-2.4-2.2|M4.6 19.4v-4.6h4.6',
+  dividir:   'M3.4 19.6a5.6 5.6 0 0 1 11.2 0|M14.8 17.4a4.4 4.4 0 0 1 5.8-1.4#C9,9.2,3.4#C17.2,8.4,2.6',
+  pagar:     'M8.2 12.2l2.7 2.8 5.1-5.8#C12,12,8.6',
+  transferir:'M4 8.8h12.6|M13.8 5.6l3.2 3.2-3.2 3.2|M20 15.2H7.4|M10.2 12l-3.2 3.2 3.2 3.2',
+  ingreso:   'M12 16.2V8.4|M8.6 11.8L12 8.2l3.4 3.6#C12,12,8.6',
+  gasto:     'M12 7.8v7.8|M8.6 12.2L12 15.8l3.4-3.6#C12,12,8.6',
+  billetera: 'M3.2 10.4h11.4#R3.2,6,17.6,13.4,3.2#C17,14.2,1.5',
+  cuotas:    'M15.4 20.4H6.6a3 3 0 0 1-3-3V8.6#R6.6,3.6,13.8,13.8,3',
+  alerta:    'M6.8 11.2a5.2 5.2 0 0 1 10.4 0v3.6l1.8 2.8H5l1.8-2.8z|M9.7 20a2.4 2.4 0 0 0 4.6 0',
+  // dos glifos que el set no traía, dibujados con el mismo trazo
+  ajustes:   'M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z|M19.1 14.4a1.6 1.6 0 0 0 .3 1.8l.1.1a1.9 1.9 0 1 1-2.7 2.7l-.1-.1a1.6 1.6 0 0 0-2.7 1.1v.3a1.9 1.9 0 1 1-3.8 0v-.2a1.6 1.6 0 0 0-2.8-1.1l-.1.1A1.9 1.9 0 1 1 4.6 16.3l.1-.1a1.6 1.6 0 0 0-1.1-2.7h-.3a1.9 1.9 0 1 1 0-3.8h.2a1.6 1.6 0 0 0 1.1-2.8l-.1-.1a1.9 1.9 0 1 1 2.7-2.7l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5v-.3a1.9 1.9 0 1 1 3.8 0v.2a1.6 1.6 0 0 0 2.7 1.1l.1-.1a1.9 1.9 0 1 1 2.7 2.7l-.1.1a1.6 1.6 0 0 0 1.1 2.7h.3a1.9 1.9 0 1 1 0 3.8h-.2a1.6 1.6 0 0 0-1.5 1z',
+  casa:      'M3.6 10.6L12 3.8l8.4 6.8|M5.8 9.4v9.2a1.6 1.6 0 0 0 1.6 1.6h9.2a1.6 1.6 0 0 0 1.6-1.6V9.4'
+};
+function icon(name, size){
+  const def=ICON_D[name]; if(!def) return "";
+  const [dPart, ...extras]=def.split("#");
+  let inner=dPart ? dPart.split("|").map(d=>`<path d="${d}"/>`).join("") : "";
+  extras.forEach(x=>{
+    const n=x.slice(1).split(",").map(Number);
+    if(x[0]==="C") inner+=`<circle cx="${n[0]}" cy="${n[1]}" r="${n[2]}"/>`;
+    if(x[0]==="R") inner+=`<rect x="${n[0]}" y="${n[1]}" width="${n[2]}" height="${n[3]}" rx="${n[4]}"/>`;
+  });
+  const s=size||20;
+  return `<span class="ic"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${inner}</svg></span>`;
+}
 const CATS_DEFAULT = [
   {nombre:"Comida",     emoji:"🍽️"},
   {nombre:"Transporte", emoji:"🚌"},
@@ -935,6 +1006,10 @@ let recoveryMode = /type=recovery/.test(window.location.hash);
 // logo
 ["logo-auth","logo-top"].forEach(id=>{ const el=$(id); if(el) el.innerHTML=LOGO_PATHS; });
 if($("app-ver")) $("app-ver").textContent=APP_VERSION;
+// pinta los iconos declarados con data-ic (no toca ninguna lógica)
+function pintarIconos(raiz){ (raiz||document).querySelectorAll("[data-ic]").forEach(el=>{
+  el.innerHTML = icon(el.dataset.ic, parseInt(el.dataset.icSize)||20); }); }
+pintarIconos();
 
 // ---------- temas ----------
 function temaValido(t){ return TEMAS.some(x=>x.id===t) ? t : (t==="light" ? "teal-claro" : TEMA_DEFAULT); } // "dark"/"light" viejos se migran
@@ -1082,8 +1157,8 @@ function renderCatsList(){
   el.innerHTML=rows.map(c=>{ const uso=catEnUso(c.nombre);
     return `<div class="item"><div style="font-size:20px; width:30px; text-align:center">${c.emoji||"·"}</div>
       <div class="meta"><div class="desc">${esc(c.nombre)}</div><div class="subm">${uso?"En uso en tus movimientos":"Sin usar"}</div></div>
-      <button class="iconx" data-cat-edit="${c.id}" title="Editar">✏️</button>
-      <button class="iconx" data-cat-del="${c.id}" title="${uso?'No se puede borrar: está en uso':'Borrar'}" ${uso?'style="opacity:.35"':''}>🗑</button></div>`; }).join("");
+      <button class="iconx" data-cat-edit="${c.id}" title="Editar">${icon('editar',18)}</button>
+      <button class="iconx" data-cat-del="${c.id}" title="${uso?'No se puede borrar: está en uso':'Borrar'}" ${uso?'style="opacity:.35"':''}>${icon('borrar',18)}</button></div>`; }).join("");
   el.querySelectorAll("[data-cat-edit]").forEach(b=>b.onclick=()=>editCat(b.dataset.catEdit));
   el.querySelectorAll("[data-cat-del]").forEach(b=>b.onclick=()=>delCat(b.dataset.catDel));
 }
@@ -1282,7 +1357,7 @@ function renderRegCatList(){
   $("reg-cat-list").innerHTML = rows.length ? rows.map(c=>`<div class="item" data-pick="${esc(c.nombre)}">
     <div style="font-size:21px; width:32px; text-align:center">${c.emoji||"·"}</div>
     <div class="meta"><div class="desc">${esc(c.nombre)}</div></div>
-    <button class="iconx" data-rcat-edit="${c.id}">✏️</button></div>`).join("")
+    <button class="iconx" data-rcat-edit="${c.id}">${icon('editar',18)}</button></div>`).join("")
     : '<div class="empty">No hay categorías con ese nombre. Tocá + para crear una.</div>';
   $("reg-cat-list").querySelectorAll("[data-pick]").forEach(el=>el.onclick=e=>{
     if(e.target.closest("[data-rcat-edit]")) return; R.cat=el.dataset.pick; R.paso=2; renderReg(); });
@@ -1444,7 +1519,7 @@ function renderAccounts(){ const el=$("accounts-list"); if(!el) return; const mc
     return `<div class="item"><div class="meta"><div class="desc">${esc(a.nombre)}</div>
     <div class="subm">Saldo: ${fmt(accountBalance(a.key), c)}</div></div>
     <select class="lim" data-cur-acc="${a.id}" style="width:auto; text-align:left" title="Moneda de la cuenta"></select>
-    <button class="iconx" data-del-acc="${a.id}">🗑</button></div>`; }).join("")
+    <button class="iconx" data-del-acc="${a.id}">${icon('borrar',18)}</button></div>`; }).join("")
     : '<div class="empty">Agregá tus cuentas.</div>';
   el.querySelectorAll("[data-cur-acc]").forEach(s=>{ const a=ACCOUNTS.find(x=>x.id===s.dataset.curAcc); if(!a) return;
     s.innerHTML=MONEDAS.map(m=>`<option value="${m.c}">${m.c}</option>`).join(""); s.value=a.moneda||mc;
@@ -1500,11 +1575,11 @@ function renderMov(){ const el=$("mov-list"); if(!el) return;
   el.innerHTML=rows.slice(0,120).map(r=>{ if(r._k==="tr") return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||"Transferencia"}</div>
       <div class="subm">${fechaCorta(r.fecha)} · ${CTA_NOMBRE[r.origen]||r.origen} → ${CTA_NOMBRE[r.destino]||r.destino} · <span class="badge">Transferencia</span></div></div>
       <div class="amt tr num">${fmt(r.monto, accCur(r.origen))}</div>
-      <button class="iconx" data-edit-tr="${r.id}">✏️</button><button class="iconx" data-del-tr="${r.id}">🗑</button></div>`;
+      <button class="iconx" data-edit-tr="${r.id}">${icon('editar',18)}</button><button class="iconx" data-del-tr="${r.id}">${icon('borrar',18)}</button></div>`;
     const isIn=r.tipo==="ingreso"; return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||r.categoria||"(sin detalle)"}</div>
       <div class="subm">${fechaCorta(r.fecha)} · ${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${r.categoria?esc(catLabel(r.categoria)):"—"}</span></div></div>
       <div class="amt ${isIn?'in':'out'} num">${isIn?'+':'−'}${fmt(r.monto, accCur(r.cuenta))}</div>
-      <button class="iconx" data-edit="${r.id}">✏️</button><button class="iconx" data-del-tx="${r.id}">🗑</button></div>`; }).join("");
+      <button class="iconx" data-edit="${r.id}">${icon('editar',18)}</button><button class="iconx" data-del-tx="${r.id}">${icon('borrar',18)}</button></div>`; }).join("");
   el.querySelectorAll("[data-del-tx]").forEach(b=>b.onclick=()=>delRow("transactions",b.dataset.delTx));
   el.querySelectorAll("[data-del-tr]").forEach(b=>b.onclick=()=>delRow("transfers",b.dataset.delTr));
   el.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));
@@ -1537,7 +1612,7 @@ $("export-btn").onclick=()=>{ const rows=[["Fecha","Tipo","Cuenta/Origen","Desti
 // TARJETAS (registro)
 function brandLogo(marca){ if(marca==="visa") return `<span class="cardchip"><span class="brand-visa">VISA</span></span>`;
   if(marca==="mastercard") return `<span class="cardchip"><svg width="26" height="16" viewBox="0 0 26 16"><circle cx="10" cy="8" r="7" fill="#EB001B"/><circle cx="16" cy="8" r="7" fill="#F79E1B" fill-opacity="0.85"/></svg></span>`;
-  return `<span class="cardchip">💳</span>`; }
+  return `<span class="cardchip">${icon('tarjeta',15)}</span>`; }
 function cardLabel(c){ return (c.marca==="visa"?"Visa":c.marca==="mastercard"?"Mastercard":"Tarjeta")+" ••• "+(c.ult3||"???"); }
 $("k-add").onclick=async()=>{ const marca=$("k-marca").value, ult3=$("k-ult3").value.trim();
   const {error}=await sb.from("cards").insert({marca, ult3:ult3||null, banco:$("k-banco").value.trim()||null, nombre:$("k-nombre").value.trim()||null, user_id:user.id});
@@ -1546,7 +1621,7 @@ function renderCards(){ const el=$("cards-list");
   if(!CARDS.length){ el.innerHTML='<div class="empty">Todavía no cargaste tarjetas.</div>'; return; }
   el.innerHTML=CARDS.map(c=>`<div class="item"><div style="display:flex;align-items:center;gap:10px" class="meta">
     ${brandLogo(c.marca)}<div><div class="desc">${cardLabel(c)}</div><div class="subm">${esc(c.banco)||''}${c.nombre?' · '+esc(c.nombre):''}</div></div></div>
-    <button class="iconx" data-del-card="${c.id}">🗑</button></div>`).join("");
+    <button class="iconx" data-del-card="${c.id}">${icon('borrar',18)}</button></div>`).join("");
   el.querySelectorAll("[data-del-card]").forEach(b=>b.onclick=async()=>{ if(confirm("¿Borrar esta tarjeta? (las compras cargadas se mantienen)")){ await sb.from("cards").delete().eq("id",b.dataset.delCard); await loadAll(); } }); }
 function fillCardSelect(){ const s=$("c-tarjeta"); const cur=s.value;
   s.innerHTML=CARDS.map(c=>`<option value="${c.id}">${cardLabel(c)}</option>`).join("")+`<option value="">Otra (sin registrar)</option>`;
@@ -1631,11 +1706,11 @@ function renderDay(){
     if(r._k==="tr") return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||"Transferencia"}</div>
       <div class="subm">${CTA_NOMBRE[r.origen]||r.origen} → ${CTA_NOMBRE[r.destino]||r.destino}</div></div>
       <div class="amt tr num">${fmt(r.monto, accCur(r.origen))}</div>
-      <button class="iconx" data-edit-tr="${r.id}">✏️</button><button class="iconx" data-del-tr="${r.id}">🗑</button></div>`;
+      <button class="iconx" data-edit-tr="${r.id}">${icon('editar',18)}</button><button class="iconx" data-del-tr="${r.id}">${icon('borrar',18)}</button></div>`;
     const isIn=r.tipo==="ingreso"; return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||r.categoria||"(sin detalle)"}</div>
       <div class="subm">${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${r.categoria?esc(catLabel(r.categoria)):"—"}</span></div></div>
       <div class="amt ${isIn?'in':'out'} num">${isIn?'+':'−'}${fmt(r.monto, accCur(r.cuenta))}</div>
-      <button class="iconx" data-edit="${r.id}">✏️</button><button class="iconx" data-del-tx="${r.id}">🗑</button></div>`; }).join("")
+      <button class="iconx" data-edit="${r.id}">${icon('editar',18)}</button><button class="iconx" data-del-tx="${r.id}">${icon('borrar',18)}</button></div>`; }).join("")
     : '<div class="empty">Sin movimientos este día. Tocá + para cargar uno.</div>';
   el.querySelectorAll("[data-del-tx]").forEach(b=>b.onclick=()=>delRow("transactions",b.dataset.delTx));
   el.querySelectorAll("[data-del-tr]").forEach(b=>b.onclick=()=>delRow("transfers",b.dataset.delTr));
@@ -1663,7 +1738,7 @@ function renderDividir(){
       return `<div class="contact-row"><div class="avatar">${avatarInner(op.foto_url,op.apodo)}</div>
         <div class="meta"><div class="desc">${esc(op.apodo)}</div><div class="subm">${txt}</div></div>
         <button class="btn ghost sm" data-open-pair="${p.id}">Ver</button>
-        <button class="iconx" data-del-pair="${p.id}">🗑</button></div>`; }).join("");
+        <button class="iconx" data-del-pair="${p.id}">${icon('borrar',18)}</button></div>`; }).join("");
     pl.querySelectorAll("[data-open-pair]").forEach(b=>b.onclick=()=>{ activePairId=b.dataset.openPair; renderPairDetail(); });
     pl.querySelectorAll("[data-del-pair]").forEach(b=>b.onclick=()=>delPair(b.dataset.delPair));
     if(activePairId && PAIRS.some(p=>p.id===activePairId)) renderPairDetail(); else $("pair-detail").classList.add("hidden");
@@ -1681,7 +1756,7 @@ function renderPairDetail(){
     const col=d>0?"var(--income)":(d<0?"var(--expense)":"var(--muted)"); const txt=d>0?`+${fmt(d)}`:(d<0?`−${fmt(-d)}`:fmt(0));
     return `<div class="item"><div class="meta"><div class="desc">${esc(t.titulo)} <span class="badge">${fmt(t.monto)}</span></div><div class="subm">${sub}</div></div>
       <div class="amt num" style="color:${col}">${txt}</div>
-      <button class="iconx" data-edit-sh="${t.id}">✏️</button><button class="iconx" data-del-sh="${t.id}">🗑</button></div>`; }).join("")
+      <button class="iconx" data-edit-sh="${t.id}">${icon('editar',18)}</button><button class="iconx" data-del-sh="${t.id}">${icon('borrar',18)}</button></div>`; }).join("")
     : '<div class="empty">Sin gastos todavía.</div>';
   el.querySelectorAll("[data-edit-sh]").forEach(b=>b.onclick=()=>openShared(b.dataset.editSh));
   el.querySelectorAll("[data-del-sh]").forEach(b=>b.onclick=async()=>{ if(confirm("¿Borrar este gasto compartido?")){ await sb.from("shared_txns").delete().eq("id",b.dataset.delSh); await loadAll(); renderPairDetail(); } });
@@ -1739,7 +1814,7 @@ function renderFijos(){ const el=$("fijos-list"); if(!REC.length){ el.innerHTML=
   el.innerHTML=REC.map(r=>{ const isIn=r.tipo==="ingreso"; return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||r.categoria||"Fijo"}</div>
     <div class="subm">${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${r.categoria?esc(catLabel(r.categoria)):'—'}</span></div></div>
     <div class="amt ${isIn?'in':'out'} num">${isIn?'+':'−'}${fmt(r.monto, accCur(r.cuenta))}</div>
-    <button class="paid-btn" data-reg="${r.id}">Registrar</button><button class="iconx" data-del-rec="${r.id}">🗑</button></div>`; }).join("");
+    <button class="paid-btn" data-reg="${r.id}">Registrar</button><button class="iconx" data-del-rec="${r.id}">${icon('borrar',18)}</button></div>`; }).join("");
   const g=REC.filter(r=>r.tipo==="gasto" && esMonedaPrincipal(r.cuenta)).reduce((a,r)=>a+Number(r.monto),0),
         i=REC.filter(r=>r.tipo==="ingreso" && esMonedaPrincipal(r.cuenta)).reduce((a,r)=>a+Number(r.monto),0);
   $("fijos-total").textContent=`Fijos por mes (${mainCur()}): gastos ${fmt(g)} · ingresos ${fmt(i)}`;
