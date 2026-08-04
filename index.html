@@ -530,6 +530,7 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
     <div class="chip"><div class="k">Ingresos del mes</div><div class="v num" id="cal-ing-tot" style="color:var(--income)">$0</div></div>
     <div class="chip"><div class="k">Gastos del mes</div><div class="v num" id="cal-gas-tot" style="color:var(--expense)">$0</div></div>
     <div class="chip"><div class="k">Cuotas del mes</div><div class="v num" id="cal-cuotas-tot" style="color:var(--cardcol)">$0</div></div>
+    <div class="chip"><div class="k">Fijos del mes</div><div class="v num" id="cal-fijos-tot" style="color:var(--expense)">$0</div></div>
   </div>
   <div id="cal-day" class="hidden">
     <div class="card pad" style="margin-bottom:14px">
@@ -543,6 +544,8 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
   <button class="btn ghost" style="width:100%; padding:16px" id="cal-add-generic">Agregar un registro &nbsp;+</button>
   <div class="card pad" style="margin-top:14px"><div class="sec-title">Cuotas que caen este mes</div>
     <div class="list" id="cal-cuotas"><div class="empty">Sin cuotas este mes.</div></div></div>
+  <div class="card pad" style="margin-top:14px"><div class="sec-title">Gastos fijos</div>
+    <div class="list" id="cal-fijos"><div class="empty">Sin fijos cargados.</div></div></div>
 </div>
 
 <!-- ===================== DETALLE (ingresos / gastos / ahorros) ===================== -->
@@ -678,7 +681,7 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
         <div class="sec-title" style="margin:0">Plantillas guardadas</div>
         <button class="btn sm" id="r-all">Registrar todos</button>
       </div>
-      <p class="hint" style="margin-top:0">Se crean solas cuando marcás “Fijo” al cargar un movimiento. Tocá “Registrar” para sumarlas al mes.</p>
+      <p class="hint" style="margin-top:0">Se crean solas cuando marcás "Fijo" al cargar un movimiento. Tocá "Registrar" para sumarlas al mes.</p>
       <div class="list" id="fijos-list" style="margin-top:8px"><div class="empty">Todavía no cargaste fijos.</div></div>
       <div class="total-fijos" id="fijos-total"></div>
     </div>
@@ -964,8 +967,12 @@ function fmtCur(n, cur, conDecimales){
     const d = conDecimales ? m.dec : Math.min(m.dec, 2);
     return m.sym + new Intl.NumberFormat(loc,{minimumFractionDigits:0, maximumFractionDigits:d}).format(n);
   }
-  try{ return new Intl.NumberFormat(loc,{style:'currency', currency:cur, maximumFractionDigits: conDecimales?2:0}).format(n); }
-  catch(e){ return cur + " " + new Intl.NumberFormat(loc,{maximumFractionDigits: conDecimales?2:0}).format(n); }
+  // FIX decimales: antes esto era maximumFractionDigits: conDecimales?2:0, que redondeaba
+  // a entero SIEMPRE que conDecimales fuera false (el caso de casi todos los fmt() de la app).
+  // Ahora siempre se permiten hasta 2 decimales (mínimo 0), así los montos con centavos
+  // se ven, y los enteros siguen viéndose limpios.
+  try{ return new Intl.NumberFormat(loc,{style:'currency', currency:cur, minimumFractionDigits:0, maximumFractionDigits:2}).format(n); }
+  catch(e){ return cur + " " + new Intl.NumberFormat(loc,{minimumFractionDigits:0, maximumFractionDigits:2}).format(n); }
 }
 const fmt  = (n, cur) => fmtCur(n, cur, false);
 const fmt2 = (n, cur) => fmtCur(n, cur, true);
@@ -1044,7 +1051,17 @@ else{
   $("pf-pais").onchange=()=>paisHint("pf-pais","pf-cur-hint");
   $("m-fecha").value=todayISO(); $("c-fecha").value=todayISO(); $("se-fecha").value=todayISO();
   sb.auth.getSession().then(({data})=>{ if(recoveryMode) show("recovery"); else onSession(data.session); });
-  sb.auth.onAuthStateChange((event,s)=>{ if(event==="PASSWORD_RECOVERY"){ recoveryMode=true; show("recovery"); return; } if(recoveryMode && event!=="SIGNED_OUT") return; onSession(s); });
+  // OJO: onAuthStateChange también dispara TOKEN_REFRESHED cada vez que la app vuelve a
+  // primer plano (cambiaste de pestaña, fuiste a otra app y volviste). Antes, cualquier
+  // evento pasaba por onSession() -> show("app"), que te sacaba de golpe de donde estabas
+  // (ej: a mitad de cargar un gasto) y te tiraba al inicio. Ahora un refresh de token
+  // silencioso solo actualiza el usuario en memoria, sin tocar la pantalla.
+  sb.auth.onAuthStateChange((event,s)=>{
+    if(event==="PASSWORD_RECOVERY"){ recoveryMode=true; show("recovery"); return; }
+    if(recoveryMode && event!=="SIGNED_OUT") return;
+    if(event==="TOKEN_REFRESHED"){ if(s && s.user) user=s.user; return; }
+    onSession(s);
+  });
 }
 function paisHint(selId, hintId){ const p=PAIS_MAP[$(selId).value]; if(p) $(hintId).textContent="Tu moneda va a ser: "+monedaLabel(p.cur); }
 function fillCats(ids){ ids.forEach(id=>{ const s=$(id); if(!s) return; const prev=s.value; s.innerHTML="";
@@ -1173,14 +1190,14 @@ $("cat-add").onclick=async()=>{
 };
 async function editCat(id){
   const c=CATS.find(x=>x.id===id); if(!c) return;
-  const emoji=prompt("Emoji para “"+c.nombre+"” (dejalo vacío para sacarlo):", c.emoji||"");
+  const emoji=prompt("Emoji para "+c.nombre+" (dejalo vacío para sacarlo):", c.emoji||"");
   if(emoji===null) return;
   const nombre=prompt("Nombre de la categoría:", c.nombre);
   if(nombre===null) return;
   const nuevo=nombre.trim(); if(!nuevo){ alert("El nombre no puede quedar vacío."); return; }
   if(nuevo!==c.nombre){
     if(CATS.some(x=>x.id!==id && x.nombre.toLowerCase()===nuevo.toLowerCase())){ alert("Ya existe otra categoría con ese nombre."); return; }
-    if(catEnUso(c.nombre) && !confirm(`“${c.nombre}” está en uso. Al renombrarla, tus movimientos van a pasar a llamarse “${nuevo}”. Los montos no cambian. ¿Seguimos?`)) return;
+    if(catEnUso(c.nombre) && !confirm(`"${c.nombre}" está en uso. Al renombrarla, tus movimientos van a pasar a llamarse "${nuevo}". Los montos no cambian. ¿Seguimos?`)) return;
     for(const tabla of ["transactions","recurring","card_purchases","budgets"]){
       await sb.from(tabla).update({categoria:nuevo}).eq("categoria",c.nombre).eq("user_id",user.id);
     }
@@ -1191,9 +1208,9 @@ async function editCat(id){
 }
 async function delCat(id){
   const c=CATS.find(x=>x.id===id); if(!c) return;
-  if(catEnUso(c.nombre)){ alert(`No se puede borrar “${c.nombre}”: ya tenés movimientos con esa categoría. Podés renombrarla con el lápiz.`); return; }
+  if(catEnUso(c.nombre)){ alert(`No se puede borrar "${c.nombre}": ya tenés movimientos con esa categoría. Podés renombrarla con el lápiz.`); return; }
   if(CATS.length<=1){ alert("Dejá al menos una categoría."); return; }
-  if(!confirm(`¿Borrar la categoría “${c.nombre}”?`)) return;
+  if(!confirm(`¿Borrar la categoría "${c.nombre}"?`)) return;
   await sb.from("categories").delete().eq("id",id); await loadAll(); openConfig("cats");
 }
 
@@ -1283,21 +1300,61 @@ function renderReg(){
 function regTotal(){ return R.acum!==null && R.op ? aplicar(R.acum, bufNum(), R.op) : bufNum(); }
 function aplicar(a,b,op){ const r = op==="+"?a+b : op==="-"?a-b : op==="*"?a*b : (b===0?a:a/b); return Math.round(r*100)/100; }
 
-// teclado
-document.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{
-  const k=b.dataset.k;
+// teclado (mouse/touch)
+function regKeyPress(k){
   if(R.listo){ R.buf="0"; R.listo=false; }
   if(k===","){ if(!R.buf.includes(",")) R.buf+=","; }
   else if((R.buf.split(",")[1]||"").length<2){ R.buf = (R.buf==="0") ? k : R.buf+k; }
   renderReg();
-});
-$("reg-del").onclick=()=>{ R.buf = R.buf.length>1 ? R.buf.slice(0,-1) : "0"; if(R.buf===""||R.buf===",") R.buf="0"; renderReg(); };
-document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>{
-  const op=b.dataset.op;
+}
+document.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>regKeyPress(b.dataset.k));
+function regDelete(){ R.buf = R.buf.length>1 ? R.buf.slice(0,-1) : "0"; if(R.buf===""||R.buf===",") R.buf="0"; renderReg(); }
+$("reg-del").onclick=regDelete;
+function regOp(op){
   if(op==="="){ const r=regTotal(); R.buf=String(r).replace(".",","); R.acum=null; R.op=null; R.listo=true; }
   else { R.acum=regTotal(); R.op=op; R.buf="0"; R.listo=false; }
   renderReg();
+}
+document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>regOp(b.dataset.op));
+
+// teclado físico (numérico de arriba y numpad) para la calculadora del paso 1 de Registro.
+// Antes esta pantalla solo respondía a clicks/touch en los botones en pantalla.
+document.addEventListener("keydown", e=>{
+  if($("reg").classList.contains("hidden") || R.paso!==1) return;
+  if(e.key>="0" && e.key<="9"){ e.preventDefault(); regKeyPress(e.key); }
+  else if(e.key==="," || e.key==="."){ e.preventDefault(); regKeyPress(","); }
+  else if(e.key==="+"){ e.preventDefault(); regOp("+"); }
+  else if(e.key==="-"){ e.preventDefault(); regOp("-"); }
+  else if(e.key==="*"){ e.preventDefault(); regOp("*"); }
+  else if(e.key==="/"){ e.preventDefault(); regOp("/"); }
+  else if(e.key==="Enter" || e.key==="="){ e.preventDefault(); regOp("="); }
+  else if(e.key==="Backspace"){ e.preventDefault(); regDelete(); }
+  else if(e.key==="Escape"){ e.preventDefault(); $("reg-back").click(); }
 });
+
+// pegar un monto copiado de otro lado (la calculadora del celu, un chat de WhatsApp, etc.)
+// directo en el paso 1 de Registro, sin tener que tipearlo de nuevo botón por botón.
+function parseNumeroPegado(text){
+  let s=(text||"").trim().match(/-?[\d.,\s]+/); if(!s) return null;
+  s=s[0].replace(/\s/g,"");
+  const hayComa=s.includes(","), hayPunto=s.includes(".");
+  if(hayComa && hayPunto){
+    // el que aparece último es el separador decimal; el otro es de miles y se descarta
+    if(s.lastIndexOf(",")>s.lastIndexOf(".")) s=s.replace(/\./g,"").replace(",",".");
+    else s=s.replace(/,/g,"");
+  } else if(hayComa){ s=s.replace(",","."); }
+  const n=parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+document.addEventListener("paste", e=>{
+  if($("reg").classList.contains("hidden") || R.paso!==1) return;
+  const text=(e.clipboardData || window.clipboardData).getData("text");
+  const n=parseNumeroPegado(text); if(n===null) return;
+  e.preventDefault();
+  R.buf=String(Math.abs(n)).replace(".",","); R.acum=null; R.op=null; R.listo=true;
+  renderReg();
+});
+
 $("reg-continuar").onclick=()=>{
   const total=regTotal();
   if(!(total>0)){ alert("Poné un monto mayor a cero."); return; }
@@ -1692,6 +1749,20 @@ function renderCalendar(){
     return `<div class="item"><div class="meta"><div class="desc">${esc(p.descripcion)||"Compra"} <span class="badge">${x.nro_cuota}/${p.cuotas||'?'}</span></div>
       <div class="subm">${esc(p.tarjeta)||''}</div></div><div class="amt num" style="color:${x.pagada?'var(--muted)':'var(--cardcol)'}">${fmt(x.monto)}${x.pagada?' ✓':''}</div></div>`; }).join("")
     : '<div class="empty">Sin cuotas este mes.</div>';
+
+  // FIX: los gastos/ingresos fijos (plantillas de "recurring") no tenían ninguna sección acá.
+  // Como son plantillas mensuales sin fecha propia, se listan siempre igual (no cambian
+  // entre agosto y septiembre porque son "todos los meses"), pero al menos ahora SE VEN.
+  const fijosGasto=REC.filter(r=>r.tipo==="gasto" && esMonedaPrincipal(r.cuenta)).reduce((a,r)=>a+Number(r.monto),0);
+  $("cal-fijos-tot").textContent=fmt(fijosGasto);
+  const fel=$("cal-fijos");
+  if(fel){
+    fel.innerHTML = REC.length ? REC.map(r=>{ const isIn=r.tipo==="ingreso";
+      return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||(r.categoria?catLabel(r.categoria):"Fijo")}</div>
+        <div class="subm">${CTA_NOMBRE[r.cuenta]||r.cuenta} · repite todos los meses</div></div>
+        <div class="amt ${isIn?'in':'out'} num">${isIn?'+':'−'}${fmt(r.monto, accCur(r.cuenta))}</div></div>`; }).join("")
+      : '<div class="empty">Sin fijos cargados. Marcá "Fijo" al cargar un gasto, o agregalo en Configuración → Mis fijos.</div>';
+  }
 
   if(calDay && calDay.slice(0,7)===VMONTH) renderDay(); else { calDay=null; $("cal-day").classList.add("hidden"); }
 }
