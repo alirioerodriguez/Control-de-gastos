@@ -541,7 +541,7 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
     <div class="chip"><div class="k">Cuotas del mes</div><div class="v num" id="cal-cuotas-tot" style="color:var(--cardcol)">$0</div></div>
   </div>
   <div class="card pad hidden" id="cal-fijos-box" style="margin-bottom:14px">
-    <div class="sec-title">Fijos de este mes</div>
+    <div class="sec-title">De dónde sale el total</div>
     <div class="list" id="cal-fijos-list"></div>
   </div>
   <div id="cal-day" class="hidden">
@@ -857,7 +857,7 @@ const LOGO_PATHS = '<path fill="currentColor" d="M893.99,723.18c98.18-67.22,182.
 
 // Categorías originales + emoji. Los nombres NO cambian: los movimientos ya cargados
 // guardan el texto ("Comida"), así que siguen matcheando igual. El emoji es solo visual.
-const APP_VERSION = "2026.08.03-04";
+const APP_VERSION = "2026.08.03-06";
 
 // ===== Set de iconos (geometría tomada del HTML "Iconos y Animaciones") =====
 // Trazo 2.1, viewBox 24, puntas redondeadas. Las CATEGORÍAS siguen usando emoji.
@@ -1861,7 +1861,17 @@ function renderCalendar(){
       <span>${String(c.d).padStart(2,"0")}</span><span class="cdots">${dots}</span></button>`; }).join("");
   $("calgrid").querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>selectDay(b.dataset.day));
 
-  // "Gastos del mes" = fijos + variables.
+  // Las cuotas se pintan PRIMERO: así ningún error en los cálculos de abajo
+  // puede dejar esta lista vacía.
+  const cuotas=INST.filter(x=>String(x.mes||"").slice(0,7)===VMONTH);
+  $("cal-cuotas-tot").textContent=fmt(cuotas.filter(x=>!x.pagada).reduce((a,x)=>a+Number(x.monto),0));
+  const pMap=Object.fromEntries(PURCH.map(p=>[p.id,p]));
+  $("cal-cuotas").innerHTML = cuotas.length ? cuotas.map(x=>{ const p=pMap[x.purchase_id]||{};
+    return `<div class="item"><div class="meta"><div class="desc">${esc(p.descripcion)||"Compra"} <span class="badge">${x.nro_cuota}/${p.cuotas||'?'}</span></div>
+      <div class="subm">${esc(p.tarjeta)||''}</div></div><div class="amt num" style="color:${x.pagada?'var(--muted)':'var(--cardcol)'}">${fmt(x.monto)}${x.pagada?' ✓':''}</div></div>`; }).join("")
+    : `<div class="empty">Sin cuotas en ${mesLargo(VMONTH+"-01")}.${INST.length?` Tenés ${INST.length} cuota(s) cargadas, pero caen en otros meses.`:" Todavía no cargaste compras en cuotas."}</div>`;
+
+  // "Gastos del mes" = fijos + variables + tarjeta.
   // Los fijos siempre cuentan, estén registrados o no: si un fijo (plantilla de REC) todavía
   // no se registró en este mes, igual se suma como "pendiente", así el total del mes no
   // cambia solo porque no lo cargaste todavía.
@@ -1884,23 +1894,25 @@ function renderCalendar(){
     gasFijoPend+=Number(r.monto);
     fijosDelMes.push({desc:r.descripcion||r.categoria||"Fijo", cuenta:r.cuenta, monto:Number(r.monto), pendiente:true});
   });
-  const gasFijo=gasFijoReg+gasFijoPend, gasMes=gasFijo+gasVar;
+  // La tarjeta también es gasto del mes: se suma acá, pero sigue teniendo su propio chip
+  // y su propio recuadro con el detalle por tarjeta y número de cuota.
+  const gasTar=cuotas.reduce((a,x)=>a+Number(x.monto),0);
+  const gasFijo=gasFijoReg+gasFijoPend, gasMes=gasFijo+gasVar+gasTar;
   $("cal-ing-tot").textContent=fmt(ingMes);
   $("cal-gas-tot").textContent=fmt(gasMes);
-  $("cal-gas-op").textContent = gasFijo>0 ? `${fmt(gasFijo)} fijos + ${fmt(gasVar)} variables` : `${fmt(gasVar)} variables`;
-  $("cal-fijos-list").innerHTML = fijosDelMes.length ? fijosDelMes.map(f=>
-      `<div class="item"><div class="meta"><div class="desc">${esc(f.desc)}</div>
+  $("cal-gas-op").textContent=[gasFijo>0?`${fmt(gasFijo)} fijos`:null, `${fmt(gasVar)} variables`, gasTar>0?`${fmt(gasTar)} tarjeta`:null]
+    .filter(Boolean).join(" + ");
+  const filasFijas = fijosDelMes.map(f=>
+      `<div class="item"><div class="meta"><div class="desc">${esc(f.desc)} <span class="badge">Fijo</span></div>
         <div class="subm">${CTA_NOMBRE[f.cuenta]||f.cuenta}${f.pendiente?' · <span class="badge">sin registrar</span>':' · registrado'}</div></div>
-        <div class="amt out num">−${fmt(f.monto, accCur(f.cuenta))}</div></div>`).join("")
-    : '<div class="empty">No tenés gastos fijos cargados. Podés agregarlos en Configuración → Mis fijos.</div>';
-
-  const cuotas=INST.filter(x=>x.mes.slice(0,7)===VMONTH);
-  $("cal-cuotas-tot").textContent=fmt(cuotas.filter(x=>!x.pagada).reduce((a,x)=>a+Number(x.monto),0));
-  const pMap=Object.fromEntries(PURCH.map(p=>[p.id,p]));
-  $("cal-cuotas").innerHTML = cuotas.length ? cuotas.map(x=>{ const p=pMap[x.purchase_id]||{};
-    return `<div class="item"><div class="meta"><div class="desc">${esc(p.descripcion)||"Compra"} <span class="badge">${x.nro_cuota}/${p.cuotas||'?'}</span></div>
-      <div class="subm">${esc(p.tarjeta)||''}</div></div><div class="amt num" style="color:${x.pagada?'var(--muted)':'var(--cardcol)'}">${fmt(x.monto)}${x.pagada?' ✓':''}</div></div>`; }).join("")
-    : '<div class="empty">Sin cuotas este mes.</div>';
+        <div class="amt out num">−${fmt(f.monto, accCur(f.cuenta))}</div></div>`).join("");
+  const filaVar = gasVar>0 ? `<div class="item"><div class="meta"><div class="desc">Gastos variables</div>
+        <div class="subm">los que cargaste día a día</div></div><div class="amt out num">−${fmt(gasVar)}</div></div>` : "";
+  const filaTar = gasTar>0 ? `<div class="item"><div class="meta"><div class="desc">Tarjeta</div>
+        <div class="subm">${cuotas.length} cuota(s) · ver el detalle más abajo</div></div>
+        <div class="amt num" style="color:var(--cardcol)">−${fmt(gasTar)}</div></div>` : "";
+  $("cal-fijos-list").innerHTML = (filasFijas+filaVar+filaTar) ||
+    '<div class="empty">Todavía no hay gastos este mes. Los fijos se agregan en Configuración → Mis fijos.</div>';
 
   if(calDay && calDay.slice(0,7)===VMONTH) renderDay(); else { calDay=null; $("cal-day").classList.add("hidden"); }
 }
