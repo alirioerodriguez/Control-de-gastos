@@ -554,8 +554,7 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
     </div>
   </div>
   <div class="card pad" style="margin-bottom:14px"><div class="sec-title">Cuotas que caen este mes</div>
-    <div class="list" id="cal-cuotas"><div class="empty">Sin cuotas este mes.</div></div>
-    <div id="cal-deuda"></div></div>
+    <div class="list" id="cal-cuotas"><div class="empty">Sin cuotas este mes.</div></div></div>
   <button class="btn ghost" style="width:100%; padding:16px" id="cal-add-generic">Agregar un registro &nbsp;+</button>
 </div>
 
@@ -858,7 +857,7 @@ const LOGO_PATHS = '<path fill="currentColor" d="M893.99,723.18c98.18-67.22,182.
 
 // Categorías originales + emoji. Los nombres NO cambian: los movimientos ya cargados
 // guardan el texto ("Comida"), así que siguen matcheando igual. El emoji es solo visual.
-const APP_VERSION = "2026.08.03-07";
+const APP_VERSION = "2026.08.03-06";
 
 // ===== Set de iconos (geometría tomada del HTML "Iconos y Animaciones") =====
 // Trazo 2.1, viewBox 24, puntas redondeadas. Las CATEGORÍAS siguen usando emoji.
@@ -1871,20 +1870,6 @@ function renderCalendar(){
     return `<div class="item"><div class="meta"><div class="desc">${esc(p.descripcion)||"Compra"} <span class="badge">${x.nro_cuota}/${p.cuotas||'?'}</span></div>
       <div class="subm">${esc(p.tarjeta)||''}</div></div><div class="amt num" style="color:${x.pagada?'var(--muted)':'var(--cardcol)'}">${fmt(x.monto)}${x.pagada?' ✓':''}</div></div>`; }).join("")
     : `<div class="empty">Sin cuotas en ${mesLargo(VMONTH+"-01")}.${INST.length?` Tenés ${INST.length} cuota(s) cargadas, pero caen en otros meses.`:" Todavía no cargaste compras en cuotas."}</div>`;
-
-  // Dónde está parada la deuda de tarjeta. Sin esto, el total del inicio ("Deuda tarjetas")
-  // no se corresponde con lo que ves en el mes y parece plata escondida.
-  const impagas=INST.filter(x=>!x.pagada);
-  const deudaTot=impagas.reduce((a,x)=>a+Number(x.monto),0);
-  if(deudaTot>0){
-    const porMes={}; impagas.forEach(x=>{ const k=String(x.mes||"").slice(0,7); porMes[k]=(porMes[k]||0)+Number(x.monto); });
-    const ms=Object.keys(porMes).sort();
-    const filas=ms.map(k=>`<div class="legrow"><span class="lname" style="${k===VMONTH?'font-weight:700':''}">${mesCorto(k)}${k===VMONTH?' · este mes':''}</span>
-        <span class="lval num">${fmt(porMes[k])}</span></div>`).join("");
-    $("cal-deuda").innerHTML=`<div class="sec-title" style="margin-top:16px">Deuda total de tarjetas: ${fmt(deudaTot)}</div>
-      <div class="hint" style="margin-bottom:6px">Así queda repartida en los próximos meses. Si algo tendría que caer en otro mes, editalo desde Tarjetas → Cuotas.</div>
-      <div class="legend">${filas}</div>`;
-  } else $("cal-deuda").innerHTML="";
 
   // "Gastos del mes" = fijos + variables + tarjeta.
   // Los fijos siempre cuentan, estén registrados o no: si un fijo (plantilla de REC) todavía
