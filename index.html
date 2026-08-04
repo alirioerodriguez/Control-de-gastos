@@ -122,6 +122,11 @@ select option, .filters select option{background:var(--solid); color:var(--ink)}
 .chip{background:var(--surface-2); border:1px solid var(--line); border-radius:14px; padding:10px 13px; min-width:116px}
 .chip .k{font-size:11px; color:var(--muted); font-weight:600}
 .chip .v{font-size:16px; font-weight:700; margin-top:2px}
+.chip .op{font-size:11px; color:var(--muted); font-weight:600; margin-top:2px; line-height:1.3}
+.chip.tap{cursor:pointer; user-select:none}
+.chip.tap:hover{background:var(--hover)}
+.chip.tap .tapi{display:inline-block; transition:transform .18s ease}
+.chip.tap.open .tapi{transform:rotate(180deg)}
 .curbadge{font-size:10px; font-weight:700; letter-spacing:.04em; color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:1px 5px; margin-left:6px; vertical-align:middle}
 
 .msum{display:grid; grid-template-columns:repeat(3,1fr); margin-bottom:14px; overflow:hidden}
@@ -527,8 +532,16 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
   <div class="calgrid" id="calgrid"></div>
   <div class="calsum">
     <div class="chip"><div class="k">Ingresos del mes</div><div class="v num" id="cal-ing-tot" style="color:var(--income)">$0</div></div>
-    <div class="chip"><div class="k">Gastos del mes</div><div class="v num" id="cal-gas-tot" style="color:var(--expense)">$0</div></div>
+    <div class="chip tap" id="cal-gas-chip" title="Tocá para ver el detalle de los fijos">
+      <div class="k">Gastos del mes <span class="tapi">▾</span></div>
+      <div class="v num" id="cal-gas-tot" style="color:var(--expense)">$0</div>
+      <div class="op num" id="cal-gas-op"></div>
+    </div>
     <div class="chip"><div class="k">Cuotas del mes</div><div class="v num" id="cal-cuotas-tot" style="color:var(--cardcol)">$0</div></div>
+  </div>
+  <div class="card pad hidden" id="cal-fijos-box" style="margin-bottom:14px">
+    <div class="sec-title">Fijos de este mes</div>
+    <div class="list" id="cal-fijos-list"></div>
   </div>
   <div id="cal-day" class="hidden">
     <div class="card pad" style="margin-bottom:14px">
@@ -539,9 +552,9 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
       <div class="list" id="cal-day-list"></div>
     </div>
   </div>
-  <button class="btn ghost" style="width:100%; padding:16px" id="cal-add-generic">Agregar un registro &nbsp;+</button>
-  <div class="card pad" style="margin-top:14px"><div class="sec-title">Cuotas que caen este mes</div>
+  <div class="card pad" style="margin-bottom:14px"><div class="sec-title">Cuotas que caen este mes</div>
     <div class="list" id="cal-cuotas"><div class="empty">Sin cuotas este mes.</div></div></div>
+  <button class="btn ghost" style="width:100%; padding:16px" id="cal-add-generic">Agregar un registro &nbsp;+</button>
 </div>
 
 <!-- ===================== DETALLE (ingresos / gastos / ahorros) ===================== -->
@@ -824,7 +837,7 @@ const LOGO_PATHS = '<path fill="currentColor" d="M893.99,723.18c98.18-67.22,182.
 
 // Categorías originales + emoji. Los nombres NO cambian: los movimientos ya cargados
 // guardan el texto ("Comida"), así que siguen matcheando igual. El emoji es solo visual.
-const APP_VERSION = "2026.08.03-01";
+const APP_VERSION = "2026.08.03-02";
 
 // ===== Set de iconos (geometría tomada del HTML "Iconos y Animaciones") =====
 // Trazo 2.1, viewBox 24, puntas redondeadas. Las CATEGORÍAS siguen usando emoji.
@@ -1722,6 +1735,9 @@ async function togglePaid(id,isPaid){ await sb.from("card_installments").update(
 // CALENDARIO (grilla por día; solo movimientos reales, que son los únicos con fecha exacta)
 function shiftMonth(k){ const d=new Date(VMONTH+"-01T00:00:00"); d.setMonth(d.getMonth()+k); setMonth(d.toISOString().slice(0,7)); if(!$("calendar").classList.contains("hidden")) renderCalendar(); }
 $("cal-prev").onclick=()=>shiftMonth(-1); $("cal-next").onclick=()=>shiftMonth(1);
+// Tocar "Gastos del mes" despliega el detalle de los fijos que componen ese total.
+$("cal-gas-chip").onclick=()=>{ const abierto=$("cal-fijos-box").classList.toggle("hidden")===false;
+  $("cal-gas-chip").classList.toggle("open", abierto); };
 function movsDelDia(iso){ return mergedMovs().filter(r=>r.fecha===iso); }
 function renderCalendar(){
   if(!$("cal-title")) return;
@@ -1748,12 +1764,38 @@ function renderCalendar(){
       <span>${String(c.d).padStart(2,"0")}</span><span class="cdots">${dots}</span></button>`; }).join("");
   $("calgrid").querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>selectDay(b.dataset.day));
 
-  // "Gastos del mes" ya incluye los gastos marcados como Fijo (son movimientos reales,
-  // como cualquier otro); se distinguen con el badge "Fijo" en cada ítem, en vez de un
-  // bloque aparte que separaba y confundía.
-  let ingMes=0, gasMes=0;
-  TX.forEach(t=>{ if(!esMonedaPrincipal(t.cuenta)) return; if(t.fecha.slice(0,7)===VMONTH){ if(t.tipo==="ingreso") ingMes+=Number(t.monto); else gasMes+=Number(t.monto); } });
-  $("cal-ing-tot").textContent=fmt(ingMes); $("cal-gas-tot").textContent=fmt(gasMes);
+  // "Gastos del mes" = fijos + variables.
+  // Los fijos siempre cuentan, estén registrados o no: si un fijo (plantilla de REC) todavía
+  // no se registró en este mes, igual se suma como "pendiente", así el total del mes no
+  // cambia solo porque no lo cargaste todavía.
+  let ingMes=0, gasVar=0, gasFijoReg=0;
+  const fijosDelMes=[];   // {desc, cuenta, monto, pendiente}
+  const claveFijo=r=>`${(r.descripcion||"").trim().toLowerCase()}|${r.cuenta}`;
+  const yaRegistrado=new Set();
+  TX.forEach(t=>{
+    if(!esMonedaPrincipal(t.cuenta)) return;
+    if(t.fecha.slice(0,7)!==VMONTH) return;
+    if(t.tipo==="ingreso"){ ingMes+=Number(t.monto); return; }
+    if(t.es_fijo){ gasFijoReg+=Number(t.monto); yaRegistrado.add(claveFijo(t));
+      fijosDelMes.push({desc:t.descripcion||t.categoria||"Fijo", cuenta:t.cuenta, monto:Number(t.monto), pendiente:false}); }
+    else gasVar+=Number(t.monto);
+  });
+  let gasFijoPend=0;
+  REC.forEach(r=>{
+    if(r.tipo!=="gasto" || !esMonedaPrincipal(r.cuenta)) return;
+    if(yaRegistrado.has(claveFijo(r))) return;
+    gasFijoPend+=Number(r.monto);
+    fijosDelMes.push({desc:r.descripcion||r.categoria||"Fijo", cuenta:r.cuenta, monto:Number(r.monto), pendiente:true});
+  });
+  const gasFijo=gasFijoReg+gasFijoPend, gasMes=gasFijo+gasVar;
+  $("cal-ing-tot").textContent=fmt(ingMes);
+  $("cal-gas-tot").textContent=fmt(gasMes);
+  $("cal-gas-op").textContent = gasFijo>0 ? `${fmt(gasFijo)} fijos + ${fmt(gasVar)} variables` : `${fmt(gasVar)} variables`;
+  $("cal-fijos-list").innerHTML = fijosDelMes.length ? fijosDelMes.map(f=>
+      `<div class="item"><div class="meta"><div class="desc">${esc(f.desc)}</div>
+        <div class="subm">${CTA_NOMBRE[f.cuenta]||f.cuenta}${f.pendiente?' · <span class="badge">sin registrar</span>':' · registrado'}</div></div>
+        <div class="amt out num">−${fmt(f.monto, accCur(f.cuenta))}</div></div>`).join("")
+    : '<div class="empty">No tenés gastos fijos cargados. Podés agregarlos en Configuración → Mis fijos.</div>';
 
   const cuotas=INST.filter(x=>x.mes.slice(0,7)===VMONTH);
   $("cal-cuotas-tot").textContent=fmt(cuotas.filter(x=>!x.pagada).reduce((a,x)=>a+Number(x.monto),0));
@@ -1910,17 +1952,22 @@ function cssVar(n){ return getComputedStyle(document.documentElement).getPropert
 function renderCharts(){
   const gc=axisColor();
   const months={}; TX.forEach(t=>{ if(!esMonedaPrincipal(t.cuenta)) return; const k=t.fecha.slice(0,7); (months[k] ||= {ing:0,gas:0}); if(t.tipo==="ingreso") months[k].ing+=Number(t.monto); else months[k].gas+=Number(t.monto); });
-  // Cuotas de tarjeta por mes: se suman encima de "Gastos" en el mismo gráfico (apiladas juntas),
-  // mientras que "Ingresos" queda como barra aparte para poder comparar.
+  // El eje de meses sale SOLO de los movimientos reales. Las cuotas de tarjeta se proyectan
+  // al futuro, así que si se las dejaba definir el eje, los últimos 6 meses eran casi todos
+  // meses futuros vacíos y el gráfico perdía sentido.
+  const keys=Object.keys(months).sort().slice(-6);
   const cardMonths={}; INST.forEach(x=>{ const k=x.mes.slice(0,7); cardMonths[k]=(cardMonths[k]||0)+Number(x.monto); });
-  const keys=Array.from(new Set([...Object.keys(months), ...Object.keys(cardMonths)])).sort().slice(-6);
   if(chartFlow) chartFlow.destroy();
+  // Dos barras por mes: Ingresos por un lado; Gastos + Tarjeta apilados por el otro.
+  // Tocando la leyenda se tacha/destaca cada serie (comportamiento nativo de Chart.js).
   chartFlow=new Chart($("chart-flow"),{type:"bar",data:{labels:keys.map(mesCorto),datasets:[
-    {label:"Ingresos",data:keys.map(k=>(months[k]&&months[k].ing)||0),backgroundColor:cssVar('--income'),borderRadius:6,stack:"ingresos"},
-    {label:"Gastos",data:keys.map(k=>(months[k]&&months[k].gas)||0),backgroundColor:cssVar('--expense'),borderRadius:6,stack:"gastos"},
+    {label:"Ingresos",data:keys.map(k=>months[k].ing),backgroundColor:cssVar('--income'),borderRadius:6,stack:"ingresos"},
+    {label:"Gastos",data:keys.map(k=>months[k].gas),backgroundColor:cssVar('--expense'),stack:"gastos"},
     {label:"Tarjeta",data:keys.map(k=>cardMonths[k]||0),backgroundColor:cssVar('--cardcol'),borderRadius:6,stack:"gastos"}]},
-    options:{responsive:true,plugins:{legend:{position:"bottom",labels:{color:gc}}},scales:{x:{stacked:true,ticks:{color:gc}},y:{stacked:true,ticks:{color:gc,callback:v=>fmt(v)}}}}});
-  const fl=$("flow-legend"); if(fl) fl.innerHTML='<div class="hint">Gastos y Tarjeta se apilan juntos: la barra completa muestra gastos + cuotas de tarjeta ese mes.</div>';
+    options:{responsive:true,plugins:{legend:{position:"bottom",labels:{color:gc}},
+      tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw)}`}}},
+      scales:{x:{stacked:true,ticks:{color:gc}},y:{stacked:true,beginAtZero:true,ticks:{color:gc,callback:v=>fmt(v)}}}}});
+  const fl=$("flow-legend"); if(fl) fl.innerHTML='<div class="hint">Dos barras por mes: ingresos, y gastos con las cuotas de tarjeta apiladas encima. Tocá la leyenda para tachar una serie.</div>';
   const cm=VMONTH, cats={}; TX.filter(t=>t.tipo==="gasto"&&t.fecha.slice(0,7)===cm&&esMonedaPrincipal(t.cuenta)).forEach(t=>{ const c=t.categoria||"Otros"; cats[c]=(cats[c]||0)+Number(t.monto); });
   const ck=Object.keys(cats).sort((a,b)=>cats[b]-cats[a]); const totalGas=ck.reduce((a,c)=>a+cats[c],0);
   if(chartCat) chartCat.destroy();
