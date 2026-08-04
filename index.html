@@ -839,6 +839,7 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
     </div>
     <div class="hint" id="ce-hint"></div>
     <div class="row2"><button class="btn ghost" style="flex:1" id="ce-cancel">Cancelar</button><button class="btn" style="flex:1" id="ce-save">Guardar</button></div>
+    <button class="btn ghost" id="ce-del" style="width:100%; margin-top:10px; color:var(--expense)">Borrar compra y sus cuotas</button>
   </div>
 </div>
 
@@ -856,7 +857,7 @@ const LOGO_PATHS = '<path fill="currentColor" d="M893.99,723.18c98.18-67.22,182.
 
 // Categorías originales + emoji. Los nombres NO cambian: los movimientos ya cargados
 // guardan el texto ("Comida"), así que siguen matcheando igual. El emoji es solo visual.
-const APP_VERSION = "2026.08.03-03";
+const APP_VERSION = "2026.08.03-04";
 
 // ===== Set de iconos (geometría tomada del HTML "Iconos y Animaciones") =====
 // Trazo 2.1, viewBox 24, puntas redondeadas. Las CATEGORÍAS siguen usando emoji.
@@ -1794,6 +1795,19 @@ function ceHint(){ const p=PURCH.find(x=>x.id===editingCompra); if(!p) return;
   $("ce-hint").textContent=t; }
 ["ce-cuotas","ce-primera"].forEach(id=>$(id).addEventListener("input",ceHint));
 $("ce-cancel").onclick=()=>{ $("cedit-overlay").classList.add("hidden"); editingCompra=null; };
+$("ce-del").onclick=async()=>{
+  const p=PURCH.find(x=>x.id===editingCompra); if(!p) return;
+  const mias=INST.filter(x=>x.purchase_id===editingCompra);
+  const pagadas=mias.filter(x=>x.pagada).length;
+  let msg=`¿Borrar "${p.descripcion||"esta compra"}" y sus ${mias.length} cuota(s)?`;
+  if(pagadas) msg+=`\n\nOjo: ${pagadas} de esas cuotas ya están marcadas como pagadas.`;
+  msg+="\n\nEsto no se puede deshacer.";
+  if(!confirm(msg)) return;
+  $("ce-del").disabled=true;
+  await sb.from("card_installments").delete().eq("purchase_id",editingCompra);
+  const {error}=await sb.from("card_purchases").delete().eq("id",editingCompra);
+  $("ce-del").disabled=false; if(error){ alert("Error: "+error.message); return; }
+  $("cedit-overlay").classList.add("hidden"); editingCompra=null; await loadAll(); };
 $("cedit-overlay").onclick=e=>{ if(e.target.id==="cedit-overlay"){ $("cedit-overlay").classList.add("hidden"); editingCompra=null; } };
 $("ce-save").onclick=async()=>{
   const p=PURCH.find(x=>x.id===editingCompra); if(!p) return;
