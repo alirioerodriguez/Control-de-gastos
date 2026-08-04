@@ -473,6 +473,7 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
         <div class="field"><label>Tarjeta</label><select id="c-tarjeta"></select></div>
         <div class="field"><label>Monto total</label><input id="c-monto" type="number" inputmode="decimal" placeholder="0"></div>
         <div class="field"><label>Cuotas</label><input id="c-cuotas" type="number" inputmode="numeric" value="1" min="1"></div>
+        <div class="field"><label>1ª cuota cae en</label><input id="c-primera" type="month"></div>
         <div class="field"><label>Categoría</label><select id="c-cat"></select></div>
         <div class="field"><label>Descripción</label><input id="c-desc" type="text" placeholder="Ej: Zapatillas"></div>
       </div>
@@ -613,10 +614,12 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
 
     <div id="reg-tarjeta-wrap" class="hidden">
       <p class="reg-lbl">Tarjeta y cuotas</p>
-      <div class="grid2" style="margin-bottom:20px">
+      <div class="grid2" style="margin-bottom:10px">
         <div class="field"><select id="reg-card"></select></div>
         <div class="field"><input id="reg-cuotas" type="number" inputmode="numeric" min="1" value="1" placeholder="Cuotas"></div>
       </div>
+      <div class="field" style="margin-bottom:20px"><label style="font-size:12px; opacity:.85">1ª cuota cae en</label>
+        <input id="reg-primera" type="month"></div>
       <p class="reg-note" id="reg-cuotas-prev"></p>
     </div>
 
@@ -823,6 +826,22 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
   </div>
 </div>
 
+<!-- Editar una compra con tarjeta ya cargada -->
+<div id="cedit-overlay" class="overlay hidden">
+  <div class="modal">
+    <h3>Editar compra</h3>
+    <div class="field" style="margin-bottom:12px"><label>Descripción</label><input id="ce-desc" type="text" placeholder="Ej: Zapatillas"></div>
+    <div class="grid2">
+      <div class="field"><label>Tarjeta</label><select id="ce-card"></select></div>
+      <div class="field"><label>Categoría</label><select id="ce-cat"></select></div>
+      <div class="field"><label>1ª cuota cae en</label><input id="ce-primera" type="month"></div>
+      <div class="field"><label>Cuotas</label><input id="ce-cuotas" type="number" inputmode="numeric" min="1" value="1"></div>
+    </div>
+    <div class="hint" id="ce-hint"></div>
+    <div class="row2"><button class="btn ghost" style="flex:1" id="ce-cancel">Cancelar</button><button class="btn" style="flex:1" id="ce-save">Guardar</button></div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
@@ -837,7 +856,7 @@ const LOGO_PATHS = '<path fill="currentColor" d="M893.99,723.18c98.18-67.22,182.
 
 // Categorías originales + emoji. Los nombres NO cambian: los movimientos ya cargados
 // guardan el texto ("Comida"), así que siguen matcheando igual. El emoji es solo visual.
-const APP_VERSION = "2026.08.03-02";
+const APP_VERSION = "2026.08.03-03";
 
 // ===== Set de iconos (geometría tomada del HTML "Iconos y Animaciones") =====
 // Trazo 2.1, viewBox 24, puntas redondeadas. Las CATEGORÍAS siguen usando emoji.
@@ -1066,6 +1085,7 @@ else{
   $("au-pais").onchange=()=>paisHint("au-pais","au-cur-hint");
   $("pf-pais").onchange=()=>paisHint("pf-pais","pf-cur-hint");
   $("m-fecha").value=todayISO(); $("c-fecha").value=todayISO(); $("se-fecha").value=todayISO();
+  syncPrimera("c-primera", todayISO()); syncPrimera("reg-primera", todayISO());
   sb.auth.getSession().then(({data})=>{ if(recoveryMode) show("recovery"); else onSession(data.session); });
   // OJO: onAuthStateChange también dispara TOKEN_REFRESHED cada vez que la app vuelve a
   // primer plano (cambiaste de pestaña, fuiste a otra app y volviste). Antes, cualquier
@@ -1298,6 +1318,7 @@ function bufFmt(){
 function openReg(fechaISO, tipo){
   R={tipo:tipo||"gasto", buf:"0", acum:null, op:null, listo:false, cat:null, cuenta:null, fijo:false,
      fecha: fechaISO || (VMONTH===curMonth() ? todayISO() : VMONTH+"-01"), paso:1};
+  const p=$("reg-primera"); if(p){ delete p.dataset.tocado; p.value=primeraPorDefecto(R.fecha); }
   goto("reg"); renderReg();
 }
 function renderReg(){
@@ -1407,7 +1428,10 @@ function renderRegStep2(){
     s.innerHTML=CARDS.map(c=>`<option value="${c.id}">${cardLabel(c)}</option>`).join("")+`<option value="">Otra (sin registrar)</option>`;
     if([...s.options].some(o=>o.value===prev)) s.value=prev;
     const n=parseInt($("reg-cuotas").value)||1;
-    $("reg-cuotas-prev").textContent = n>1 ? `${n} cuotas de ${fmt2(regTotal()/n)}` : "Un solo pago";
+    syncPrimera("reg-primera", R.fecha);
+    const ini=$("reg-primera").value || primeraPorDefecto(R.fecha);
+    const desde=mesLargo(mesInputADate(ini,0));
+    $("reg-cuotas-prev").textContent = n>1 ? `${n} cuotas de ${fmt2(regTotal()/n)}, desde ${desde}` : `Un solo pago, en ${desde}`;
   }
   document.querySelectorAll("[data-fijo]").forEach(b=>b.classList.toggle("on", (b.dataset.fijo==="1")===R.fijo));
   $("reg-fijo-note").textContent = R.fijo ? "Además se guarda como plantilla en Mis fijos, para repetirlo cada mes." : "";
@@ -1462,9 +1486,8 @@ $("reg-listo").onclick=async()=>{
       const {data,error}=await sb.from("card_purchases").insert({fecha_compra:R.fecha, tarjeta:tarjetaLabel, card_id:cardId,
         descripcion:$("reg-desc").value.trim(), categoria:R.cat, monto_total:total, cuotas:n, user_id:user.id}).select().single();
       if(error) throw error;
-      const base=Math.round((total/n)*100)/100; const rows=[]; let acum=0;
-      for(let i=1;i<=n;i++){ const m=(i===n)?Math.round((total-acum)*100)/100:base; acum+=base;
-        rows.push({purchase_id:data.id, nro_cuota:i, monto:m, mes:addMonths(R.fecha,i), pagada:false, user_id:user.id}); }
+      const mesIni = $("reg-primera").value || primeraPorDefecto(R.fecha);
+      const rows=filasCuotas(data.id, total, n, mesIni);
       const {error:e2}=await sb.from("card_installments").insert(rows); if(e2) throw e2;
     } else {
       const tipo = R.tipo==="ingreso" ? "ingreso" : "gasto";
@@ -1711,25 +1734,85 @@ function fillCardSelect(){ const s=$("c-tarjeta"); const cur=s.value;
 function cuotaPreview(){ const total=parseFloat($("c-monto").value)||0, n=parseInt($("c-cuotas").value)||1; $("c-preview").textContent=(total>0&&n>=1)?`${n} cuota(s) de ${fmt2(total/n)}`:""; }
 ["c-monto","c-cuotas"].forEach(id=>$(id).addEventListener("input",cuotaPreview));
 function addMonths(iso,k){ const d=new Date(iso+"T00:00:00"); d.setMonth(d.getMonth()+k); d.setDate(1); return d.toISOString().slice(0,10); }
+// "2026-09" (input type=month) -> "2026-09-01", que es lo que guarda card_installments.mes
+function mesInputADate(ym,k){ if(!ym) return null; const d=new Date(ym+"-01T00:00:00"); d.setMonth(d.getMonth()+(k||0)); d.setDate(1); return d.toISOString().slice(0,10); }
+// Mes por defecto de la 1ª cuota: el siguiente al de la compra.
+function primeraPorDefecto(fechaCompra){ return addMonths(fechaCompra||todayISO(),1).slice(0,7); }
+function syncPrimera(inputId, fechaCompra){ const el=$(inputId); if(el && !el.dataset.tocado) el.value=primeraPorDefecto(fechaCompra); }
+// Genera las filas de cuotas arrancando en el mes elegido.
+function filasCuotas(purchaseId,total,n,mesInicio){ const rows=[]; const base=Math.round(total/n*100)/100; let acum=0;
+  for(let i=1;i<=n;i++){ const m=(i===n)?Math.round((total-acum)*100)/100:base; acum+=base;
+    rows.push({purchase_id:purchaseId, nro_cuota:i, monto:m, mes:mesInputADate(mesInicio,i-1), pagada:false, user_id:user.id}); }
+  return rows; }
+$("c-primera").addEventListener("input",()=>{ $("c-primera").dataset.tocado="1"; });
+$("reg-primera").addEventListener("input",()=>{ $("reg-primera").dataset.tocado="1"; if(R.paso===2) renderRegStep2(); });
+$("c-fecha").addEventListener("change",()=>syncPrimera("c-primera",$("c-fecha").value));
 $("c-add").onclick=async()=>{ const total=parseFloat($("c-monto").value), n=parseInt($("c-cuotas").value);
   if(!(total>0)){ alert("Monto inválido."); return; } if(!(n>=1)){ alert("Cuotas inválidas."); return; } $("c-add").disabled=true;
   const sel=$("c-tarjeta"); const cardId=sel.value||null; const tarjetaLabel = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : "Otra";
   const purchase={fecha_compra:$("c-fecha").value||todayISO(),tarjeta:tarjetaLabel,card_id:cardId,descripcion:$("c-desc").value.trim(),categoria:$("c-cat").value,monto_total:total,cuotas:n,user_id:user.id};
   const {data,error}=await sb.from("card_purchases").insert(purchase).select().single();
   if(error){ $("c-add").disabled=false; alert("Error: "+error.message); return; }
-  const base=Math.round((total/n)*100)/100; const rows=[]; let acum=0;
-  for(let i=1;i<=n;i++){ let m=(i===n)?Math.round((total-acum)*100)/100:base; acum+=base; rows.push({purchase_id:data.id,nro_cuota:i,monto:m,mes:addMonths(purchase.fecha_compra,i),pagada:false,user_id:user.id}); }
+  const mesIni = $("c-primera").value || primeraPorDefecto(purchase.fecha_compra);
+  const rows=filasCuotas(data.id,total,n,mesIni);
   const {error:e2}=await sb.from("card_installments").insert(rows); $("c-add").disabled=false; if(e2) alert("Compra ok, fallaron cuotas: "+e2.message);
-  $("c-monto").value=""; $("c-desc").value=""; $("c-cuotas").value="1"; $("c-preview").textContent=""; await loadAll(); };
+  $("c-monto").value=""; $("c-desc").value=""; $("c-cuotas").value="1"; $("c-preview").textContent="";
+  delete $("c-primera").dataset.tocado; syncPrimera("c-primera",$("c-fecha").value); await loadAll(); };
 function renderCuotas(){ const el=$("cuotas-list"); if(!INST.length){ el.innerHTML='<div class="empty">Todavía no hay compras en cuotas.</div>'; return; }
   const pMap=Object.fromEntries(PURCH.map(p=>[p.id,p])); const cMap=Object.fromEntries(CARDS.map(c=>[c.id,c])); const groups={}; INST.forEach(x=>{ (groups[x.mes] ||= []).push(x); });
   el.innerHTML=Object.keys(groups).sort().map(mes=>{ const items=groups[mes].map(x=>{ const p=pMap[x.purchase_id]||{}; const c=cMap[p.card_id]; const logo=c?brandLogo(c.marca):"";
     return `<div class="item"><div class="meta"><div class="desc">${logo} ${esc(p.descripcion)||"Compra"} <span class="badge">${x.nro_cuota}/${p.cuotas||'?'}</span></div>
       <div class="subm">${esc(p.tarjeta)||''} · ${esc(p.categoria)||'—'}</div></div>
       <div class="amt num" style="color:${x.pagada?'var(--muted)':'var(--cardcol)'}">${fmt(x.monto)}</div>
-      <button class="paid-btn ${x.pagada?'done':''}" data-paid="${x.id}" data-val="${x.pagada?1:0}">${x.pagada?'Pagada':'Pagar'}</button></div>`; }).join("");
+      <button class="paid-btn ${x.pagada?'done':''}" data-paid="${x.id}" data-val="${x.pagada?1:0}">${x.pagada?'Pagada':'Pagar'}</button>
+      <button class="iconx" data-edit-compra="${x.purchase_id}" title="Editar la compra">${icon('editar',18)}</button></div>`; }).join("");
     return `<div class="month-head">${mesLargo(mes)}</div>${items}`; }).join("");
-  el.querySelectorAll("[data-paid]").forEach(b=>b.onclick=()=>togglePaid(b.dataset.paid,b.dataset.val==="1")); }
+  el.querySelectorAll("[data-paid]").forEach(b=>b.onclick=()=>togglePaid(b.dataset.paid,b.dataset.val==="1"));
+  el.querySelectorAll("[data-edit-compra]").forEach(b=>b.onclick=()=>openCompra(b.dataset.editCompra)); }
+
+// ---- Editar una compra ya cargada: descripción, tarjeta, desde cuándo y cuántas cuotas ----
+let editingCompra=null;
+function openCompra(purchaseId){
+  const p=PURCH.find(x=>x.id===purchaseId); if(!p) return;
+  editingCompra=purchaseId;
+  $("ce-desc").value=p.descripcion||"";
+  const s=$("ce-card");
+  s.innerHTML=CARDS.map(c=>`<option value="${c.id}">${cardLabel(c)}</option>`).join("")+`<option value="">Otra (sin registrar)</option>`;
+  s.value = CARDS.some(c=>c.id===p.card_id) ? p.card_id : "";
+  fillCats(["ce-cat"]); $("ce-cat").value=p.categoria||"";
+  const mias=INST.filter(x=>x.purchase_id===purchaseId).sort((a,b)=>a.nro_cuota-b.nro_cuota);
+  $("ce-primera").value = mias.length ? mias[0].mes.slice(0,7) : primeraPorDefecto(p.fecha_compra);
+  $("ce-cuotas").value = p.cuotas || mias.length || 1;
+  ceHint(); $("cedit-overlay").classList.remove("hidden");
+}
+function ceHint(){ const p=PURCH.find(x=>x.id===editingCompra); if(!p) return;
+  const n=Math.max(1,parseInt($("ce-cuotas").value)||1); const total=Number(p.monto_total);
+  const ini=$("ce-primera").value||primeraPorDefecto(p.fecha_compra);
+  const pagadas=INST.filter(x=>x.purchase_id===editingCompra && x.pagada).length;
+  let t=`Total ${fmt(total)} → ${n} cuota(s) de ${fmt2(total/n)}, desde ${mesLargo(mesInputADate(ini,0))}.`;
+  if(pagadas && n<pagadas) t+=` Ojo: tenés ${pagadas} cuota(s) pagadas y estás dejando ${n}.`;
+  $("ce-hint").textContent=t; }
+["ce-cuotas","ce-primera"].forEach(id=>$(id).addEventListener("input",ceHint));
+$("ce-cancel").onclick=()=>{ $("cedit-overlay").classList.add("hidden"); editingCompra=null; };
+$("cedit-overlay").onclick=e=>{ if(e.target.id==="cedit-overlay"){ $("cedit-overlay").classList.add("hidden"); editingCompra=null; } };
+$("ce-save").onclick=async()=>{
+  const p=PURCH.find(x=>x.id===editingCompra); if(!p) return;
+  const n=Math.max(1,parseInt($("ce-cuotas").value)||1);
+  const ini=$("ce-primera").value||primeraPorDefecto(p.fecha_compra);
+  const sel=$("ce-card"); const cardId=sel.value||null;
+  const tarjetaLabel = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : "Otra";
+  $("ce-save").disabled=true;
+  const {error}=await sb.from("card_purchases").update({descripcion:$("ce-desc").value.trim(), categoria:$("ce-cat").value,
+    card_id:cardId, tarjeta:tarjetaLabel, cuotas:n}).eq("id",editingCompra);
+  if(error){ $("ce-save").disabled=false; alert("Error: "+error.message); return; }
+  // Las cuotas se regeneran (cambian el mes de arranque y/o la cantidad).
+  // Se conserva el "pagada" de las que ya estaban marcadas, por número de cuota.
+  const pagadas=new Set(INST.filter(x=>x.purchase_id===editingCompra && x.pagada).map(x=>x.nro_cuota));
+  await sb.from("card_installments").delete().eq("purchase_id",editingCompra);
+  const rows=filasCuotas(editingCompra, Number(p.monto_total), n, ini).map(r=>({...r, pagada:pagadas.has(r.nro_cuota)}));
+  const {error:e2}=await sb.from("card_installments").insert(rows);
+  $("ce-save").disabled=false; if(e2){ alert("Error en las cuotas: "+e2.message); return; }
+  $("cedit-overlay").classList.add("hidden"); editingCompra=null; await loadAll(); };
 async function togglePaid(id,isPaid){ await sb.from("card_installments").update({pagada:!isPaid}).eq("id",id); await loadAll(); }
 
 // CALENDARIO (grilla por día; solo movimientos reales, que son los únicos con fecha exacta)
