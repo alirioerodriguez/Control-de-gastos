@@ -194,14 +194,6 @@ input.lim{width:120px; border:1px solid var(--line); border-radius:10px; padding
 .legrow .lname{flex:1}
 .legrow .lval{color:var(--muted); font-variant-numeric:tabular-nums}
 
-/* FAB */
-.fab{position:fixed; left:50%; transform:translateX(-50%); bottom:20px; z-index:40;
-  background:var(--accent); color:var(--accent-ink); border:none; border-radius:999px;
-  padding:13px 22px; font-weight:700; font-size:15px; box-shadow:0 10px 30px rgba(29,234,0,.35);
-  display:flex; align-items:center; gap:8px; backdrop-filter:blur(6px)}
-.fab:hover{filter:brightness(1.05)}
-.fab .plus{font-size:19px; line-height:1}
-
 .overlay{position:fixed; inset:0; background:rgba(0,0,0,.5); backdrop-filter:blur(4px); display:grid; place-items:center; padding:16px; z-index:60}
 .modal{width:100%; max-width:440px; padding:22px; background:var(--solid); border:1px solid var(--line); border-radius:22px; max-height:92vh; overflow:auto}
 .modal h3{font-family:'Space Grotesk'; margin-bottom:14px}
@@ -248,9 +240,13 @@ canvas{max-height:280px}
 .botnav button .bi{font-size:19px; line-height:1}
 .botnav button.active{color:var(--accent)}
 
-.fab{position:fixed; right:18px; bottom:calc(78px + env(safe-area-inset-bottom)); z-index:38;
+/* FAB: centrado horizontalmente abajo, flotando sobre la barra inferior.
+   Se oculta en Inicio (ya tiene su propio "+" redondo junto al Balance Mensual)
+   y se muestra en el resto de las pantallas (Tarjetas, Dividir, Gráficos, Calendario, Detalle). */
+.fab{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(78px + env(safe-area-inset-bottom)); z-index:38;
   width:60px; height:60px; border-radius:50%; border:none; background:var(--accent); color:var(--accent-ink);
-  font-size:32px; line-height:1; display:grid; place-items:center; box-shadow:0 6px 18px rgba(0,0,0,.28)}
+  font-size:30px; line-height:1; display:flex; align-items:center; justify-content:center; padding-bottom:2px;
+  box-shadow:0 6px 18px rgba(0,0,0,.28)}
 .fab:hover{filter:brightness(1.06)}
 
 /* ===== Calendario en grilla ===== */
@@ -313,13 +309,15 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
 #reg[data-rt="tarjeta"]{--regcol:var(--cardcol)}
 #reg[data-rt="ingreso"]{--regcol:var(--income)}
 #reg[data-rt="ahorro"] {--regcol:var(--debt)}
-.reg-top{background:var(--regcol); color:var(--regink); padding:14px 16px 30px; min-height:230px; display:flex; flex-direction:column}
+/* Header de la calculadora más bajo, y número más chico y más arriba, para que el
+   botón "Continuar" entre en pantalla sin scrollear en celulares chicos. */
+.reg-top{background:var(--regcol); color:var(--regink); padding:14px 16px 16px; min-height:160px; display:flex; flex-direction:column}
 .reg-bar{display:flex; align-items:center; gap:10px}
 .reg-bar button{border:none; background:transparent; color:var(--regink); font-size:26px; line-height:1; padding:0 6px}
 .reg-bar h2{flex:1; text-align:center; font-family:'Space Grotesk'; font-size:19px; color:var(--regink)}
-.reg-amt{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:18px 6px 0}
+.reg-amt{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:8px 6px 0}
 .reg-amt .cap{font-size:15px; font-weight:600; opacity:.95}
-.reg-amt .big{font-family:'Space Grotesk',sans-serif; font-size:46px; font-weight:700; letter-spacing:-.01em; word-break:break-all; text-align:center; line-height:1.05}
+.reg-amt .big{font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.01em; word-break:break-all; text-align:center; line-height:1.05}
 .reg-amt .op{font-size:13px; opacity:.85; min-height:17px}
 .reg-row{display:flex; align-items:center; justify-content:center; gap:10px; width:100%}
 .del{border:none; background:color-mix(in srgb, var(--regink) 24%, transparent); color:var(--regink); border-radius:10px; padding:7px 12px; font-size:16px; line-height:1}
@@ -499,7 +497,8 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
       </div>
       <p class="hint">Se baja todo tu historial de movimientos, con la moneda de cada cuenta.</p>
     </div>
-    <div class="card pad" style="margin-bottom:14px"><div class="sec-title">Ingresos vs. gastos por mes</div><canvas id="chart-flow"></canvas></div>
+    <div class="card pad" style="margin-bottom:14px"><div class="sec-title">Ingresos vs. gastos por mes</div><canvas id="chart-flow"></canvas>
+      <div class="legend" id="flow-legend"></div></div>
     <div class="card pad">
       <div class="sec-title">Gastos por categoría (este mes)</div>
       <canvas id="chart-cat"></canvas>
@@ -530,7 +529,6 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
     <div class="chip"><div class="k">Ingresos del mes</div><div class="v num" id="cal-ing-tot" style="color:var(--income)">$0</div></div>
     <div class="chip"><div class="k">Gastos del mes</div><div class="v num" id="cal-gas-tot" style="color:var(--expense)">$0</div></div>
     <div class="chip"><div class="k">Cuotas del mes</div><div class="v num" id="cal-cuotas-tot" style="color:var(--cardcol)">$0</div></div>
-    <div class="chip"><div class="k">Fijos del mes</div><div class="v num" id="cal-fijos-tot" style="color:var(--expense)">$0</div></div>
   </div>
   <div id="cal-day" class="hidden">
     <div class="card pad" style="margin-bottom:14px">
@@ -544,8 +542,6 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
   <button class="btn ghost" style="width:100%; padding:16px" id="cal-add-generic">Agregar un registro &nbsp;+</button>
   <div class="card pad" style="margin-top:14px"><div class="sec-title">Cuotas que caen este mes</div>
     <div class="list" id="cal-cuotas"><div class="empty">Sin cuotas este mes.</div></div></div>
-  <div class="card pad" style="margin-top:14px"><div class="sec-title">Gastos fijos</div>
-    <div class="list" id="cal-fijos"><div class="empty">Sin fijos cargados.</div></div></div>
 </div>
 
 <!-- ===================== DETALLE (ingresos / gastos / ahorros) ===================== -->
@@ -588,7 +584,7 @@ button:active > .ic, button:active .ic{transform:scale(.94)}
       <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="act" data-op="-">−</button>
       <button data-k="0">0</button><button data-k=",">,</button><button class="act" data-op="=">=</button><button class="act" data-op="+">+</button>
     </div>
-    <button class="reg-cta" id="reg-continuar">Continuar</button>
+    <button class="reg-cta hidden" id="reg-continuar">Continuar</button>
   </div>
 
   <!-- paso 2: detalle -->
@@ -828,7 +824,7 @@ const LOGO_PATHS = '<path fill="currentColor" d="M893.99,723.18c98.18-67.22,182.
 
 // Categorías originales + emoji. Los nombres NO cambian: los movimientos ya cargados
 // guardan el texto ("Comida"), así que siguen matcheando igual. El emoji es solo visual.
-const APP_VERSION = "2026.08.02-08";
+const APP_VERSION = "2026.08.03-01";
 
 // ===== Set de iconos (geometría tomada del HTML "Iconos y Animaciones") =====
 // Trazo 2.1, viewBox 24, puntas redondeadas. Las CATEGORÍAS siguen usando emoji.
@@ -993,12 +989,19 @@ function fillMonedaSelect(sel, valor){
 function configured(){ return SUPABASE_URL.startsWith("http") && SUPABASE_ANON_KEY.length>20; }
 // Vistas de pantalla completa. "app" es la de siempre (con barra inferior y botón +).
 const PANTALLAS=["app","config","calendar","detail","reg"];
+// El FAB (+) flotante: se muestra en todas las pantallas con barra inferior EXCEPTO Inicio
+// (que ya tiene su propio "+" redondo arriba, al lado del Balance Mensual), y también en
+// Calendario y Detalle. Se llama después de cualquier cambio de pantalla o de pestaña.
+function updateFab(){
+  const enApp = !$("app").classList.contains("hidden");
+  const enCalOrDet = !$("calendar").classList.contains("hidden") || !$("detail").classList.contains("hidden");
+  $("fab").classList.toggle("hidden", !((enApp && homeTab!=="home") || enCalOrDet));
+}
 function goto(v){
   PANTALLAS.forEach(id=>$(id).classList.toggle("hidden", id!==v));
   const enApp = v==="app";
   $("botnav").classList.toggle("hidden", !enApp);
-  // el + no aparece ni en configuración ni mientras cargás un movimiento
-  $("fab").classList.toggle("hidden", !(enApp || v==="calendar" || v==="detail"));
+  updateFab();
   window.scrollTo(0,0);
 }
 function show(w){
@@ -1006,7 +1009,7 @@ function show(w){
   ["config","calendar","detail","reg"].forEach(id=>$(id).classList.add("hidden"));
   const enApp = w==="app";
   $("botnav").classList.toggle("hidden", !enApp);
-  $("fab").classList.toggle("hidden", !enApp);
+  updateFab();
 }
 let recoveryMode = /type=recovery/.test(window.location.hash);
 
@@ -1294,6 +1297,9 @@ function renderReg(){
   ["reg-step1","reg-step2","reg-step3"].forEach((id,i)=>$(id).classList.toggle("hidden", i+1!==R.paso));
   $("reg-tipos").innerHTML=REG_TIPOS.map(x=>`<button class="chipbtn ${x.k===R.tipo?'on':''}" data-rt="${x.k}">${x.n}</button>`).join("");
   $("reg-tipos").querySelectorAll("[data-rt]").forEach(b=>b.onclick=()=>{ R.tipo=b.dataset.rt; R.cat=null; renderReg(); });
+  // el botón "Continuar" solo tiene sentido si ya hay un monto cargado (>0): si la
+  // calculadora todavía marca 0 no hay nada para agregar, así que se mantiene oculto.
+  $("reg-continuar").classList.toggle("hidden", !(regTotal()>0));
   if(R.paso===2) renderRegStep2();
   if(R.paso===3) renderRegCatList();
 }
@@ -1616,7 +1622,7 @@ $("m-add").onclick=async()=>{ const monto=parseFloat($("m-monto").value); if(!(m
   $("m-add").disabled=false; if(error){ alert("No se pudo: "+error.message); return; }
   const f=$("m-fecha").value||todayISO(); if(f.slice(0,7)!==VMONTH) VMONTH=f.slice(0,7);
   $("m-monto").value=""; $("m-desc").value=""; goto("app"); await loadAll(); };
-function mergedMovs(){ const a=TX.map(t=>({_k:"tx",id:t.id,fecha:t.fecha,tipo:t.tipo,cuenta:t.cuenta,monto:Number(t.monto),categoria:t.categoria,descripcion:t.descripcion}));
+function mergedMovs(){ const a=TX.map(t=>({_k:"tx",id:t.id,fecha:t.fecha,tipo:t.tipo,cuenta:t.cuenta,monto:Number(t.monto),categoria:t.categoria,descripcion:t.descripcion,es_fijo:!!t.es_fijo}));
   const b=TRF.map(t=>({_k:"tr",id:t.id,fecha:t.fecha,tipo:"transferencia",origen:t.origen,destino:t.destino,monto:Number(t.monto),descripcion:t.descripcion}));
   return a.concat(b).sort((x,y)=>y.fecha.localeCompare(x.fecha)); }
 ["f-text","f-cuenta"].forEach(id=>$(id).addEventListener("input",renderMov));
@@ -1633,8 +1639,12 @@ function renderMov(){ const el=$("mov-list"); if(!el) return;
       <div class="subm">${fechaCorta(r.fecha)} · ${CTA_NOMBRE[r.origen]||r.origen} → ${CTA_NOMBRE[r.destino]||r.destino} · <span class="badge">Transferencia</span></div></div>
       <div class="amt tr num">${fmt(r.monto, accCur(r.origen))}</div>
       <button class="iconx" data-edit-tr="${r.id}">${icon('editar',18)}</button><button class="iconx" data-del-tr="${r.id}">${icon('borrar',18)}</button></div>`;
-    const isIn=r.tipo==="ingreso"; return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||r.categoria||"(sin detalle)"}</div>
-      <div class="subm">${fechaCorta(r.fecha)} · ${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${r.categoria?esc(catLabel(r.categoria)):"—"}</span></div></div>
+    const isIn=r.tipo==="ingreso";
+    // badge "Fijo": distingue, dentro de Gastos del mes, cuáles vienen de un gasto marcado
+    // como recurrente al cargarlo (sin necesidad de una sección aparte que confunda).
+    const fijoBadge = r.es_fijo ? ` <span class="badge" style="background:var(--cardcol); color:#fff">Fijo</span>` : "";
+    return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||r.categoria||"(sin detalle)"}</div>
+      <div class="subm">${fechaCorta(r.fecha)} · ${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${r.categoria?esc(catLabel(r.categoria)):"—"}</span>${fijoBadge}</div></div>
       <div class="amt ${isIn?'in':'out'} num">${isIn?'+':'−'}${fmt(r.monto, accCur(r.cuenta))}</div>
       <button class="iconx" data-edit="${r.id}">${icon('editar',18)}</button><button class="iconx" data-del-tx="${r.id}">${icon('borrar',18)}</button></div>`; }).join("");
   el.querySelectorAll("[data-del-tx]").forEach(b=>b.onclick=()=>delRow("transactions",b.dataset.delTx));
@@ -1738,6 +1748,9 @@ function renderCalendar(){
       <span>${String(c.d).padStart(2,"0")}</span><span class="cdots">${dots}</span></button>`; }).join("");
   $("calgrid").querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>selectDay(b.dataset.day));
 
+  // "Gastos del mes" ya incluye los gastos marcados como Fijo (son movimientos reales,
+  // como cualquier otro); se distinguen con el badge "Fijo" en cada ítem, en vez de un
+  // bloque aparte que separaba y confundía.
   let ingMes=0, gasMes=0;
   TX.forEach(t=>{ if(!esMonedaPrincipal(t.cuenta)) return; if(t.fecha.slice(0,7)===VMONTH){ if(t.tipo==="ingreso") ingMes+=Number(t.monto); else gasMes+=Number(t.monto); } });
   $("cal-ing-tot").textContent=fmt(ingMes); $("cal-gas-tot").textContent=fmt(gasMes);
@@ -1749,20 +1762,6 @@ function renderCalendar(){
     return `<div class="item"><div class="meta"><div class="desc">${esc(p.descripcion)||"Compra"} <span class="badge">${x.nro_cuota}/${p.cuotas||'?'}</span></div>
       <div class="subm">${esc(p.tarjeta)||''}</div></div><div class="amt num" style="color:${x.pagada?'var(--muted)':'var(--cardcol)'}">${fmt(x.monto)}${x.pagada?' ✓':''}</div></div>`; }).join("")
     : '<div class="empty">Sin cuotas este mes.</div>';
-
-  // FIX: los gastos/ingresos fijos (plantillas de "recurring") no tenían ninguna sección acá.
-  // Como son plantillas mensuales sin fecha propia, se listan siempre igual (no cambian
-  // entre agosto y septiembre porque son "todos los meses"), pero al menos ahora SE VEN.
-  const fijosGasto=REC.filter(r=>r.tipo==="gasto" && esMonedaPrincipal(r.cuenta)).reduce((a,r)=>a+Number(r.monto),0);
-  $("cal-fijos-tot").textContent=fmt(fijosGasto);
-  const fel=$("cal-fijos");
-  if(fel){
-    fel.innerHTML = REC.length ? REC.map(r=>{ const isIn=r.tipo==="ingreso";
-      return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||(r.categoria?catLabel(r.categoria):"Fijo")}</div>
-        <div class="subm">${CTA_NOMBRE[r.cuenta]||r.cuenta} · repite todos los meses</div></div>
-        <div class="amt ${isIn?'in':'out'} num">${isIn?'+':'−'}${fmt(r.monto, accCur(r.cuenta))}</div></div>`; }).join("")
-      : '<div class="empty">Sin fijos cargados. Marcá "Fijo" al cargar un gasto, o agregalo en Configuración → Mis fijos.</div>';
-  }
 
   if(calDay && calDay.slice(0,7)===VMONTH) renderDay(); else { calDay=null; $("cal-day").classList.add("hidden"); }
 }
@@ -1778,8 +1777,9 @@ function renderDay(){
       <div class="subm">${CTA_NOMBRE[r.origen]||r.origen} → ${CTA_NOMBRE[r.destino]||r.destino}</div></div>
       <div class="amt tr num">${fmt(r.monto, accCur(r.origen))}</div>
       <button class="iconx" data-edit-tr="${r.id}">${icon('editar',18)}</button><button class="iconx" data-del-tr="${r.id}">${icon('borrar',18)}</button></div>`;
-    const isIn=r.tipo==="ingreso"; return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||r.categoria||"(sin detalle)"}</div>
-      <div class="subm">${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${r.categoria?esc(catLabel(r.categoria)):"—"}</span></div></div>
+    const isIn=r.tipo==="ingreso"; const fijoBadge = r.es_fijo ? ` <span class="badge" style="background:var(--cardcol); color:#fff">Fijo</span>` : "";
+    return `<div class="item"><div class="meta"><div class="desc">${esc(r.descripcion)||r.categoria||"(sin detalle)"}</div>
+      <div class="subm">${CTA_NOMBRE[r.cuenta]||r.cuenta} · <span class="badge">${r.categoria?esc(catLabel(r.categoria)):"—"}</span>${fijoBadge}</div></div>
       <div class="amt ${isIn?'in':'out'} num">${isIn?'+':'−'}${fmt(r.monto, accCur(r.cuenta))}</div>
       <button class="iconx" data-edit="${r.id}">${icon('editar',18)}</button><button class="iconx" data-del-tx="${r.id}">${icon('borrar',18)}</button></div>`; }).join("")
     : '<div class="empty">Sin movimientos este día. Tocá + para cargar uno.</div>';
@@ -1877,7 +1877,7 @@ $("se-save").onclick=async()=>{ const titulo=$("se-titulo").value.trim(), monto=
   $("se-save").disabled=false; if(error){ alert("Error: "+error.message); return; }
   $("shared-overlay").classList.add("hidden"); editingShared=null; await loadAll(); renderPairDetail(); };
 
-// FIJOS
+// FIJOS (plantillas: Configuración → Mis fijos)
 $("r-add").onclick=async()=>{ const monto=parseFloat($("r-monto").value); if(!(monto>0)){ alert("Monto inválido."); return; }
   const {error}=await sb.from("recurring").insert({cuenta:$("r-cuenta").value,tipo:$("r-tipo").value,monto,categoria:$("r-cat").value,descripcion:$("r-desc").value.trim(),user_id:user.id});
   if(error){ alert("Error: "+error.message); return; } $("r-monto").value=""; $("r-desc").value=""; await loadAll(); };
@@ -1891,8 +1891,8 @@ function renderFijos(){ const el=$("fijos-list"); if(!REC.length){ el.innerHTML=
   $("fijos-total").textContent=`Fijos por mes (${mainCur()}): gastos ${fmt(g)} · ingresos ${fmt(i)}`;
   el.querySelectorAll("[data-reg]").forEach(b=>b.onclick=()=>registrarFijo(b.dataset.reg));
   el.querySelectorAll("[data-del-rec]").forEach(b=>b.onclick=async()=>{ if(confirm("¿Borrar este fijo?")){ await sb.from("recurring").delete().eq("id",b.dataset.delRec); await loadAll(); } }); }
-async function registrarFijo(id){ const r=REC.find(x=>x.id===id); if(!r) return; await sb.from("transactions").insert({fecha:todayISO(),cuenta:r.cuenta,tipo:r.tipo,monto:r.monto,categoria:r.categoria,descripcion:r.descripcion,user_id:user.id}); await loadAll(); }
-$("r-all").onclick=async()=>{ if(!REC.length) return; if(!confirm("¿Registrar todos los fijos con fecha de hoy?")) return; const rows=REC.map(r=>({fecha:todayISO(),cuenta:r.cuenta,tipo:r.tipo,monto:r.monto,categoria:r.categoria,descripcion:r.descripcion,user_id:user.id})); await sb.from("transactions").insert(rows); await loadAll(); };
+async function registrarFijo(id){ const r=REC.find(x=>x.id===id); if(!r) return; await sb.from("transactions").insert({fecha:todayISO(),cuenta:r.cuenta,tipo:r.tipo,monto:r.monto,categoria:r.categoria,descripcion:r.descripcion,es_fijo:true,user_id:user.id}); await loadAll(); }
+$("r-all").onclick=async()=>{ if(!REC.length) return; if(!confirm("¿Registrar todos los fijos con fecha de hoy?")) return; const rows=REC.map(r=>({fecha:todayISO(),cuenta:r.cuenta,tipo:r.tipo,monto:r.monto,categoria:r.categoria,descripcion:r.descripcion,es_fijo:true,user_id:user.id})); await sb.from("transactions").insert(rows); await loadAll(); };
 
 // PRESUPUESTO
 function renderBudgets(){ const cm=VMONTH; const spent={};
@@ -1910,12 +1910,17 @@ function cssVar(n){ return getComputedStyle(document.documentElement).getPropert
 function renderCharts(){
   const gc=axisColor();
   const months={}; TX.forEach(t=>{ if(!esMonedaPrincipal(t.cuenta)) return; const k=t.fecha.slice(0,7); (months[k] ||= {ing:0,gas:0}); if(t.tipo==="ingreso") months[k].ing+=Number(t.monto); else months[k].gas+=Number(t.monto); });
-  const keys=Object.keys(months).sort().slice(-6);
+  // Cuotas de tarjeta por mes: se suman encima de "Gastos" en el mismo gráfico (apiladas juntas),
+  // mientras que "Ingresos" queda como barra aparte para poder comparar.
+  const cardMonths={}; INST.forEach(x=>{ const k=x.mes.slice(0,7); cardMonths[k]=(cardMonths[k]||0)+Number(x.monto); });
+  const keys=Array.from(new Set([...Object.keys(months), ...Object.keys(cardMonths)])).sort().slice(-6);
   if(chartFlow) chartFlow.destroy();
   chartFlow=new Chart($("chart-flow"),{type:"bar",data:{labels:keys.map(mesCorto),datasets:[
-    {label:"Ingresos",data:keys.map(k=>months[k].ing),backgroundColor:cssVar('--income'),borderRadius:6},
-    {label:"Gastos",data:keys.map(k=>months[k].gas),backgroundColor:cssVar('--expense'),borderRadius:6}]},
-    options:{responsive:true,plugins:{legend:{position:"bottom",labels:{color:gc}}},scales:{x:{ticks:{color:gc}},y:{ticks:{color:gc,callback:v=>fmt(v)}}}}});
+    {label:"Ingresos",data:keys.map(k=>(months[k]&&months[k].ing)||0),backgroundColor:cssVar('--income'),borderRadius:6,stack:"ingresos"},
+    {label:"Gastos",data:keys.map(k=>(months[k]&&months[k].gas)||0),backgroundColor:cssVar('--expense'),borderRadius:6,stack:"gastos"},
+    {label:"Tarjeta",data:keys.map(k=>cardMonths[k]||0),backgroundColor:cssVar('--cardcol'),borderRadius:6,stack:"gastos"}]},
+    options:{responsive:true,plugins:{legend:{position:"bottom",labels:{color:gc}}},scales:{x:{stacked:true,ticks:{color:gc}},y:{stacked:true,ticks:{color:gc,callback:v=>fmt(v)}}}}});
+  const fl=$("flow-legend"); if(fl) fl.innerHTML='<div class="hint">Gastos y Tarjeta se apilan juntos: la barra completa muestra gastos + cuotas de tarjeta ese mes.</div>';
   const cm=VMONTH, cats={}; TX.filter(t=>t.tipo==="gasto"&&t.fecha.slice(0,7)===cm&&esMonedaPrincipal(t.cuenta)).forEach(t=>{ const c=t.categoria||"Otros"; cats[c]=(cats[c]||0)+Number(t.monto); });
   const ck=Object.keys(cats).sort((a,b)=>cats[b]-cats[a]); const totalGas=ck.reduce((a,c)=>a+cats[c],0);
   if(chartCat) chartCat.destroy();
