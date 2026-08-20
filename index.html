@@ -346,6 +346,7 @@
 .vozic.on{background:var(--red);color:#fff;border-color:transparent;animation:vozPulso 1.4s ease-in-out infinite}
 @keyframes vozPulso{0%,100%{box-shadow:0 0 0 0 rgba(217,45,14,.5)}55%{box-shadow:0 0 0 11px rgba(217,45,14,0)}}
 #voz .vozestado{color:var(--red);font-variant-numeric:tabular-nums}
+#voz-hoy{display:inline-block;margin-top:4px;color:var(--acc);font-weight:700}
 
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -749,7 +750,8 @@ canvas{max-height:270px}
       <div id="voz-texto" contenteditable="true" spellcheck="false"></div>
       <div id="voz-vacio">42.300 en Coto con Visa en 3 cuotas</div>
     </div>
-    <p class="vozhint">Escribí como hablás, o tocá el micrófono. Reconozco el monto, el comercio, la cuenta, la tarjeta, las cuotas y la fecha.</p>
+    <p class="vozhint">Escribí como hablás, o tocá el micrófono. Reconozco el monto, los centavos, el comercio, la cuenta, la tarjeta, las cuotas y la fecha.<br>
+      <span id="voz-hoy"></span></p>
     <div class="vozestado" id="voz-estado"></div>
     <div class="lbl-up" style="margin-top:18px">Así lo entendí</div>
     <div class="panel" id="voz-filas" style="margin-top:8px"></div>
@@ -3390,6 +3392,10 @@ async function guardarCampo(valor){
     else if(campo==="fecha") V.fecha=valor;
     else if(campo==="comercio") V.comercio=valor.trim()||null;
     else if(campo==="descripcion") V.descripcion=valor.trim()||null;
+    else if(campo==="pair"){ V.pair=valor; V.tipo="compartido";
+      const p=PAIRS.find(x=>x.id===valor); V.conQuien=p?otherProf(otherId(p)).apodo:null;
+      if(V.pagador!==user.id && p) V.pagador=otherId(p); }
+    else if(campo==="split") V.split=valor;
     else if(campo==="cuenta"){ V.cuenta=valor; V.card=null; if(V.tipo==="tarjeta") V.tipo="gasto"; }
     else if(campo==="card"){ V.card=valor; V.tipo="tarjeta"; }
     else if(campo==="categoria"){ V.categoria=valor; V.catAuto=false; }
@@ -3489,11 +3495,18 @@ let vozFoto = null;
 
 function vozNuevo(){
   V={texto:"",monto:0,categoria:null,cuenta:(ACCOUNTS[0]||{}).key||null,card:null,cuotas:1,
-     fecha:todayISO(),comercio:null,descripcion:null,tipo:"gasto",pair:(PAIRS[0]||{}).id||null,split:null,auto:{}};
+     fecha:todayISO(),comercio:null,descripcion:null,tipo:"gasto",pair:(PAIRS[0]||{}).id||null,split:null,
+     pagador:(user||{}).id||null,conQuien:null,corregido:false,auto:{}};
   vozFoto=null;
+}
+function vozHoy(){
+  const d=new Date();
+  const t=d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+  return "Hoy es "+t.charAt(0).toUpperCase()+t.slice(1)+". Podés decirme \u201cel miércoles de la semana pasada\u201d.";
 }
 function openVoz(pre){
   vozNuevo();
+  if($("voz-hoy")) $("voz-hoy").textContent=vozHoy();
   if(pre){ V.texto=pre; interpretarLocal(); }
   show("voz"); renderVoz(); pintarBotonMic();
   setTimeout(()=>{ const t=$("voz-texto"); if(t){ t.focus();
@@ -3502,14 +3515,22 @@ function openVoz(pre){
 }
 
 /* ---------------- intérprete local ----------------
-   Lee la frase de izquierda a derecha y va TACHANDO lo que ya usó, para que
-   un mismo pedazo no se use dos veces (antes "en tres cuotas" daba cuotas=3
-   y además comercio="tres"). Lo que sobra al final es la descripción.      */
+   Reglas de oro:
+   · Va TACHANDO lo que ya usó, para que un pedazo no se use dos veces.
+   · Si algo se dice dos veces, MANDA LO ÚLTIMO ("son 500... no, 800").
+   · Si decís "me equivoqué", "mejor dicho", "en realidad", se ignora todo
+     lo anterior y sólo cuenta lo que dijiste después.
+   · Lo que sobra al final es la descripción.                              */
 
 const NUM_PAL={cero:0,un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,
   nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,dieciseis:16,diecisiete:17,
   dieciocho:18,diecinueve:19,veinte:20,veintiuno:21,veintidos:22,veintitres:23,veinticuatro:24,
-  treinta:30,cuarenta:40,cincuenta:50,sesenta:60,setenta:70,ochenta:80,noventa:90,cien:100};
+  veinticinco:25,veintiseis:26,veintisiete:27,veintiocho:28,veintinueve:29,
+  treinta:30,cuarenta:40,cincuenta:50,sesenta:60,setenta:70,ochenta:80,noventa:90,
+  cien:100,ciento:100,doscientos:200,trescientos:300,cuatrocientos:400,quinientos:500,
+  seiscientos:600,setecientos:700,ochocientos:800,novecientos:900};
+
+const MULT_PAL={millones:1e6,millon:1e6,palos:1e6,palo:1e6,lucas:1000,luca:1000,mil:1000,miles:1000};
 
 const MESES_TXT=["enero","febrero","marzo","abril","mayo","junio","julio","agosto",
   "septiembre","octubre","noviembre","diciembre"];
@@ -3523,65 +3544,108 @@ const VACIAS=new Set(("el la los las un una unos unas de del al a en con por par
  +"pesos peso plata guita mangos dolares dolar usd ars gaste gasto pague pago compre compra cobre cobro "
  +"puse saque guarde ahorre transferi mande pagar comprar gastar total cuesta salio vale sale fue "
  +"tarjeta credito debito efectivo cash cuota cuotas pagos hoy ayer anteayer manana semana mes ano dia dias "
- +"ultimo ultima proximo proxima pasado pasada").split(" "));
+ +"centavos centavo centimos centimo decimal decimales coma punto "
+ +"ultimo ultima proximo proxima pasado pasada equivoque perdon corrijo digo realidad mejor dicho").split(" "));
 
 function normV(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); }
 function esVacia(w){ const n=normV(w).replace(/[^a-z0-9ñ]/g,"");
-  return !n || n.length<3 || VACIAS.has(n) || NUM_PAL[n]!==undefined || MESES_TXT.includes(n)
-    || MESES_ALT[n]!==undefined || DIAS_SEM[n]!==undefined; }
+  return !n || n.length<3 || VACIAS.has(n) || NUM_PAL[n]!==undefined || MULT_PAL[n]!==undefined
+    || MESES_TXT.includes(n) || MESES_ALT[n]!==undefined || DIAS_SEM[n]!==undefined; }
 
 /* ---- el "tachador" ---- */
 function nuevoLienzo(txt){ return {orig:String(txt||""), libre:normV(txt)}; }
 function tachar(L,i,len){
-  if(i<0||!len) return;
+  if(i<0||!len||len<0) return;
   L.libre = L.libre.slice(0,i) + " ".repeat(len) + L.libre.slice(i+len);
 }
-function buscar(L,re){ re.lastIndex=0; const m=re.exec(L.libre); return m; }
-
-/* ================= MONTO ================= */
-const MULTIS=[                       // ¡el orden importa! primero los largos,
-  [/^millones?$/, 1000000],          // si no "millones" matchea con "mil"
-  [/^millon$/,    1000000],
-  [/^palos?$/,    1000000],
-  [/^lucas?$/,    1000],
-  [/^miles?$/,    1000],
-  [/^mil$/,       1000]
-];
-function multiplicador(pal){ for(const [re,v] of MULTIS) if(re.test(pal)) return v; return null; }
-
-function leerMonto(L){
-  let m;
-  /* 5 lucas · 5 mil · 2 palos · 20 millones · veinte millones · medio millón */
-  m=buscar(L,/(\d+(?:[.,]\d+)?|medio|media|[a-z]+)\s+(millones|millon|palos|palo|lucas|luca|miles|mil)\b/)
-   ||buscar(L,/(\d+(?:[.,]\d+)?)(millones|millon|palos|palo|lucas|luca|miles|mil)\b/);
-  if(m){
-    const mult=multiplicador(m[2]);
-    let n=null;
-    if(/^\d/.test(m[1]))             n=parseFloat(m[1].replace(/\./g,"").replace(",","."));
-    else if(/^medi[oa]$/.test(m[1])) n=0.5;
-    else if(NUM_PAL[m[1]]!==undefined) n=NUM_PAL[m[1]];
-    if(n!==null && mult && n*mult>0){ tachar(L,m.index,m[0].length); return {valor:round2(n*mult), texto:m[0]}; }
-  }
-  m=buscar(L,/\b(un|una)\s+(millon|millones|palo)\b/);
-  if(m){ tachar(L,m.index,m[0].length); return {valor:1000000, texto:m[0]}; }
-  /* número común: 42.300 · 42300 · 1.234,56 · 42,5 */
-  const cands=[...L.libre.matchAll(/\d[\d.\s]*(?:,\d{1,2})?/g)].map(x=>({s:x[0].trim(),i:x.index}));
-  for(const c of cands){
-    const n=parseMonto(c.s);
-    if(n>0){ tachar(L,c.i,c.s.length); return {valor:round2(n), texto:c.s}; }
-  }
-  /* monto escrito en letras: "veinte" solo */
-  m=buscar(L,/\b(veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien)\b/);
-  if(m){ tachar(L,m.index,m[0].length); return {valor:NUM_PAL[m[1]], texto:m[0]}; }
-  return null;
+/* siempre nos quedamos con la ÚLTIMA aparición: si lo dijiste dos veces, vale la segunda */
+function buscar(L,re){
+  const g=new RegExp(re.source, re.flags.includes("g")?re.flags:re.flags+"g");
+  let m, ultimo=null;
+  while((m=g.exec(L.libre))){ ultimo=m; if(m.index===g.lastIndex) g.lastIndex++; }
+  return ultimo;
 }
 
-/* ================= CUOTAS =================
-   Se lee ANTES que el monto: "en tres cuotas" no puede ser el importe. */
+/* ================= "no, me equivoqué" =================
+   Corta todo lo dicho antes de la corrección.                            */
+const CORRECCION=/\b(no,?\s*(?:me\s+)?equivoqu[ei]|no\s+era\s+asi|mejor\s+dicho|en\s+realidad|perdon|corrijo|correccion|no,?\s*digo|no,?\s*(?:son|fue|fueron|era|es|eran)\b|borra\s+eso|olvidat?e?\s+de\s+eso|empiezo\s+de\s+nuevo|a\s+ver\s+no)\b/g;
+function hayNumero(s){ return /\d/.test(s) || s.split(/[^a-zñ]+/).some(w=>NUM_PAL[w]!==undefined); }
+function recortarCorreccion(L){
+  CORRECCION.lastIndex=0;
+  let m, corte=-1;
+  while((m=CORRECCION.exec(L.libre))) corte=m.index+m[0].length;
+  if(corte<0) return null;
+  const cola=L.libre.slice(corte);
+  if(!hayNumero(cola)) return null;          // "no, no me equivoqué" → no era una corrección
+  tachar(L,0,corte);
+  return corte;
+}
+
+/* ================= NÚMEROS HABLADOS =================
+   "12 millones 533 mil 422 con 21" → 12.533.422,21                        */
+function fichas(str){
+  const out=[]; const re=/[a-zñ0-9][a-zñ0-9.,]*/g; let m;
+  while((m=re.exec(str))) out.push({w:m[0].replace(/[.,]+$/,""), i:m.index, len:m[0].replace(/[.,]+$/,"").length});
+  return out.filter(x=>x.w);
+}
+function valorFicha(w){
+  if(/^\d[\d.]*(?:,\d{1,2})?$/.test(w)){ const v=parseMonto(w); return (isNaN(v)||v<0)?null:v; }
+  if(NUM_PAL[w]!==undefined) return NUM_PAL[w];
+  if(/^medi[oa]$/.test(w)) return 0.5;
+  return null;
+}
+/* el número que va pegado a "centavos / céntimos / decimales", o detrás de "con / y" */
+function leerCentavos(L, desde){
+  const resto=L.libre.slice(desde);
+  const m = resto.match(/^\s*(?:pesos?|mangos?)?\s*(?:con|y|coma|punto)\s+(\d{1,2}|[a-zñ]+)\s*(centavos?|centimos?|decimales?|decimal)?\b/)
+         || resto.match(/^\s*(?:pesos?|mangos?)?\s*(\d{1,2}|[a-zñ]+)\s+(centavos?|centimos?|decimales?|decimal)\b/);
+  if(!m) return null;
+  const sig=resto.slice(m[0].length, m[0].length+14);
+  if(/^\s*(cuotas?|pagos)\b/.test(sig)) return null;       // "con 3 cuotas" no son centavos
+  const conPalabra=!!(m[2]||"").match(/cent|decim/);
+  let c=null;
+  if(/^\d+$/.test(m[1])){
+    const n=parseInt(m[1],10);
+    if(n>99) return null;
+    c = (m[1].length===1 && !conPalabra) ? n*10 : n;        // "con 5" = ,50 · "5 centavos" = ,05
+  } else if(/^medi[oa]$/.test(m[1])) c=50;
+  else if(NUM_PAL[m[1]]!==undefined && NUM_PAL[m[1]]<=99) c=NUM_PAL[m[1]];
+  if(c===null) return null;
+  return {cent:c, len:m[0].length};
+}
+function leerMonto(L){
+  const tk=fichas(L.libre);
+  let mejor=null, hasta=-1;
+  for(let i=0;i<tk.length;i++){
+    if(tk[i].i < hasta) continue;
+    if(valorFicha(tk[i].w)===null) continue;
+    let total=0, j=i, ultimo=i, hubo=false;
+    while(j<tk.length){
+      const v=valorFicha(tk[j].w); if(v===null) break;
+      const mult=MULT_PAL[(tk[j+1]||{}).w];
+      if(mult){ total+=v*mult; ultimo=j+1; j+=2; hubo=true; }
+      else { total+=v; ultimo=j; hubo=true; break; }
+    }
+    if(!hubo || !(total>0)) continue;
+    let fin=tk[ultimo].i+tk[ultimo].len;
+    if(Number.isInteger(total)){
+      const cv=leerCentavos(L,fin);
+      if(cv){ total=round2(total+cv.cent/100); fin+=cv.len; }
+    }
+    mejor={valor:round2(total), ini:tk[i].i, fin};          // el último gana
+    hasta=fin;
+  }
+  if(!mejor) return null;
+  const texto=L.libre.slice(mejor.ini,mejor.fin).trim();
+  tachar(L,mejor.ini,mejor.fin-mejor.ini);
+  return {valor:mejor.valor, texto};
+}
+
+/* ================= CUOTAS ================= */
 function leerCuotas(L){
   let m=buscar(L,/\b(?:en\s+)?(\d{1,2})\s*(?:cuotas?|pagos)\b/);
   if(m){ tachar(L,m.index,m[0].length); return {valor:Math.max(1,parseInt(m[1],10)), texto:m[0]}; }
-  m=buscar(L,/\b(?:en\s+)?([a-z]+)\s+(?:cuotas?|pagos)\b/);
+  m=buscar(L,/\b(?:en\s+)?([a-zñ]+)\s+(?:cuotas?|pagos)\b/);
   if(m && NUM_PAL[m[1]]!==undefined){ tachar(L,m.index,m[0].length); return {valor:Math.max(1,NUM_PAL[m[1]]), texto:m[0]}; }
   m=buscar(L,/\b(\d{1,2})\s*x\b/);
   if(m){ tachar(L,m.index,m[0].length); return {valor:Math.max(1,parseInt(m[1],10)), texto:m[0]}; }
@@ -3590,114 +3654,145 @@ function leerCuotas(L){
   return null;
 }
 
-/* ================= FECHA ================= */
+/* ================= FECHA =================
+   Sabe qué día es hoy, y entiende la semana del calendario.               */
 function isoDe(d){ return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`; }
+function hoyD(){ const d=new Date(); d.setHours(12,0,0,0); return d; }
+function lunesDe(d){ const x=new Date(d); const dw=(x.getDay()+6)%7; x.setDate(x.getDate()-dw); return x; }
+/* el miércoles de ESTA semana / de la semana PASADA */
+function diaDeSemana(dow, semanasAtras){
+  const lun=lunesDe(hoyD());
+  lun.setDate(lun.getDate() - 7*(semanasAtras||0) + ((dow+6)%7));
+  return lun;
+}
+/* el miércoles "pasado": el más reciente que ya ocurrió */
+function ultimoDiaSemana(dow, forzarAnterior){
+  const d=hoyD();
+  let resta=(d.getDay()-dow+7)%7;
+  if(resta===0 && forzarAnterior) resta=7;
+  d.setDate(d.getDate()-resta);
+  return d;
+}
 function mesPorNombre(w){
   if(!w) return null;
   const i=MESES_TXT.indexOf(w); if(i>=0) return i;
   if(MESES_ALT[w]!==undefined) return MESES_ALT[w];
   return null;
 }
+/* Junta TODOS los candidatos de fecha y se queda con el que está más a la
+   derecha en la frase: si dijiste "ayer, no, hoy", vale "hoy".            */
 function leerFecha(L){
-  let m;
-  m=buscar(L,/\b(anteayer|antes de ayer)\b/);
-  if(m){ tachar(L,m.index,m[0].length); return {valor:diasAtras(2), texto:m[0]}; }
-  m=buscar(L,/\bayer\b/);
-  if(m){ tachar(L,m.index,m[0].length); return {valor:diasAtras(1), texto:m[0]}; }
-  m=buscar(L,/\bhoy\b/);
-  if(m){ tachar(L,m.index,m[0].length); return {valor:diasAtras(0), texto:m[0]}; }
-
-  /* hace 3 días · hace una semana · hace 2 meses */
-  m=buscar(L,/\bhace\s+(\d{1,3}|[a-z]+)\s*(d[ií]as?|semanas?|mes(?:es)?)\b/);
-  if(m){
+  const cands=[];
+  const probar=(re, armar)=>{
+    const g=new RegExp(re.source, re.flags.includes("g")?re.flags:re.flags+"g");
+    let m;
+    while((m=g.exec(L.libre))){
+      const v=armar(m);
+      if(v) cands.push({valor:v, texto:m[0], i:m.index, len:m[0].length});
+      if(m.index===g.lastIndex) g.lastIndex++;
+    }
+  };
+  /* el miércoles de la semana pasada / de esta semana */
+  probar(/\b(?:el\s+)?(domingo|lunes|martes|miercoles|jueves|viernes|sabado)\s+(?:de\s+)?la\s+semana\s+(pasada|anterior|que\s+paso|esta|actual)\b/,
+    m=>isoDe(diaDeSemana(DIAS_SEM[m[1]], /esta|actual/.test(m[2])?0:1)));
+  probar(/\bla\s+semana\s+(?:pasada|anterior)\s+(?:el\s+)?(domingo|lunes|martes|miercoles|jueves|viernes|sabado)\b/,
+    m=>isoDe(diaDeSemana(DIAS_SEM[m[1]],1)));
+  probar(/\b(anteayer|antes de ayer)\b/, ()=>diasAtras(2));
+  probar(/\bayer\b/,  ()=>diasAtras(1));
+  probar(/\bhoy\b/,   ()=>diasAtras(0));
+  probar(/\bhace\s+(\d{1,3}|[a-zñ]+)\s*(d[ií]as?|semanas?|mes(?:es)?)\b/, m=>{
     const n=/^\d+$/.test(m[1])?parseInt(m[1],10):NUM_PAL[m[1]];
-    if(n!==undefined){
-      const d=new Date(); d.setHours(12,0,0,0);
-      if(/^d/.test(m[2]))      d.setDate(d.getDate()-n);
-      else if(/^s/.test(m[2])) d.setDate(d.getDate()-n*7);
-      else                     d.setMonth(d.getMonth()-n);
-      tachar(L,m.index,m[0].length); return {valor:isoDe(d), texto:m[0]};
-    }
-  }
-  /* la semana pasada · el mes pasado */
-  m=buscar(L,/\b(la\s+semana\s+pasada|el\s+mes\s+pasado)\b/);
-  if(m){ const d=new Date(); d.setHours(12,0,0,0);
-    if(/semana/.test(m[0])) d.setDate(d.getDate()-7); else d.setMonth(d.getMonth()-1);
-    tachar(L,m.index,m[0].length); return {valor:isoDe(d), texto:m[0]}; }
-
-  /* el lunes · el viernes pasado · el sábado */
-  m=buscar(L,/\b(?:el\s+|este\s+)?(domingo|lunes|martes|miercoles|jueves|viernes|sabado)(\s+pasado)?\b/);
-  if(m){
-    const obj=DIAS_SEM[m[1]], d=new Date(); d.setHours(12,0,0,0);
-    let resta=(d.getDay()-obj+7)%7;
-    if(resta===0 && m[2]) resta=7;         // "el lunes pasado" estando lunes
-    d.setDate(d.getDate()-resta);
-    tachar(L,m.index,m[0].length); return {valor:isoDe(d), texto:m[0]};
-  }
-  /* 3/5 · 3-5-2026 */
-  m=buscar(L,/\b(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\b/);
-  if(m){ const dia=parseInt(m[1],10), mes=parseInt(m[2],10);
-    let y=m[3]?parseInt(m[3],10):new Date().getFullYear(); if(y<100) y+=2000;
-    if(dia<=31&&mes>=1&&mes<=12){ tachar(L,m.index,m[0].length); return {valor:`${y}-${p2(mes)}-${p2(dia)}`, texto:m[0]}; } }
-
-  /* el 3 de marzo · el 3 · el primero de abril · 15 de mayo */
-  m=buscar(L,/\b(?:el\s+)?(\d{1,2}|primero|primer)\s+de\s+([a-z]+)\b/);
-  if(m){
-    const mes=mesPorNombre(m[2]);
-    if(mes!==null){
-      const dia=/^p/.test(m[1])?1:parseInt(m[1],10);
-      if(dia>=1&&dia<=31){
-        const hoy=new Date(); let y=hoy.getFullYear();
-        let f=`${y}-${p2(mes+1)}-${p2(dia)}`;
-        if(f>todayISO()) f=`${y-1}-${p2(mes+1)}-${p2(dia)}`;   // "el 3 de diciembre" dicho en agosto
-        tachar(L,m.index,m[0].length); return {valor:f, texto:m[0]};
-      }
-    }
-  }
-  m=buscar(L,/\bel\s+(\d{1,2})\b/);
-  if(m){
-    const dia=parseInt(m[1],10);
-    if(dia>=1&&dia<=31){
-      const hoy=new Date(); const d=new Date(hoy.getFullYear(),hoy.getMonth(),dia,12);
-      if(dia>hoy.getDate()) d.setMonth(d.getMonth()-1);        // "el 28" dicho el 5 → mes pasado
-      tachar(L,m.index,m[0].length); return {valor:isoDe(d), texto:m[0]};
-    }
-  }
-  return null;
+    if(n===undefined||n===null) return null;
+    const d=hoyD();
+    if(/^d/.test(m[2]))      d.setDate(d.getDate()-n);
+    else if(/^s/.test(m[2])) d.setDate(d.getDate()-n*7);
+    else                     d.setMonth(d.getMonth()-n);
+    return isoDe(d);
+  });
+  probar(/\b(la\s+semana\s+pasada|el\s+mes\s+pasado|el\s+finde|el\s+fin\s+de\s+semana)\b/, m=>{
+    if(/finde|fin\s+de\s+semana/.test(m[0])) return isoDe(ultimoDiaSemana(6,true));
+    const d=hoyD();
+    if(/mes/.test(m[0])) d.setMonth(d.getMonth()-1); else d.setDate(d.getDate()-7);
+    return isoDe(d);
+  });
+  probar(/\b(?:el\s+|este\s+)?(domingo|lunes|martes|miercoles|jueves|viernes|sabado)(\s+pasado)?\b/,
+    m=>isoDe(ultimoDiaSemana(DIAS_SEM[m[1]], !!m[2])));
+  probar(/\b(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\b/, m=>{
+    const dia=parseInt(m[1],10), mes=parseInt(m[2],10);
+    let y=m[3]?parseInt(m[3],10):hoyD().getFullYear(); if(y<100) y+=2000;
+    return (dia<=31&&mes>=1&&mes<=12) ? `${y}-${p2(mes)}-${p2(dia)}` : null;
+  });
+  probar(/\b(?:el\s+)?(\d{1,2}|primero|primer)\s+de\s+([a-zñ]+)\b/, m=>{
+    const mes=mesPorNombre(m[2]); if(mes===null) return null;
+    const dia=/^p/.test(m[1])?1:parseInt(m[1],10);
+    if(!(dia>=1&&dia<=31)) return null;
+    const y=hoyD().getFullYear();
+    let f=`${y}-${p2(mes+1)}-${p2(dia)}`;
+    if(f>todayISO()) f=`${y-1}-${p2(mes+1)}-${p2(dia)}`;
+    return f;
+  });
+  probar(/\bel\s+(\d{1,2})\b/, m=>{
+    const dia=parseInt(m[1],10); if(!(dia>=1&&dia<=31)) return null;
+    const h=hoyD(); const d=new Date(h.getFullYear(),h.getMonth(),dia,12);
+    if(dia>h.getDate()) d.setMonth(d.getMonth()-1);
+    return isoDe(d);
+  });
+  if(!cands.length) return null;
+  /* "el viernes de la semana pasada" contiene adentro a "el viernes" y a
+     "la semana pasada": los pedazos que están dentro de otro se descartan. */
+  const enteros=cands.filter(x=>!cands.some(y=>y!==x && y.i<=x.i && (y.i+y.len)>=(x.i+x.len) && y.len>x.len));
+  /* de los que quedan, gana el que está más a la derecha: si dijiste
+     "ayer, no, hoy", vale "hoy" */
+  enteros.sort((x,y)=> (x.i-y.i) || (x.len-y.len));
+  const g=enteros[enteros.length-1];
+  tachar(L,g.i,g.len);
+  return {valor:g.valor, texto:g.texto};
 }
 
-/* ================= TARJETA Y CUENTA ================= */
+/* ================= TARJETA, CUENTA Y PERSONAS ================= */
 function buscarNombre(L, nombre){
   const n=normV(nombre).trim(); if(n.length<3) return -1;
-  const re=new RegExp("(?:^|[^a-z0-9])("+n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")(?![a-z0-9])");
-  const m=re.exec(L.libre); return m ? m.index + m[0].length - n.length : -1;
+  const re=new RegExp("(?:^|[^a-z0-9ñ])("+n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")(?![a-z0-9ñ])","g");
+  let m, ult=-1;
+  while((m=re.exec(L.libre))){ ult=m.index + m[0].length - n.length; if(m.index===re.lastIndex) re.lastIndex++; }
+  return ult;
 }
 function leerTarjeta(L){
   let best=null;
   CARDS.forEach(c=>{ [c.alias,c.banco,c.marca,cardTitulo(c)].filter(Boolean).forEach(w=>{
     const i=buscarNombre(L,w);
-    if(i>=0 && (!best||normV(w).length>best.texto.length)) best={valor:c.id, texto:normV(w), i}; }); });
+    if(i>=0 && (!best || i>best.i || normV(w).length>best.texto.length)) best={valor:c.id, texto:normV(w), i}; }); });
   if(best){ tachar(L,best.i,best.texto.length); return best; }
-  const m=buscar(L,/\b(tarjeta|credito|con la tarjeta)\b/);
+  const m=buscar(L,/\b(tarjeta|credito)\b/);
   if(m && CARDS.length){ tachar(L,m.index,m[0].length); return {valor:CARDS[0].id, texto:m[0]}; }
   return null;
 }
 function leerCuenta(L){
   let best=null;
   ACCOUNTS.forEach(a=>{ const i=buscarNombre(L,a.nombre);
-    if(i>=0 && (!best||normV(a.nombre).length>best.texto.length)) best={valor:a.key, texto:normV(a.nombre), i}; });
+    if(i>=0 && (!best || i>best.i)) best={valor:a.key, texto:normV(a.nombre), i}; });
   if(best){ tachar(L,best.i,best.texto.length); return best; }
   const m=buscar(L,/\b(efectivo|cash|en mano)\b/);
   if(m){ const a=ACCOUNTS.find(x=>/efectivo/i.test(x.nombre));
     if(a){ tachar(L,m.index,m[0].length); return {valor:a.key, texto:m[0]}; } }
   return null;
 }
+/* si nombrás a alguien con quien compartís gastos, es un gasto compartido */
+function leerPersona(L){
+  let best=null;
+  PAIRS.forEach(p=>{
+    const o=otherProf(otherId(p)); const nom=(o.apodo||"").trim();
+    if(nom.length<3) return;
+    const i=buscarNombre(L,nom);
+    if(i>=0 && (!best || i>best.i)) best={pair:p.id, nombre:nom, i, len:normV(nom).length};
+  });
+  if(best){ tachar(L,best.i,best.len); return best; }
+  return null;
+}
 
 /* ================= COMERCIO =================
-   Los comercios son nombres propios. Se aceptan en este orden:
-   1) uno que ya usaste antes (aunque lo dictes en minúscula)
-   2) una marca conocida
-   3) una palabra con mayúscula inicial después de "en/de/a"                */
+   Son nombres propios: uno que ya usaste, una marca conocida, o una palabra
+   con mayúscula detrás de "en/de/a".                                      */
 const MARCAS=("coto carrefour jumbo disco vea dia changomas walmart makro vital maxiconsumo "
  +"farmacity farmaonline ypf shell axion refsol mercadolibre rappi pedidosya glovo "
  +"uber cabify didi netflix spotify disney hbo amazon apple google steam playstation xbox "
@@ -3719,39 +3814,34 @@ function nombreOcupado(w){
   if(ACCOUNTS.some(a=>normV(a.nombre)===n)) return true;
   if(CARDS.some(c=>[c.alias,c.banco,c.marca].filter(Boolean).some(x=>normV(x)===n))) return true;
   if(catsAlfa().some(c=>normV(c.nombre)===n)) return true;
+  if(PAIRS.some(p=>normV((otherProf(otherId(p)).apodo||""))===n)) return true;
   return false;
 }
 function leerComercio(L){
-  /* 1) uno que ya usaste */
   for(const c of comerciosUsados()){
     const i=buscarNombre(L,c);
     if(i>=0){ tachar(L,i,normV(c).length); return {valor:c, texto:normV(c)}; }
   }
-  /* 2) marca conocida */
   for(const c of MARCAS){
     const i=buscarNombre(L,c);
     if(i>=0){ const bonito=L.orig.substr(i,c.length);
       tachar(L,i,c.length);
-      return {valor: bonito.charAt(0)===bonito.charAt(0).toUpperCase()? bonito : c.charAt(0).toUpperCase()+c.slice(1), texto:c}; }
+      return {valor: /^[A-ZÁÉÍÓÚÑ]/.test(bonito)? bonito : c.charAt(0).toUpperCase()+c.slice(1), texto:c}; }
   }
-  /* 3) nombre propio (con mayúscula) detrás de en/de/a */
   const re=/\b(?:en|de|a|del)\s+((?:(?:el|la|los|las)\s+)?[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9&'.\-]{2,}(?:\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9&'.\-]{1,})?)/g;
-  let m;
+  let m, elegido=null;
   while((m=re.exec(L.orig))){
     const i=m.index + m[0].length - m[1].length;
-    if(L.libre.slice(i,i+m[1].length).trim()==="") continue;      // ya lo usó otro lector
+    if(L.libre.slice(i,i+m[1].length).trim()==="") continue;
     const limpio=m[1].replace(/^(el|la|los|las)\s+/i,"").trim();
     if(esVacia(limpio) || nombreOcupado(limpio)) continue;
-    const j=i + (m[1].length-limpio.length);
-    tachar(L,j,limpio.length);
-    return {valor:limpio, texto:normV(limpio)};
+    elegido={j:i + (m[1].length-limpio.length), limpio};
   }
+  if(elegido){ tachar(L,elegido.j,elegido.limpio.length); return {valor:elegido.limpio, texto:normV(elegido.limpio)}; }
   return null;
 }
 
-/* ================= CATEGORÍA =================
-   Primero el nombre exacto de una de tus categorías. Si no, sinónimos:
-   "electricidad" cae en Luz o en Servicios, lo que tengas.               */
+/* ================= CATEGORÍA ================= */
 const CAT_PISTAS=[
   {re:/\b(luz|electricidad|electrico|electrica|energia|edenor|edesur|edelap|epec|epe|edea)\b/,
    cats:["Luz","Electricidad","Energía","Servicios","Casa","Hogar"]},
@@ -3762,13 +3852,14 @@ const CAT_PISTAS=[
   {re:/\b(expensas|abl|arba|rentas|impuesto|impuestos|patente|patentes|monotributo|afip|arca|tasa|tasas)\b/,
    cats:["Impuestos","Expensas","Servicios","Casa"]},
   {re:/\b(alquiler|renta|inmobiliaria|garantia)\b/, cats:["Alquiler","Casa","Hogar","Servicios"]},
-  {re:/\b(super|supermercado|almacen|verduleria|verduleria|verdura|verduras|carniceria|carne|pollo|panaderia|fiambreria|dietetica|kiosco|chino|drugstore|mandado|mandados|comida|comidas|almuerzo|cena|cenas|desayuno|merienda|vianda|mercado|coto|carrefour|jumbo|disco|changomas|walmart)\b/,
+  {re:/\b(super|supermercado|almacen|verduleria|verdura|verduras|carniceria|carne|pollo|panaderia|fiambreria|dietetica|kiosco|chino|drugstore|mandado|mandados|comida|comidas|almuerzo|cena|cenas|desayuno|merienda|vianda|mercado|coto|carrefour|jumbo|disco|changomas|walmart)\b/,
    cats:["Comida","Supermercado","Súper","Alimentos","Comestibles"]},
   {re:/\b(delivery|resto|restaurante|restoran|bar|birra|cerveza|vino|cafe|hamburguesa|pizza|sushi|helado|rappi|pedidosya|mostaza|starbucks|mcdonalds)\b/,
    cats:["Salidas","Restaurantes","Ocio","Comida"]},
   {re:/\b(nafta|combustible|gasoil|surtidor|peaje|peajes|estacionamiento|cochera|taller|mecanico|neumatico|neumaticos|cubiertas|vtv|seguro del auto|auto|camioneta|moto|ypf|shell|axion|puma)\b/,
    cats:["Auto","Nafta","Transporte","Vehículo"]},
-  {re:/\b(sube|colectivo|colectivos|bondi|subte|tren|trenes|taxi|remis|pasaje|pasajes|micro|transporte|uber|cabify|didi)\b/, cats:["Transporte","Viajes"]},
+  {re:/\b(sube|colectivo|colectivos|bondi|subte|tren|trenes|taxi|remis|pasaje|pasajes|micro|transporte|uber|cabify|didi)\b/,
+   cats:["Transporte","Viajes"]},
   {re:/\b(farmacia|farmacias|remedio|remedios|medicamento|medicamentos|medico|medica|doctor|doctora|dentista|odontologo|psicologo|psicologa|analisis|prepaga|obra social|kinesio|kinesiologo|oculista|salud|turno medico)\b/,
    cats:["Salud","Medicina","Farmacia"]},
   {re:/\b(gimnasio|gym|pilates|yoga|natacion|padel|entrenador|crossfit|futbol|deporte)\b/, cats:["Gimnasio","Deporte","Salud","Ocio"]},
@@ -3790,34 +3881,27 @@ const CAT_PISTAS=[
 ];
 function catExistente(nombres){
   const lista=catsAlfa();
+  for(const n of nombres){ const c=lista.find(x=>normV(x.nombre)===normV(n)); if(c) return c.nombre; }
   for(const n of nombres){
-    const c=lista.find(x=>normV(x.nombre)===normV(n));
-    if(c) return c.nombre;
-  }
-  for(const n of nombres){                       // "Servicios del hogar" sirve para "Servicios"
     const c=lista.find(x=>normV(x.nombre).startsWith(normV(n))||normV(n).startsWith(normV(x.nombre)));
     if(c) return c.nombre;
   }
   return null;
 }
 function leerCategoria(L, comercio, textoEntero){
-  /* 1) el nombre exacto de una categoría tuya */
   let best=null;
   catsAlfa().forEach(c=>{ const i=buscarNombre(L,c.nombre);
     if(i>=0 && (!best||c.nombre.length>best.valor.length)) best={valor:c.nombre, texto:normV(c.nombre), explicita:true}; });
   if(best) return best;
-  /* 2) la raíz: "cena" encuentra "Cenas", "compra" encuentra "Compras" */
   const palabras=L.libre.split(/[^a-z0-9ñ]+/).filter(w=>w.length>=4);
   catsAlfa().forEach(c=>{ const n=normV(c.nombre); if(n.length<4) return;
     palabras.forEach(w=>{ if((n.startsWith(w)||w.startsWith(n)) && (!best||w.length>best.texto.length))
       best={valor:c.nombre, texto:w, explicita:true}; }); });
   if(best) return best;
-  /* 3) el comercio ya lo usaste antes: heredá su categoría */
   if(comercio){
     const prev=TX.concat(PURCH).reverse().find(x=>normV(x.comercio||"")===normV(comercio) && x.categoria);
     if(prev) return {valor:prev.categoria, texto:null, explicita:false};
   }
-  /* 4) sinónimos: electricidad → Luz o Servicios, lo que tengas */
   const todo=normV(textoEntero||L.libre);
   for(const p of CAT_PISTAS){
     p.re.lastIndex=0;
@@ -3838,7 +3922,7 @@ function leerTipo(txt){
 function leerSplit(txt){
   const t=normV(txt);
   if(/\ba medias\b|\bmitad y mitad\b|\b50\s*[\/y]\s*50\b|\bentre los dos\b/.test(t)) return "ambos";
-  if(/\blo debe entero\b|\bme lo debe\b|\bse lo presto\b/.test(t)) return "solo_otro";
+  if(/\blo debe entero\b|\bme lo debe\b|\bse lo preste\b/.test(t)) return "solo_otro";
   return null;
 }
 
@@ -3861,26 +3945,30 @@ function interpretarLocal(){
   const txt=V.texto||"";
   const L=nuevoLienzo(txt);
   V.auto={};
-  V.tipo=leerTipo(txt);
+  V.corregido = recortarCorreccion(L) !== null;       // ¿dijo "me equivoqué"?
+  const util = L.libre;                               // sólo lo que vale
+  V.tipo=leerTipo(util);
 
-  const cu=leerCuotas(L);   if(cu){ V.cuotas=cu.valor; V.auto.cuotas=cu.texto; }
-                            else V.cuotas=1;
-  const mo=leerMonto(L);    if(mo){ V.monto=mo.valor; V.auto.monto=mo.texto; }
-  const fe=leerFecha(L);    if(fe){ V.fecha=fe.valor; V.auto.fecha=fe.texto; }
+  const cu=leerCuotas(L);   if(cu){ V.cuotas=cu.valor; V.auto.cuotas=cu.texto; } else V.cuotas=1;
+  const fe=leerFecha(L);    if(fe){ V.fecha=fe.valor; V.auto.fecha=fe.texto; } else V.fecha=todayISO();
+  const mo=leerMonto(L);    if(mo){ V.monto=mo.valor; V.auto.monto=mo.texto; } else V.monto=0;
   const ta=leerTarjeta(L);  if(ta){ V.card=ta.valor; V.auto.card=ta.texto; }
   const cc=leerCuenta(L);   if(cc && !ta){ V.cuenta=cc.valor; V.auto.cuenta=cc.texto; }
+  const pe=leerPersona(L);  if(pe){ V.pair=pe.pair; V.auto.persona=normV(pe.nombre); V.conQuien=pe.nombre; }
+                            else V.conQuien=null;
   const co=leerComercio(L); if(co){ V.comercio=co.valor; V.auto.comercio=co.texto; } else V.comercio=null;
 
-  /* decidir el tipo con todo sobre la mesa */
   if(ta || (cu && cu.valor>1)){ if(V.tipo==="gasto") V.tipo="tarjeta"; }
   if(V.tipo==="tarjeta" && !V.card && CARDS.length) V.card=CARDS[0].id;
-  const sp=leerSplit(txt);
-  if(sp){ V.split=sp; V.tipo="compartido";
-    const mm=buscar(L,/\b(a medias|mitad y mitad|entre los dos|lo debe entero|me lo debe)(\s+con\s+[a-z]+)?\b/);
-    if(mm) tachar(L,mm.index,mm[0].length); }
+  if(pe && V.tipo!=="ingreso" && V.tipo!=="ahorro") V.tipo="compartido";
+  const sp=leerSplit(util);
+  if(sp || V.tipo==="compartido"){
+    V.split=sp||V.split||"ambos"; if(sp) V.tipo="compartido";
+    const mm=buscar(L,/\b(a medias|mitad y mitad|entre los dos|lo debe entero|me lo debe)(\s+con)?\b/);
+    if(mm) tachar(L,mm.index,mm[0].length);
+  }
 
-  /* la categoría NO se tacha: suele ser la palabra que también describe el gasto */
-  const ca=leerCategoria(L, V.comercio, txt);
+  const ca=leerCategoria(L, V.comercio, util);
   if(ca){ V.categoria=ca.valor; V.auto.categoria=ca.texto; V.catAuto=!ca.explicita; }
   else if(V.tipo!=="ahorro"){ V.categoria=catsRecientes(V.tipo==="ingreso"?"ingreso":"gasto",1)[0]||null; V.catAuto=true; }
   else V.categoria=null;
@@ -3897,13 +3985,35 @@ async function interpretarIA(){
   const cats=catsAlfa().map(c=>c.nombre);
   const ctas=ACCOUNTS.map(a=>({key:a.key,nombre:a.nombre}));
   const tars=CARDS.map(c=>({id:c.id,nombre:cardTitulo(c)}));
-  const prompt=`Sos un extractor de datos para una app de finanzas argentina. Devolvé SÓLO un JSON.
-Hoy es ${todayISO()}.
-Categorías posibles: ${JSON.stringify(cats)}
+  const gente=PAIRS.map(p=>({pair:p.id, nombre:otherProf(otherId(p)).apodo}));
+  const hoy=new Date();
+  const prompt=`Sos un extractor de datos para una app de finanzas argentina. Devolvé SÓLO un JSON, sin explicar nada.
+
+HOY es ${todayISO()} (${hoy.toLocaleDateString('es-AR',{weekday:'long'})}). Usá esto para resolver fechas habladas:
+"ayer", "anteayer", "hace 3 días", "la semana pasada", "el miércoles de la semana pasada"
+(= el miércoles de la semana calendario anterior, no el miércoles más cercano), "el 12 de agosto".
+
+REGLAS IMPORTANTES:
+1. Si la persona se corrige ("no, me equivoqué", "mejor dicho", "en realidad", "perdón"),
+   vale SÓLO lo que dijo DESPUÉS de la corrección.
+2. Si un dato se dice dos veces, vale el ÚLTIMO.
+3. Centavos: el número de 1 a 99 que va antes de "centavos", "céntimos", "decimales",
+   o detrás de "con"/"y", son los decimales. "500 pesos con 22" = 500.22.
+4. Números compuestos: "12 millones 533 mil 422 con 21" = 12533422.21. "5 lucas" = 5000. "2 palos" = 2000000.
+5. "en tres cuotas" son cuotas de tarjeta, nunca parte del monto ni de la descripción.
+6. Los comercios son nombres propios (Coto, YPF, Farmacity). Nunca un número, ni una palabra suelta.
+7. Si nombra a una de estas personas, es un gasto compartido: ${JSON.stringify(gente)}
+
+Categorías posibles (elegí SIEMPRE una de esta lista): ${JSON.stringify(cats)}
 Cuentas: ${JSON.stringify(ctas)}
 Tarjetas: ${JSON.stringify(tars)}
+
 Frase: "${(V.texto||"").replace(/"/g,"'")}"
-Devolvé: {"tipo":"gasto|ingreso|tarjeta|ahorro|compartido","monto":number,"categoria":string,"cuenta":string(key de cuenta),"card":string(id de tarjeta o null),"cuotas":number,"fecha":"YYYY-MM-DD","comercio":string|null}`;
+
+Devolvé:
+{"tipo":"gasto|ingreso|tarjeta|ahorro|compartido","monto":number,"categoria":string,
+ "cuenta":string(key de cuenta),"card":string(id de tarjeta o null),"cuotas":number,
+ "fecha":"YYYY-MM-DD","comercio":string|null,"descripcion":string|null,"pair":string|null}`;
   const body={contents:[{parts:[{text:prompt}]}],
     generationConfig:{temperature:0, responseMimeType:"application/json", maxOutputTokens:300}};
   try{
@@ -3921,6 +4031,9 @@ Devolvé: {"tipo":"gasto|ingreso|tarjeta|ahorro|compartido","monto":number,"cate
     if(d.cuotas>=1) V.cuotas=Math.round(d.cuotas);
     if(/^\d{4}-\d{2}-\d{2}$/.test(d.fecha||"")) V.fecha=d.fecha;
     if(d.comercio) V.comercio=d.comercio;
+    if(d.descripcion) V.descripcion=d.descripcion;
+    if(d.pair && PAIRS.some(p=>p.id===d.pair)){ V.pair=d.pair; V.tipo="compartido";
+      V.conQuien=otherProf(otherId(PAIRS.find(p=>p.id===d.pair))).apodo; }
     return {ok:true};
   }catch(e){ return {ok:false,motivo:e.message}; }
 }
@@ -4054,6 +4167,7 @@ function vozAtajos(){
     {t:"ayer", add:"ayer"},
     {t:"en 3 cuotas", add:"en 3 cuotas"},
     o?{t:"a medias con "+o, add:"a medias con "+o}:null,
+    {t:"el miércoles pasado", add:"el miércoles de la semana pasada"},
     ef?{t:ef.nombre.toLowerCase(), add:"con "+ef.nombre}:null,
     c1?{t:"con "+cardTitulo(c1), add:"con "+cardTitulo(c1)}:null,
     {t:"fue un ingreso", add:"cobré"},
@@ -4129,19 +4243,39 @@ function renderVozFilas(){
     if(V.cuotas>1) h+=fila("Cuotas",`${V.cuotas} × ${fmt(round2(V.monto/V.cuotas),cur)}`,"cuotas");
   } else h+=fila("Cuenta",esc(CTA_NOMBRE[V.cuenta]||V.cuenta||"—"),"cuenta");
   h+=fila("Cuándo",esc(fechaLarga(V.fecha)),"fecha");
+  if(V.tipo==="compartido"){
+    const p=PAIRS.find(x=>x.id===V.pair); const o=p?otherProf(otherId(p)):{apodo:"la otra persona"};
+    h+=fila("Con",esc(V.conQuien||o.apodo),"pair");
+    const pagoYo=(V.pagador||user.id)===user.id;
+    h+=`<div class="detrow"><span class="k">Pagó</span><span class="v" style="gap:6px">
+      <button class="chip ${pagoYo?'on':''}" data-vp="yo" style="padding:5px 11px;font-size:12px">Vos</button>
+      <button class="chip ${!pagoYo?'on':''}" data-vp="otro" style="padding:5px 11px;font-size:12px">${esc(o.apodo)}</button>
+      </span></div>`;
+    h+=fila("Reparto", V.split==="solo_otro"?"Lo debe entero":"Mitad y mitad","split");
+  }
   h+=fila("Comercio",V.comercio?esc(V.comercio):`<span style="color:var(--ink-3)">—</span>`,"comercio");
   h+=fila("Descripción",V.descripcion?esc(V.descripcion):`<span style="color:var(--ink-3)">—</span>`,"descripcion");
   $("voz-filas").innerHTML=h;
   $("voz-filas").querySelectorAll("[data-vf]").forEach(b=>{
     b.onmousedown=e=>e.preventDefault();          // que el clic no se pierda al desenfocar el texto
     b.onclick=()=>vozEditar(b.dataset.vf); });
+  $("voz-filas").querySelectorAll("[data-vp]").forEach(b=>{
+    b.onmousedown=e=>e.preventDefault();
+    b.onclick=()=>{ const p=PAIRS.find(x=>x.id===V.pair);
+      V.pagador = b.dataset.vp==="yo" ? user.id : (p?otherId(p):user.id);
+      renderVozFilas(); }; });
 
   const AT=vozAtajos();
   $("voz-atajos").innerHTML=AT.map((a,i)=>`<button class="chip" data-va="${i}">${esc(a.t)}</button>`).join("");
   $("voz-atajos").querySelectorAll("[data-va]").forEach(b=>b.onmousedown=e=>e.preventDefault());
   $("voz-atajos").querySelectorAll("[data-va]").forEach(b=>b.onclick=()=>vozAgregar(AT[Number(b.dataset.va)].add));
+  const TIT2={gasto:"Guardar gasto",ingreso:"Guardar ingreso",tarjeta:"Guardar compra",ahorro:"Guardar ahorro",compartido:"Guardar compartido"};
+  $("voz-guardar").textContent=TIT2[V.tipo]||"Guardar gasto";
+  $("voz").setAttribute("data-t",V.tipo);
   $("voz-guardar").disabled=!vozCompleto();
   $("voz-ia").classList.toggle("hidden", !geminiKey());
+  if(V.corregido && !quiereEscuchar && $("voz-estado").textContent==="")
+    $("voz-estado").textContent="Tomé lo último que dijiste.";
 }
 function vozEditar(campo){
   /* reusa la hoja del detalle, pero escribiendo en V */
@@ -4149,7 +4283,7 @@ function vozEditar(campo){
   const falso={_k:"voz", fecha:V.fecha, monto:V.monto, categoria:V.categoria, cuenta:V.cuenta,
     comercio:V.comercio, card_id:V.card, cuotas:V.cuotas, descripcion:""};
   campoEdit={campo, r:falso, voz:true};
-  const tit={monto:"Monto",categoria:"Categoría",cuenta:"¿De qué cuenta?",card:"Tarjeta",fecha:"¿Cuándo fue?",comercio:"Comercio",cuotas:"Cuotas",descripcion:"Descripción"}[campo]||"Editar";
+  const tit={monto:"Monto",categoria:"Categoría",cuenta:"¿De qué cuenta?",card:"Tarjeta",fecha:"¿Cuándo fue?",comercio:"Comercio",cuotas:"Cuotas",descripcion:"Descripción",pair:"¿Con quién?",split:"¿Cómo se reparte?"}[campo]||"Editar";
   $("campo-tit").textContent=tit; $("campo-err").textContent="";
   const bd=$("campo-body");
   if(campo==="monto") bd.innerHTML=`<div class="fld" style="margin:0"><label>Monto en ${esc(cur)}</label>
@@ -4158,6 +4292,11 @@ function vozEditar(campo){
     <input id="campo-in" type="number" inputmode="numeric" min="1" value="${V.cuotas}"></div>`;
   else if(campo==="comercio") bd.innerHTML=`<div class="fld" style="margin:0"><label>Comercio</label>
     <input id="campo-in" type="text" value="${esc(V.comercio||"")}" placeholder="Ej: Coto"></div>`;
+  else if(campo==="pair") bd.innerHTML=`<div class="fld" style="margin:0"><label>Con quién</label><select id="campo-in">${
+    PAIRS.map(p=>`<option value="${esc(p.id)}"${p.id===V.pair?" selected":""}>${esc(otherProf(otherId(p)).apodo)}</option>`).join("")}</select></div>`;
+  else if(campo==="split") bd.innerHTML=`<div class="fld" style="margin:0"><label>Reparto</label><select id="campo-in">
+    <option value="ambos"${V.split!=="solo_otro"?" selected":""}>Mitad y mitad</option>
+    <option value="solo_otro"${V.split==="solo_otro"?" selected":""}>Lo debe entero</option></select></div>`;
   else if(campo==="descripcion") bd.innerHTML=`<div class="fld" style="margin:0"><label>Descripción</label>
     <input id="campo-in" type="text" value="${esc(V.descripcion||"")}" placeholder="Ej: Pago de la electricidad"></div>`;
   else if(campo==="fecha"){
@@ -4210,7 +4349,7 @@ async function vozGuardar(){
     } else if(V.tipo==="compartido"){
       if(!PAIRS.length){ alert("Primero vinculá a alguien en Configuración → Compartir gastos."); $("voz-guardar").disabled=false; return; }
       const {error}=await sb.from("shared_txns").insert({pair_id:V.pair,fecha:V.fecha,titulo:desc||"Gasto compartido",
-        monto:V.monto,pagado_por:user.id,dividido:V.split||"ambos",categoria:V.categoria,created_by:user.id});
+        monto:V.monto,pagado_por:V.pagador||user.id,dividido:V.split||"ambos",categoria:V.categoria,created_by:user.id});
       if(error) throw error;
     } else {
       const {error}=await sb.from("transactions").insert({fecha:V.fecha,cuenta:V.cuenta,tipo:V.tipo==="ingreso"?"ingreso":"gasto",
