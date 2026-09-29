@@ -149,6 +149,29 @@
 .pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:800}
 .warn{background:var(--amber-bg);color:var(--amber);border-radius:16px;padding:12px 14px;font-size:13px;font-weight:600}
 .curline{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
+/* v3.9 · Lo que viene */
+.viene{list-style:none;margin:0;padding:4px 0}
+.viene li{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:10px;padding:10px 16px;min-height:52px}
+.viene li+li{border-top:1px solid var(--line-2)}
+.viene .vd{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;text-align:center;line-height:1;font-weight:800;font-size:16px;background:var(--soft,#f4f1ec);color:var(--ink)}
+.viene .vd small{display:block;font-size:10px;font-weight:700;color:var(--ink-3);margin-top:2px;text-transform:uppercase}
+.viene .vd.pronto{background:var(--amber-bg);color:var(--amber)}
+.viene .vd.hoy{background:var(--red-bg);color:var(--red-ink)}
+.viene .vt b{display:block;font-size:14px;font-weight:700;color:var(--ink)}
+.viene .vt span{font-size:12.5px;color:var(--ink-3)}
+.viene .vm{font-weight:800;font-size:14px;white-space:nowrap}
+.viene-pie{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 16px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-2)}
+.viene-pie b{font-size:16px;color:var(--ink);white-space:nowrap}
+/* v3.8 · franja de "sin conexión": arriba de todo, no tapa la barra de abajo */
+#offline-bar{position:fixed;left:0;right:0;top:0;z-index:9999;display:none;align-items:center;gap:8px;
+  padding:calc(env(safe-area-inset-top,0px) + 9px) 16px 9px;background:var(--amber,#b7791f);color:#1a1510;font-size:13px;font-weight:600;line-height:1.3}
+#offline-bar.on{display:flex}
+#offline-bar svg{flex:none}
+/* v3.8 · pastilla para alternar Disponible / Total. El área táctil mide 44px aunque la pastilla se vea más chica */
+.halt{border:0;background:transparent;color:var(--on-dark-2);font:inherit;padding:0;margin:0 0 -4px;min-height:44px;display:inline-flex;align-items:center;cursor:pointer;max-width:100%}
+.halt-in{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;background:color-mix(in srgb, #fff 9%, transparent);font-size:13px;font-weight:700;overflow-wrap:anywhere;text-align:left}
+.halt-in b{color:#fff;font-weight:800}
+.halt:focus-visible{outline:none}.halt:focus-visible .halt-in{box-shadow:0 0 0 3px color-mix(in srgb, #fff 55%, transparent)}
 .curline span{font-size:13px;color:var(--on-dark-2);font-weight:700}
 .tiny{font-size:11px;color:var(--ink-2)}
 .stepdot{display:flex;gap:6px;justify-content:center;margin-bottom:14px}
@@ -516,6 +539,9 @@ button.row{background:transparent;border:0;color:inherit;font:inherit;text-align
   display:grid;grid-template-columns:1fr 1fr 64px 1fr 1fr;align-items:center;padding:8px 6px calc(14px + env(safe-area-inset-bottom))}
 .nav button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink-2);padding:4px 0;min-height:48px}
 .nav button span{font-size:11px;font-weight:800;letter-spacing:-.015em;white-space:nowrap}
+/* v3.8 · "Movimientos" es la etiqueta más larga de la barra: en pantallas de hasta 400px
+   se achica un poco toda la fila (no sólo esa) para que las cinco se vean iguales */
+@media (max-width:400px){ .nav button span:last-child{font-size:10px;letter-spacing:-.03em} }
 .nav button.on{color:var(--red-ink)}
 .nav .navfab{width:56px;height:56px;border:0;border-radius:50%;background:var(--red);color:var(--on-accent);
   display:grid;place-items:center;position:relative;z-index:2;flex:none;
@@ -978,7 +1004,7 @@ canvas{max-height:270px}
     </div>
 
     <div style="display:flex;align-items:center;gap:10px;margin-top:22px">
-      <button class="lbl-up tapz" id="h-cuentas" style="border:0;background:transparent;display:inline-flex;align-items:center;gap:5px;color:inherit;font:inherit;letter-spacing:inherit;min-height:44px;padding:13px 0;margin:-13px 0">Plata total<span data-ic="adelante" data-ic-size="13" aria-hidden="true"></span></button>
+      <button class="lbl-up tapz" id="h-cuentas" style="border:0;background:transparent;display:inline-flex;align-items:center;gap:5px;color:inherit;font:inherit;letter-spacing:inherit;min-height:44px;padding:13px 0;margin:-13px 0"><span id="h-lbl">Disponible</span><span data-ic="adelante" data-ic-size="13" aria-hidden="true"></span></button>
       <button class="tapz" id="eye-btn" aria-label="Mostrar u ocultar los montos" title="Ocultar montos" style="border:0;background:transparent;width:44px;height:44px;margin:-13px -11px;padding:0;color:var(--on-dark-2);display:grid;place-items:center" data-ic="ojo" data-ic-size="17"></button>
       <div class="mespill" role="group" aria-label="Mes que estás viendo">
         <button class="mesparte tapz" id="mes-btn" aria-label="Ver el calendario del mes">
@@ -989,12 +1015,14 @@ canvas{max-height:270px}
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
-      <button class="total num tapz" id="h-total" style="border:0;background:transparent;padding:4px 0;margin:-4px 0;min-height:44px;text-align:left;flex:1;overflow-wrap:anywhere" aria-label="Plata total. Tocá para ver el detalle por cuenta">$0,00</button>
+      <button class="total num tapz" id="h-total" style="border:0;background:transparent;padding:4px 0;margin:-4px 0;min-height:44px;text-align:left;flex:1;overflow-wrap:anywhere" aria-label="Disponible. Tocá para ver el detalle por cuenta">$0,00</button>
       <span class="visualmente-oculto" id="h-total-live" role="status" aria-live="polite"></span>
       <button class="addbig tapz" id="add-top" aria-label="Registrar un movimiento" title="Registrar un movimiento" data-ic="mas" data-ic-size="22"></button>
     </div>
     <div class="curline" id="h-otras"></div>
-    <div style="font-size:13px;color:var(--on-dark-2);margin-top:5px" id="h-sub"></div>
+    <!-- v3.8 · la otra cifra, a un toque: Disponible <-> Total con ahorros -->
+    <button class="halt tapz" id="h-alt" type="button" aria-describedby="h-lbl"><span class="halt-in"><span id="h-alt-txt">—</span><span data-ic="transferir" data-ic-size="13" aria-hidden="true"></span></span></button>
+    <div style="font-size:13px;color:var(--on-dark-2);margin-top:2px" id="h-sub"></div>
     <div class="catbar" id="catbar"></div>
     <div class="catleg" id="catleg"></div>
   </div>
@@ -1020,6 +1048,8 @@ canvas{max-height:270px}
     </div>
 
     <div id="home-alert"></div>
+    <!-- v3.9 · lo que todavía tiene que salir (o entrar) este mes -->
+    <div id="viene-wrap"></div>
     <div class="sec"><b>Mis cuentas</b><span id="ctas-tot"></span></div>
     <div class="panel" id="ctas-panel" style="animation-delay:.2s"></div>
     <div class="sec" style="margin-top:18px"><b>Recientes</b><span id="rec-count"></span></div>
@@ -1036,7 +1066,9 @@ canvas{max-height:270px}
       <button class="hd-ico" id="mv-export" aria-label="Exportar los movimientos a CSV" title="Exportar CSV" data-ic="exportar" data-ic-size="18"></button></div>
     <div style="margin-top:16px"><div class="lbl-up" id="mv-lbl">Total del mes</div>
       <div style="display:flex;align-items:center;gap:14px;margin-top:3px">
-        <div class="num" id="mv-total" style="font-size:32px;font-weight:800;color:#fff;flex:1;overflow-wrap:anywhere">$0,00</div>
+        <div class="num" id="mv-total" style="font-size:clamp(22px,7vw,32px);font-weight:800;color:#fff;flex:1;min-width:0;overflow-wrap:anywhere">$0,00</div>
+        <!-- v3.8 · pasar plata entre cuentas también desde Movimientos, igual que en Tus cuentas -->
+        <button class="addbig tapz" id="mv-pasar" aria-label="Pasar plata de una cuenta a otra" title="Pasar plata" data-ic="transferir" data-ic-size="20" style="background:var(--blue)"></button>
         <button class="addbig tapz" id="mv-add" aria-label="Registrar un movimiento" title="Registrar" data-ic="mas" data-ic-size="22"></button>
       </div></div>
   </div>
@@ -1063,7 +1095,7 @@ canvas{max-height:270px}
   <div class="sub-hd">
     <div class="sub-bar"><button class="bk" id="cu-back" aria-label="Volver al Inicio" data-ic="atras" data-ic-size="18"></button><h2>Tus cuentas</h2>
       <button class="hd-ico" id="cu-nueva" aria-label="Agregar una cuenta" title="Agregar cuenta" data-ic="mas" data-ic-size="18"></button></div>
-    <div style="margin-top:16px"><div class="lbl-up">Plata total</div>
+    <div style="margin-top:16px"><div class="lbl-up">Total con ahorros</div>
       <div style="display:flex;align-items:center;gap:14px;margin-top:3px">
         <div class="num" id="cu-total" style="font-size:32px;font-weight:800;color:#fff;flex:1;overflow-wrap:anywhere">$0,00</div>
         <button class="addbig tapz" id="cu-pasar" aria-label="Pasar plata de una cuenta a otra" title="Pasar plata" data-ic="transferir" data-ic-size="20" style="background:var(--blue)"></button>
@@ -1357,7 +1389,7 @@ canvas{max-height:270px}
 <!-- barra inferior -->
 <nav class="nav hidden" id="nav" aria-label="Navegación principal">
   <button data-nav="app" class="on"><span data-ic="casa" data-ic-size="20"></span><span>Inicio</span></button>
-  <button data-nav="metas"><span data-ic="chanchito" data-ic-size="20"></span><span>Ahorros</span></button>
+  <button data-nav="movs"><span data-ic="lista" data-ic-size="20"></span><span>Movimientos</span></button>
   <div style="display:grid;place-items:center"><button class="navfab tapz" id="nav-add" aria-label="Registrar un movimiento contándoselo a la app" data-ic="mas" data-ic-size="24"></button></div>
   <button data-nav="tar"><span data-ic="tarjeta" data-ic-size="20"></span><span>Tarjetas</span></button>
   <button data-nav="mas"><span data-ic="menu" data-ic-size="20"></span><span>Más</span></button>
@@ -1759,7 +1791,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.08.28-v3.7-confirmaciones";
+const APP_VERSION = "2026.09.29-v3.9-seguridad-lo-que-viene";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -1907,6 +1939,23 @@ function _iconoAviso(k){
 }
 /* atajos para no repetir {icono:"ok"} en cada llamada */
 function avisarOK(t,sub,o){ return toast(t,Object.assign({sub,icono:"ok"},o||{})); }
+/* v3.8 · SIN CONEXIÓN
+   Antes, si se caía la red, el guardado fallaba con un error genérico y no había
+   forma de saber por qué. Ahora una franja fija lo avisa mientras dure, y otra
+   confirma cuando vuelve (y trae los datos de nuevo). */
+ICON_D.sinred='M12 20h.01|M8.5 16.43a5 5 0 0 1 7 0|M5 12.86a10 10 0 0 1 5.17-2.69|M19 12.86a10 10 0 0 0-2-1.52|M2 8.82a15 15 0 0 1 4.18-2.64|M22 8.82a15 15 0 0 0-11.29-3.76|M2 2l20 20';
+function pintarConexion(){
+  let b=document.getElementById("offline-bar");
+  if(!b){ b=document.createElement("div"); b.id="offline-bar"; b.setAttribute("role","status"); b.setAttribute("aria-live","polite"); document.body.appendChild(b); }
+  const off = navigator.onLine===false;
+  b.classList.toggle("on", off);
+  b.innerHTML = off ? `${icon("sinred",16)}<span><b>Sin conexión.</b> Lo que cargues ahora no se va a guardar.</span>` : "";
+  document.documentElement.classList.toggle("sin-red", off);
+}
+window.addEventListener("offline", pintarConexion);
+window.addEventListener("online", ()=>{ pintarConexion();
+  if(typeof booted!=="undefined" && booted){ toast("Volvió la conexión",{sub:"Actualicé tus datos.",icono:"ok"}); loadAll(); } });
+pintarConexion();
 
 /* 2 · la fila recien tocada se resalta cuando se vuelve a dibujar la lista.
    Se guarda el id y lo pinta el primer render que la encuentre, porque
@@ -2080,8 +2129,75 @@ function confirmar(o){
   });
 }
 
+/* v3.9 · PEDIR CONTRASEÑA para cifrar o abrir una copia.
+   Misma hoja que confirmar(). Con {doble:true} pide repetirla. Devuelve el texto o null. */
+function pedirClave(o){
+  return new Promise(resolve=>{
+    const ov=_confBox(), box=ov.querySelector("#conf-in");
+    ov.setAttribute("aria-labelledby","conf-t");
+    box.innerHTML=`<h3 id="conf-t">${esc(o.titulo)}</h3>`+(o.texto?`<p>${esc(o.texto)}</p>`:"")
+      +`<div class="fld" style="margin-top:10px"><label for="clave-1">Contraseña</label><input type="password" id="clave-1" autocomplete="new-password"></div>`
+      +(o.doble?`<div class="fld"><label for="clave-2">Repetila</label><input type="password" id="clave-2" autocomplete="new-password"></div>`:"")
+      +`<div class="err" id="clave-err" role="alert" style="min-height:18px"></div>
+        <div class="r2"><button class="btn ghost" type="button" id="conf-no">Cancelar</button>
+        <button class="btn" type="button" id="conf-si">${esc(o.ok||"Listo")}</button></div>`;
+    ov.classList.remove("hidden");
+    const c1=box.querySelector("#clave-1"), c2=box.querySelector("#clave-2"), er=box.querySelector("#clave-err");
+    setTimeout(()=>c1.focus(),120);
+    const cerrar=v=>{ ov.classList.add("hidden"); ov.onclick=null; document.removeEventListener("keydown",tecla); resolve(v); };
+    const listo=()=>{ const a=c1.value;
+      if(a.length<(o.min||1)){ er.textContent=`Mínimo ${o.min} caracteres.`; c1.focus(); return; }
+      if(c2 && c2.value!==a){ er.textContent="Las dos contraseñas no coinciden."; c2.focus(); return; }
+      cerrar(a); };
+    const tecla=e=>{ if(e.key==="Escape"){ e.preventDefault(); cerrar(null); } if(e.key==="Enter"){ e.preventDefault(); listo(); } };
+    document.addEventListener("keydown",tecla);
+    box.querySelector("#conf-si").onclick=listo;
+    box.querySelector("#conf-no").onclick=()=>cerrar(null);
+    ov.onclick=e=>{ if(e.target===ov) cerrar(null); };
+  });
+}
+/* v3.9 · CIFRADO DE LA COPIA: AES-GCM 256 con clave derivada por PBKDF2-SHA256 (310.000 vueltas).
+   Todo pasa en el navegador (WebCrypto); la contraseña no se guarda en ningún lado. */
+const CIFRADO_ID="AES-GCM-256/PBKDF2-SHA256";
+const _b64=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
+const _deb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function _claveDe(pass,salt,iter){
+  const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(pass),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:iter,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function cifrarTexto(txt,pass){
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12)), iter=310000;
+  const k=await _claveDe(pass,salt,iter);
+  const data=await crypto.subtle.encrypt({name:"AES-GCM",iv},k,new TextEncoder().encode(txt));
+  return {_app:"Mis Cuentas",_cifrado:CIFRADO_ID,iter,salt:_b64(salt),iv:_b64(iv),data:_b64(data)};
+}
+async function descifrarTexto(env,pass){
+  const k=await _claveDe(pass,_deb64(env.salt),env.iter||310000);
+  const plano=await crypto.subtle.decrypt({name:"AES-GCM",iv:_deb64(env.iv)},k,_deb64(env.data));
+  return new TextDecoder().decode(plano);
+}
+
 /* --- borrar con deshacer (H-02) ---
    Muestra el aviso y solo ejecuta `borrar` si el usuario NO toca Deshacer. */
+/* v3.8 · DESHACER DESPUÉS DE GUARDAR
+   Antes, un error de carga (monto mal tipeado, cuenta equivocada) obligaba a
+   buscar el movimiento y borrarlo. Ahora el aviso de "guardado" trae Deshacer
+   durante 6 segundos: borra exactamente lo que se acaba de crear. */
+async function deshacerCreados(lista){
+  for(const c of [...lista].reverse()){
+    const {error}=await sb.from(c.t).delete().eq("id",c.id);
+    if(error) throw error;
+  }
+}
+function avisarGuardadoConDeshacer(titulo, sub, creados){
+  if(!creados || !creados.length){ avisarOK(titulo, sub); return; }
+  toast(titulo,{sub, icono:"ok", ms:6000,
+    accion:{txt:"Deshacer", fn: async()=>{
+      try{ await deshacerCreados(creados); await loadAll();
+        toast("Listo, no quedó guardado",{sub:"Podés cargarlo de nuevo cuando quieras.",icono:"volver"}); }
+      catch(e){ avisarError(e,"No pude deshacerlo"); await loadAll(); }
+    }}});
+}
 function conDeshacer(o){
   if(o.quitarDeLaVista) o.quitarDeLaVista();
   toast(o.texto, {
@@ -2261,11 +2377,10 @@ function show(w){
   $("nav").classList.toggle("hidden", !dentro);
   if(dentro){
     vista=w;
-    /* v3 · Movimientos salió de la barra: se llega desde el Inicio, así que
-       mientras estás ahí sigue marcada la pestaña de Inicio. */
-    const navKey = (w==="movs"||w==="cuentas") ? "app"
-                 : (w==="meta") ? "metas"
-                 : (w==="sub"||w==="cal") ? "mas" : w;
+    /* v3.8 · Movimientos vuelve a la barra en el lugar de Ahorros.
+       Ahorros se abre desde la ficha del Inicio o desde Más, así que marca "Más". */
+    const navKey = (w==="cuentas") ? "app"
+                 : (w==="meta"||w==="metas"||w==="sub"||w==="cal") ? "mas" : w;
     document.querySelectorAll("[data-nav]").forEach(b=>b.classList.toggle("on", b.dataset.nav===navKey));
     UI.vista=w; UI.sub=subView; UI.goal=activeGoalId; saveUI();
   }
@@ -2301,7 +2416,7 @@ $("logo-auth").innerHTML=LOGO; pintarIconos(); if($("app-ver-2")) $("app-ver-2")
 
 if(!configured()){ show("setup"); }
 else{
-  sb=supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:{ flowType:'implicit', detectSessionInUrl:true, persistSession:true, autoRefreshToken:true } });
+  sb=supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:{ flowType:'pkce',   /* v3.9 · PKCE: el token ya no viaja en la URL (#access_token) */ detectSessionInUrl:true, persistSession:true, autoRefreshToken:true } });
   sb.auth.getSession().then(({data})=>{ if(recoveryMode){ show("recovery"); rcMostrar(3); } else onSession(data.session); });
   // Cuando volvés a la pestaña de Chrome, Supabase dispara SIGNED_IN / TOKEN_REFRESHED.
   // Si la sesión es la misma, no recargamos nada: eso era lo que "reiniciaba" la app.
@@ -2501,6 +2616,7 @@ async function loadAll(){
     const otherIds=[...new Set(PAIRS.map(x=> x.a===user.id?x.b:x.a))];
     OTHERPROF={}; if(otherIds.length){ const {data}=await sb.rpc("perfiles_de",{ids:otherIds}); (data||[]).forEach(x=>{ OTHERPROF[x.user_id]={apodo:x.apodo,foto_url:x.foto_url}; }); }
     fillAccountSelects(); fillCatSelects(); renderMe();
+    detectarIAServidor();   /* v3.9 · no bloquea: la IA es opcional */
     renderTodo();
     if(subView) renderSub();
   } catch(e){
@@ -2693,6 +2809,27 @@ function deudaTarjetas(cur){
    El número que ve el usuario no cambia: antes se restaba de la cuenta y se
    volvía a sumar acá. Cambia el significado, no la cifra. */
 function plataTotal(cur){ return round2(saldoCuentas(cur)-deudaTarjetas(cur)); }
+/* v3.8 · DOS números en vez de uno.
+   Disponible = lo que podés gastar hoy, como si fuera débito: efectivo, bancos y
+   billeteras, sin lo reservado para metas. No incluye cuentas de inversión.
+   Total = todo lo que tenés en cuentas, con ahorros e inversiones adentro.
+   Ninguno de los dos resta la tarjeta: la deuda se muestra aparte (ficha Tarjetas
+   y "cuotas de este mes"), porque mezclarla escondía de dónde salía el número. */
+function esCuentaDebito(key){ return tipoCuenta(key)!=="inversion"; }
+function disponibleDebito(cur){
+  return round2(ACCOUNTS.filter(a=>(a.moneda||"ARS")===cur && esCuentaDebito(a.key))
+                        .reduce((s,a)=>s+disponible(a.key),0));
+}
+function totalConAhorros(cur){ return saldoCuentas(cur); }
+function cuotasDelMes(m,cur){
+  const c=cur||CUR, ids=new Set(CARDS.filter(x=>monedaTarjeta(x)===c).map(x=>x.id));
+  const pM=Object.fromEntries(PURCH.map(p=>[p.id,p]));
+  return round2(INST.filter(x=>{ if(x.pagada||String(x.mes||"").slice(0,7)!==m) return false;
+    const p=pM[x.purchase_id]; if(!p) return false; return p.card_id?ids.has(p.card_id):c===CUR; })
+    .reduce((a,x)=>a+Number(x.monto),0));
+}
+function modoTotal(){ return UI.modoTotal==="total"?"total":"disp"; }
+function cifraInicio(cur,modo){ return (modo||modoTotal())==="total" ? totalConAhorros(cur) : disponibleDebito(cur); }
 function totalesMes(m,cur){
   let ing=0,gas=0;
   TX.forEach(t=>{ if(t.fecha.slice(0,7)!==m) return; if(cur && (CTA_MON[t.cuenta]||"ARS")!==cur) return;
@@ -2814,12 +2951,21 @@ pintarIconos();
 
 /* ===================== INICIO ===================== */
 function renderInicio(){
-  const total=plataTotal(CUR);
+  const modo=modoTotal(), esTot=modo==="total";
+  const total=cifraInicio(CUR,modo), otra=cifraInicio(CUR,esTot?"disp":"total");
   tickSiCambio($("h-total"),money(total,CUR));   /* v3.7 */
-  const otras=monedasEnUso().filter(c=>c!==CUR).map(c=>({c,v:plataTotal(c)})).filter(x=>Math.abs(x.v)>0.004);
+  $("h-lbl").textContent = esTot ? "Total con ahorros" : "Disponible";
+  $("h-total").setAttribute("aria-label",(esTot?"Total con ahorros":"Disponible")+". Tocá para ver el detalle por cuenta");
+  $("h-alt-txt").innerHTML = (esTot?"Disponible ":"Total con ahorros ")+`<b class="num">${money(otra,CUR)}</b>`;
+  $("h-alt").setAttribute("aria-label", esTot
+    ? `Ver el disponible: ${money(otra,CUR)}. Es lo que tenés en efectivo, bancos y billeteras, sin lo reservado para metas`
+    : `Ver el total con ahorros: ${money(otra,CUR)}. Suma todas tus cuentas, con lo reservado y las inversiones`);
+  const otras=monedasEnUso().filter(c=>c!==CUR).map(c=>({c,v:cifraInicio(c,modo)})).filter(x=>Math.abs(x.v)>0.004);
   $("h-otras").innerHTML=otras.map(x=>`<span>${money(x.v,x.c)}${monInfo(x.c).cripto?"":" "+esc(x.c)}</span>`).join("");
   const {ing,gas}=totalesMes(VMONTH,CUR), prev=totalesMes(mesAnterior(VMONTH),CUR);
-  $("h-sub").innerHTML = gas>0 ? `Gastaste <b style="color:#fff">${money(gas,CUR)}</b> en ${mesLargo(VMONTH)}` : `Sin gastos en ${mesLargo(VMONTH)}`;
+  const _cm=cuotasDelMes(VMONTH,CUR);
+  $("h-sub").innerHTML = (gas>0 ? `Gastaste <b style="color:#fff">${money(gas,CUR)}</b> en ${mesLargo(VMONTH)}` : `Sin gastos en ${mesLargo(VMONTH)}`)
+    + (_cm>0 ? ` · cuotas por pagar este mes <b style="color:#fff">${money(_cm,CUR)}</b>` : "");
   $("st-ing").textContent=money(ing,CUR); $("st-gas").textContent=money(gas,CUR);
   $("st-ing-s").textContent="En "+mesLargo(VMONTH).split(" ")[0];
   $("st-gas-s").textContent= prev.gas>0 ? (gas>=prev.gas?"▲ ":"▼ ")+Math.abs(Math.round((gas-prev.gas)/prev.gas*100))+"% vs. mes ant." : "Sin comparación";
@@ -2851,17 +2997,73 @@ function renderInicio(){
     $("catleg").innerHTML=`<span style="color:var(--on-dark-2)">Todavía no cargaste gastos este mes</span>`; }
 
   renderAlertas();
+  renderLoQueViene();
   renderCuentasHome();
 
   const todos=mergedMovs(), rows=todos.slice(0,10);
   $("rec-count").textContent = todos.length ? rows.length+" de "+todos.length : "";
   $("rec-panel").innerHTML = rows.length
     ? rows.map(r=>movRow(r)).join('<div class="sep"></div>')+`<div class="sep"></div><button class="more tapz" id="ver-mas">Ver todos ${icon('chevron',16)}</button>`
-    : `<div class="empty">Todavía no hay movimientos.<br>Tocá el + para cargar el primero.</div>`;
+    : `<div class="empty">Todavía no hay movimientos.<br><button class="btn sm" id="rec-primero" style="margin-top:12px">Cargar el primero</button></div>`;
   /* v2 · antes estas filas se dibujaban con movRow(r,false), que quita el data-open:
      se veían iguales que en Movimientos pero no se podían abrir ni editar. */
   bindRows($("rec-panel"),"app");
   if($("ver-mas")) $("ver-mas").onclick=()=>{ detStat="todos"; show("movs"); renderMovs(); };
+  if($("rec-primero")) $("rec-primero").onclick=()=>openReg(null);
+}
+/* v3.9 · LO QUE VIENE
+   Lo que todavía no pasó este mes y ya está comprometido: resúmenes de tarjeta
+   sin pagar, fijos sin registrar y aportes automáticos a metas. Abajo, cuánto
+   te quedaría del Disponible si todo eso pasa. Sólo para el mes en curso. */
+function fijoRegistradoEsteMes(r,mes){
+  return TX.some(t=>t.fecha.slice(0,7)===mes && t.cuenta===r.cuenta && t.tipo===r.tipo
+    && Math.abs(Number(t.monto)-Number(r.monto))<0.005 && (t.descripcion||"")===(r.descripcion||""));
+}
+function loQueViene(){
+  const mes=curMonth(), hoy=Number(todayISO().slice(8,10)), items=[];
+  const ultimo=new Date(Number(mes.slice(0,4)),Number(mes.slice(5,7)),0).getDate();
+  CARDS.filter(c=>monedaTarjeta(c)===CUR).forEach(c=>{
+    const r=resumenMes(c.id,mes); if(r.registrado || r.total<=0) return;
+    const dia=Number(c.cierre_dia)||ultimo;
+    items.push({dia, tipo:"tarjeta", titulo:"Resumen "+cardTitulo(c), sub:"tarjeta",
+      monto:r.total, signo:-1, go:()=>{ VMONTH=mes; show("tar"); renderTarjetas(); }});
+  });
+  REC.filter(r=>!r.card_id && (CTA_MON[r.cuenta]||"ARS")===CUR && !fijoRegistradoEsteMes(r,mes)).forEach(r=>{
+    items.push({dia:null, tipo:"fijo", titulo:r.descripcion||r.categoria||"Fijo", sub:"fijo · "+(CTA_NOMBRE[r.cuenta]||r.cuenta)+" · sin registrar",
+      monto:Number(r.monto), signo:r.tipo==="ingreso"?1:-1, go:()=>openSub("fijos")});
+  });
+  GOALS.filter(g=>!g.archivada && Number(g.aporte_auto)>0 && monedaMeta(g)===CUR).forEach(g=>{
+    const ya=SENT.some(s=>s.goal_id===g.id && s.fecha.slice(0,7)===mes && Number(s.monto)>0); if(ya) return;
+    items.push({dia:Math.min(ultimo,Number(g.aporte_dia)||1), tipo:"meta", titulo:"Guardar en "+g.nombre, sub:"aporte a meta",
+      monto:Number(g.aporte_auto), signo:-1, reserva:true, go:()=>{ activeGoalId=g.id; openReg(null,"ahorro",g.id,g.aporte_auto); }});
+  });
+  items.sort((a,b)=>(a.dia??99)-(b.dia??99));
+  const sale=round2(items.filter(x=>x.signo<0).reduce((a,x)=>a+x.monto,0));
+  const entra=round2(items.filter(x=>x.signo>0).reduce((a,x)=>a+x.monto,0));
+  return {items, sale, entra, hoy, queda:round2(disponibleDebito(CUR)-sale+entra)};
+}
+function renderLoQueViene(){
+  const el=$("viene-wrap"); if(!el) return;
+  if(VMONTH!==curMonth()){ el.innerHTML=""; return; }
+  const v=loQueViene();
+  if(!v.items.length){ el.innerHTML=""; return; }
+  const MES3=mesLargo(curMonth()).slice(0,3);
+  const fila=(x,i)=>{
+    const falta = x.dia==null ? null : x.dia - v.hoy;
+    const cls = falta==null ? "" : falta<=0 ? "hoy" : falta<=3 ? "pronto" : "";
+    const cuando = x.dia==null ? `<span aria-hidden="true">—</span><small>sin día</small>` : `${x.dia}<small>${esc(MES3)}</small>`;
+    const txtCuando = x.dia==null ? "" : falta<0 ? (x.tipo==="tarjeta"?"cerró, sin pagar":"atrasado") : falta===0 ? "hoy" : falta===1 ? "mañana" : `en ${falta} días`;
+    return `<li><div class="vd ${cls}" aria-hidden="true">${cuando}</div>
+      <button class="tapz" data-vi="${i}" style="border:0;background:transparent;text-align:left;padding:0;min-height:44px;font:inherit;color:inherit" aria-label="${esc(x.titulo)}, ${esc(x.dia==null?"sin día fijo":"día "+x.dia+(txtCuando?", "+txtCuando:""))}, ${money(x.monto,CUR)}">
+        <div class="vt"><b>${esc(x.titulo)}</b><span>${esc(x.sub)}${txtCuando?" · "+esc(txtCuando):""}</span></div></button>
+      <div class="vm num" style="color:${x.signo>0?"var(--green)":"var(--ink)"}">${x.signo>0?"+ ":"− "}${money(x.monto,CUR)}</div></li>`; };
+  el.innerHTML=`<div class="sec"><b>Lo que viene este mes</b><span class="num">${v.items.length} pendiente${v.items.length===1?"":"s"}</span></div>
+    <div class="panel" style="padding:0;animation-delay:.18s">
+      <ul class="viene">${v.items.slice(0,6).map(fila).join("")}</ul>
+      ${v.items.length>6?`<div class="tiny" style="padding:0 16px 8px">y ${v.items.length-6} más</div>`:""}
+      <div class="viene-pie"><span>Te quedaría disponible<br><span class="tiny">si pasa todo esto</span></span><b class="num" style="color:${v.queda<0?"var(--red-ink)":"var(--ink)"}">${money(v.queda,CUR)}</b></div>
+    </div>`;
+  el.querySelectorAll("[data-vi]").forEach(b=>b.onclick=()=>v.items[Number(b.dataset.vi)].go());
 }
 function renderAlertas(){
   const av=[];
@@ -2880,8 +3082,19 @@ function renderAlertas(){
   GOALS.filter(g=>!g.archivada && g.aporte_auto>0).forEach(g=>{
     const yaEste=SENT.some(s=>s.goal_id===g.id && s.fecha.slice(0,7)===mesAct && Number(s.monto)>0);
     const dia=Number(g.aporte_dia||1), hoy=Number(todayISO().slice(8,10));
-    if(!yaEste && hoy>=dia) av.push({txt:`Te toca guardar ${fmt(g.aporte_auto,g.moneda||CUR)} en "${g.nombre}"`,go:()=>{ activeGoalId=g.id; openReg(null,"ahorro",g.id,g.aporte_auto); }});
+    /* v3.9 · en el mes en curso ya aparece en "Lo que viene": no se repite arriba */
+    if(!yaEste && hoy>=dia && VMONTH!==mesAct) av.push({txt:`Te toca guardar ${fmt(g.aporte_auto,g.moneda||CUR)} en "${g.nombre}"`,go:()=>{ activeGoalId=g.id; openReg(null,"ahorro",g.id,g.aporte_auto); }});
   });
+  /* v3.9 · presupuestos: aviso al 85% y al pasarse (mismo cálculo que la pantalla de Presupuesto) */
+  if(VMONTH===mesAct){
+    const sp={}; TX.forEach(t=>{ if(t.tipo==="gasto"&&t.fecha.slice(0,7)===mesAct) sp[t.categoria]=(sp[t.categoria]||0)+Number(t.monto); });
+    const presu=BUD.map(b=>({cat:b.categoria,lim:Number(b.monto),g:round2(sp[b.categoria]||0)})).filter(x=>x.lim>0 && x.g>=x.lim*0.85)
+      .sort((a,b)=>(b.g/b.lim)-(a.g/a.lim));
+    presu.forEach(x=>{ const pct=Math.round(x.g/x.lim*100);
+      av.push({txt: x.g>x.lim ? `Te pasaste en ${x.cat}: ${fmt(x.g,CUR)} de ${fmt(x.lim,CUR)} (${pct}%)`
+                              : `${x.cat} va por el ${pct}% del presupuesto: te quedan ${fmt(round2(x.lim-x.g),CUR)}`,
+               go:()=>openSub("presu")}); });
+  }
   const el=$("home-alert");
   el.innerHTML=av.slice(0,3).map((a,i)=>`<button class="warn tapz" data-al="${i}" style="display:block;width:100%;text-align:left;border:0;margin-bottom:8px">${esc(a.txt)}</button>`).join("");
   el.querySelectorAll("[data-al]").forEach(b=>b.onclick=()=>av[Number(b.dataset.al)].go());
@@ -2932,6 +3145,7 @@ function renderMovs(){
   renderMovChips();
   const {ing,gas}=totalesMes(VMONTH,CUR);
   $("mv-total").textContent = money(detStat==="ingreso"?ing:detStat==="gasto"?gas:detStat==="ahorro"?ahorroMes(VMONTH,CUR):round2(ing-gas),CUR);
+  ajustarCifra($("mv-total"));
   let rows=mergedMovs().filter(r=>r.fecha.slice(0,7)===VMONTH);
   if(detStat==="ingreso") rows=rows.filter(r=>r.tipo==="ingreso");
   if(detStat==="gasto") rows=rows.filter(r=>r.tipo==="gasto");
@@ -2943,8 +3157,9 @@ function renderMovs(){
   $("mv-count").textContent = rows.length ? `${rows.length} movimiento${rows.length===1?"":"s"} · neto del filtro ${fmt(round2(neto),CUR)}` : "";
   const el=$("mov-list");
   el.innerHTML = rows.length ? rows.map(r=>movRow(r,true)).join('<div class="sep"></div>')
-    : `<div class="empty">${detStat==="pases"?"No pasaste plata entre cuentas este mes.<br>Se hace desde <b>Tus cuentas</b>, tocando el número grande del Inicio.":"Sin movimientos para ese filtro."}</div>`;
+    : `<div class="empty">${detStat==="pases"?"No pasaste plata entre cuentas este mes.<br><button class=\"btn sm\" id=\"mv-pasar-vacio\" style=\"margin-top:12px\">Pasar plata entre cuentas</button>":"Sin movimientos para ese filtro."}</div>`;
   bindRows(el,'movs');
+  if($("mv-pasar-vacio")) $("mv-pasar-vacio").onclick=pasarDesdeMovs;
   pintarFab();
 }
 /* los chips de tipo viven fuera de renderMovs para no rearmarlos en cada tecla del buscador */
@@ -2987,7 +3202,7 @@ function renderBusqueda(q,fc,fk){
   if(fk) rows=rows.filter(r=>r.categoria===fk);
 
   const gastados=round2(rows.filter(r=>r._k==="tx"&&r.tipo==="gasto"&&(CTA_MON[r.cuenta]||"ARS")===CUR).reduce((a,r)=>a+r.monto,0));
-  $("mv-total").textContent=money(gastados,CUR);
+  $("mv-total").textContent=money(gastados,CUR); ajustarCifra($("mv-total"));
 
   const total=cats.length+ctas.length+metas.length+tars.length+comercios.length+compras.length+comps.length+rows.length;
   $("mv-count").textContent = total ? `${total} resultado${total===1?"":"s"} en toda tu historia · ${fmt(gastados,CUR)} gastados` : "";
@@ -3060,6 +3275,8 @@ function abrirCuentas(mon){
   }
 }
 $("h-total").onclick=abrirCuentas;
+$("h-alt").onclick=()=>{ UI.modoTotal = modoTotal()==="total" ? "disp" : "total"; saveUI(); renderInicio();
+  anunciar(modoTotal()==="total"?"Mostrando el total con ahorros":"Mostrando el disponible"); };
 $("h-cuentas").onclick=abrirCuentas;
 $("cu-back").onclick=()=>show("app");
 $("cu-pasar").onclick=()=>nuevaTransf(ACCOUNTS.length?ACCOUNTS[0].key:null);
@@ -3085,6 +3302,11 @@ $("mv-export").onclick=()=>{
   }catch(e){ avisarError(e,"No pude armar el archivo"); }
 };
 $("mv-add").onclick=()=>openReg(null, tipoVista()||"gasto");
+/* v3.8 · parte de la cuenta filtrada, si hay una elegida */
+/* v3.8 · con dos botones al lado, los montos largos se partían en dos líneas: se achica la letra */
+function ajustarCifra(el){ if(!el) return; const n=(el.textContent||"").length; el.style.fontSize = n>14?"clamp(20px,6vw,26px)":""; }
+function pasarDesdeMovs(){ const f=$("f-cuenta")&&$("f-cuenta").value; nuevaTransf(f&&cuentaByKey(f)?f:(ACCOUNTS.length?ACCOUNTS[0].key:null)); }
+$("mv-pasar").onclick=pasarDesdeMovs;
 $("tar-add").onclick=()=>openReg(null,"tarjeta");
 $("tar-back").onclick=()=>show("app"); $("mas-back").onclick=()=>show("app"); $("cal-back").onclick=()=>show("app");
 /* v2 · sin pantalla cfg, no hay botón de volver propio */
@@ -3229,14 +3451,12 @@ $("pay-save").onclick=async()=>{
    Esta pantalla es el detalle de ese total, y desde acá se pasa la plata.
    ========================================================================= */
 function renderCuentas(){
-  $("cu-total").textContent = money(plataTotal(CUR),CUR);
-  const res=ahorroTotal(CUR), tot=plataTotal(CUR);
-  /* si lo reservado supera la plata total es porque hay deuda de tarjeta o
-     saldos en rojo: decir "de eso" sería falso, así que se cuenta aparte */
+  /* v3.8 · mismo criterio que el Inicio: Total con ahorros arriba, y el desglose abajo */
+  const tot=totalConAhorros(CUR), res=ahorroTotal(CUR), disp=disponibleDebito(CUR), deu=deudaTarjetas(CUR);
+  $("cu-total").textContent = money(tot,CUR);
   $("cu-sub").textContent = !ACCOUNTS.length ? "Todavía no cargaste ninguna cuenta."
-    : res<=0 ? "No tenés nada reservado todavía."
-    : res<=tot ? `De eso, ${money(res,CUR)} están reservados para tus metas.`
-    : `Tenés ${money(res,CUR)} reservados para tus metas.`;
+    : `Disponible ${money(disp,CUR)}`+(res>0?` · reservado para metas ${money(res,CUR)}`:"")
+      +(deu>0?` · debés ${money(deu,CUR)} de tarjetas`:"");
 
   const el=$("cu-lista");
   const avisoSQL = (colsNuevasMissing||valTableMissing)
@@ -3839,8 +4059,8 @@ $("mv-cal").onclick=()=>{ show("cal"); renderCalendar(); };
    MÁS      = las pantallas que no entran en la barra de abajo.
    CONFIG   = lo que se modifica: perfil, cuentas, tarjetas, categorías, apariencia, seguridad. */
 const MAS=[
-  {k:"movs",     n:"Movimientos",      s:"Todo lo que cargaste, con filtros y búsqueda", ic:"lista", col:"red",  go:()=>{ detStat="todos"; show("movs"); renderMovs(); }},
   {k:"metas",    n:"Ahorros y metas",  s:"Cuánto llevás guardado y para qué",     ic:"chanchito", col:"teal",   go:()=>{ show("metas"); renderMetas(); }},
+  {k:"movs",     n:"Movimientos",      s:"Todo lo que cargaste, con filtros y búsqueda", ic:"lista", col:"red",  go:()=>{ detStat="todos"; show("movs"); renderMovs(); }},
   {k:"cal",      n:"Calendario",       s:"Qué pasó cada día del mes",             ic:"calendario",col:"blue",   go:()=>{ show("cal"); renderCalendar(); }},
   {k:"fijos",    n:"Gastos e ingresos fijos", s:"Alquiler, sueldo, suscripciones",ic:"fijos",     col:"green"},
   {k:"presu",    n:"Presupuesto",      s:"Un límite por categoría",               ic:"gasto",     col:"red"},
@@ -4214,7 +4434,7 @@ function subDividir(){
     <div style="display:flex;gap:8px"><input id="link-email" type="email" placeholder="correo@ejemplo.com" style="flex:1;border:1px solid var(--line);border-radius:16px;padding:12px 14px;font-size:15px;background:var(--card);color:var(--ink)">
       <button class="btn sm" id="link-search">Buscar</button></div>
     <div id="link-result" style="margin-top:8px"></div></div>
-  <div class="panel">${PAIRS.length?pares:`<div class="empty">Todavía no compartís gastos con nadie.</div>`}</div>
+  <div class="panel">${PAIRS.length?pares:`<div class="empty">Todavía no compartís gastos con nadie.<br>Escribí el correo de la otra persona acá arriba y tocá <b>Buscar</b>.</div>`}</div>
   <div id="pair-detail" class="panel pad hidden">
     <div class="sec" style="padding:0 0 8px"><b id="pair-title">—</b><button class="btn sm" id="add-shared-btn">+ Gasto</button></div>
     <div class="hint" id="pair-balance" style="margin:0 0 6px"></div>
@@ -4282,11 +4502,12 @@ function bindSub(){
   if(subView==="asistente"){
     $("as-probar").onclick=()=>openVoz("");
     $("as-guardar").onclick=()=>{ try{
-      localStorage.setItem("miscuentas_gemini_key",$("as-key").value.trim());
       localStorage.setItem("miscuentas_gemini_model",$("as-model").value);
+      if(!$("as-key")){ $("as-estado").textContent="Listo, modelo guardado."; return; }   /* v3.9 · con servidor no hay key local */
+      localStorage.setItem("miscuentas_gemini_key",$("as-key").value.trim());
       $("as-estado").textContent=$("as-key").value.trim()?"Listo, key guardada en este dispositivo.":"Sin key: anda igual, con el intérprete local.";
     }catch(e){ $("as-estado").textContent="Tu navegador no deja guardar la key."; } };
-    $("as-borrar").onclick=()=>{ try{ localStorage.removeItem("miscuentas_gemini_key"); }catch(e){}
+    if($("as-borrar")) $("as-borrar").onclick=()=>{ try{ localStorage.removeItem("miscuentas_gemini_key"); }catch(e){}
       $("as-key").value=""; $("as-estado").textContent="Key borrada."; };
   }
   if(subView==="privacidad"){
@@ -4610,6 +4831,9 @@ function subPrivacidad(){
     <div class="lbl-up">Copia de seguridad</div>
     <p class="hint">Baja <b>todo</b> a un archivo: movimientos, transferencias, tarjetas, cuotas, resúmenes,
       metas y aportes, compartidos, fijos, presupuestos, cuentas y categorías. Guardalo donde quieras.</p>
+    <label class="chk" style="display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer">
+      <input type="checkbox" id="pv-cifrar" checked style="width:20px;height:20px;accent-color:var(--blue)">
+      <span>Protegerla con contraseña <span class="tiny">(recomendado)</span></span></label>
     <button class="btn w" id="pv-copia">Descargar copia completa (JSON)</button>
     <div class="hint" style="margin-top:14px">¿Tenés una copia? Restaurala acá. <b>Sólo agrega lo que falte</b>: nunca borra ni pisa lo que ya tenés.</div>
     <label class="btn ghost w" style="margin-top:8px;display:block;text-align:center;cursor:pointer">Elegir archivo de copia
@@ -4621,6 +4845,7 @@ function subPrivacidad(){
     <div class="lbl-up">Tus datos</div>
     <p class="hint">Todo lo que cargás vive en tu propia base de Supabase y sólo lo ve tu usuario. La app no manda tus movimientos a ningún otro lado.</p>
     <button class="btn ghost w" id="pv-export">Descargar los movimientos en CSV</button>
+    <p class="hint" style="margin-top:8px">El CSV sale <b>sin</b> contraseña para que lo abra Excel o Google Sheets. No lo mandes por chat ni lo dejes en la computadora de otro.</p>
   </div>
   <div class="panel pad" style="margin-top:12px">
     <div class="lbl-up" style="color:var(--red)">Zona peligrosa</div>
@@ -4639,16 +4864,25 @@ function subAsistente(){
   </div>
   <div class="panel pad" style="margin-top:12px">
     <div class="lbl-up">Refuerzo con IA (opcional)</div>
-    <p class="hint">Sólo si la frase es rara, o si querés que lea la <b>foto de un ticket</b>, se manda a Gemini.
-      Pegá una API key gratis de Google AI Studio (aistudio.google.com/apikey). Queda guardada en este dispositivo, no en la base.</p>
+    ${IA_SERVIDOR===true ? `<p class="hint">Sólo si la frase es rara, o si querés que lea la <b>foto de un ticket</b>, se manda a Gemini.</p>
+    <div class="regnota" style="margin-top:8px"><span><b>Activo desde tu servidor.</b> La API key está guardada en Supabase como secreto: este dispositivo no guarda ninguna.</span></div>
+    <div class="fld" style="margin-top:10px"><label>Modelo</label><select id="as-model">${
+      VOZ_MODELOS.map(m=>`<option value="${esc(m)}"${m===geminiModelo()?" selected":""}>${esc(m)}</option>`).join("")}</select></div>
+    <button class="btn w" id="as-guardar">Guardar modelo</button>
+    <div class="hint" id="as-estado" style="text-align:center"></div>
+  </div>` : `
+    <p class="hint">Sólo si la frase es rara, o si querés que lea la <b>foto de un ticket</b>, se manda a Gemini.</p>
+    <div class="warn" style="margin-top:8px"><b>Lo seguro es ponerla en el servidor.</b> Guardada acá, cualquier extensión o script que corra en la página puede leerla y usarla.
+      Publicá la función <code>gemini-proxy</code> en Supabase y cargá el secreto <code>GEMINI_API_KEY</code>: la app lo detecta sola y borra la key de este dispositivo.</div>
+    <p class="hint" style="margin-top:10px">Mientras tanto, podés pegar una key de Google AI Studio (aistudio.google.com/apikey). Queda sólo en este dispositivo.</p>
     <div class="fld" style="margin-top:10px"><label>API key de Gemini</label>
       <input id="as-key" type="password" placeholder="AIza…" value="${esc(k)}" autocomplete="off"></div>
     <div class="fld"><label>Modelo</label><select id="as-model">${
       VOZ_MODELOS.map(m=>`<option value="${esc(m)}"${m===geminiModelo()?" selected":""}>${esc(m)}</option>`).join("")}</select></div>
     <div class="r2"><button class="btn ghost" style="flex:1" id="as-borrar">Borrar key</button>
       <button class="btn" style="flex:1" id="as-guardar">Guardar</button></div>
-    <div class="hint" id="as-estado" style="text-align:center">${k?"Key cargada. La IA entra sólo cuando hace falta.":"Sin key: anda igual, con el intérprete local."}</div>
-  </div>`;
+    <div class="hint" id="as-estado" style="text-align:center">${k?"Key cargada en este dispositivo. La IA entra sólo cuando hace falta.":"Sin key: anda igual, con el intérprete local."}</div>
+  </div>`}`;
 }
 /* --- diagnóstico: los avisos de error no se pierden (v3.6) --- */
 function logCuando(ms){
@@ -5319,6 +5553,7 @@ $("reg-listo").onclick=async()=>{
   botonOcupado($("reg-listo"),true);
   const cur=regMoneda();
   const desc=$("reg-desc").value.trim(), comercio=$("reg-comercio").value.trim()||null;
+  const _creados=[];   /* v3.8 · lo que se insertó, para poder deshacerlo desde el aviso */
   try{
     if(R.tipo==="tarjeta"){
       const card=cardById(R.card);
@@ -5327,35 +5562,39 @@ $("reg-listo").onclick=async()=>{
       const {data,error}=await sb.from("card_purchases").insert({fecha_compra:R.fecha,tarjeta:R.card?cardLabel(card):"Otra",card_id:R.card||null,
         descripcion:desc,comercio,categoria:R.cat,monto_total:total,cuotas:n,user_id:user.id}).select().single();
       if(error) throw error;
+      if(data) _creados.push({t:"card_purchases",id:data.id});   /* las cuotas se borran en cascada */
       const base=round2(total/n); const rows=[]; let ac=0;
       for(let i=1;i<=n;i++){ const m=(i===n)?round2(total-ac):base; ac=round2(ac+base);
         rows.push({purchase_id:data.id,nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:i<=pagadas,user_id:user.id}); }
       const {error:e2}=await sb.from("card_installments").insert(rows); if(e2) throw e2;
     }
     else if(R.tipo==="ahorro"){
-      const {error}=await sb.from("savings_entries").insert({user_id:user.id,goal_id:R.goal||null,fecha:R.fecha,
-        cuenta:R.cuenta,monto:R.sentido==="guardar"?total:-total,descripcion:desc||null});
+      const {data:_se,error}=await sb.from("savings_entries").insert({user_id:user.id,goal_id:R.goal||null,fecha:R.fecha,
+        cuenta:R.cuenta,monto:R.sentido==="guardar"?total:-total,descripcion:desc||null}).select("id").single();
       if(error) throw error;
+      if(_se) _creados.push({t:"savings_entries",id:_se.id});
     }
     else if(R.tipo==="compartido"){
       const base={pair_id:R.pair,fecha:R.fecha,titulo:desc||"Gasto compartido",
         monto:total,pagado_por:R.pagador||user.id,dividido:R.split,categoria:R.cat,created_by:user.id};
-      let {error}=await sb.from("shared_txns").insert({...base,cuenta:R.cuenta,porcentaje:R.split==="pct"?R.pct:null});
+      let {data:_sh,error}=await sb.from("shared_txns").insert({...base,cuenta:R.cuenta,porcentaje:R.split==="pct"?R.pct:null}).select("id").single();
       /* si todavía no corriste el SQL nuevo, guardo igual sin esas dos columnas */
       if(error && /column|schema cache/i.test(error.message||"")){
-        ({error}=await sb.from("shared_txns").insert(R.split==="pct"?{...base,dividido:"ambos"}:base));
+        ({data:_sh,error}=await sb.from("shared_txns").insert(R.split==="pct"?{...base,dividido:"ambos"}:base).select("id").single());
       }
       if(error) throw error;
+      if(_sh) _creados.push({t:"shared_txns",id:_sh.id});
     }
     else{
       const {data:_nuevo,error}=await sb.from("transactions").insert({fecha:R.fecha,cuenta:R.cuenta,tipo:R.tipo,
         monto:total,categoria:R.cat,descripcion:desc,comercio,user_id:user.id}).select().single();
       if(error) throw error;
-      if(_nuevo) marcarReciente(_nuevo.id);   /* v3.7 · para resaltar la fila recién creada */
+      if(_nuevo){ marcarReciente(_nuevo.id); _creados.push({t:"transactions",id:_nuevo.id}); }   /* v3.7 · para resaltar la fila recién creada */
       if(R.repite){
         const ya=REC.some(r=>r.cuenta===R.cuenta && r.tipo===R.tipo && Number(r.monto)===total && (r.descripcion||"")===desc);
-        if(!ya){ const {error:e3}=await sb.from("recurring").insert({cuenta:R.cuenta,tipo:R.tipo,monto:total,categoria:R.cat,descripcion:desc,user_id:user.id});
-          if(e3) avisarError(e3,"Guardé el movimiento, pero no lo pude dejar como fijo"); }
+        if(!ya){ const {data:_rc,error:e3}=await sb.from("recurring").insert({cuenta:R.cuenta,tipo:R.tipo,monto:total,categoria:R.cat,descripcion:desc,user_id:user.id}).select("id").single();
+          if(e3) avisarError(e3,"Guardé el movimiento, pero no lo pude dejar como fijo");
+          else if(_rc) _creados.push({t:"recurring",id:_rc.id}); }
       }
     }
     if(R.fecha.slice(0,7)!==VMONTH) VMONTH=R.fecha.slice(0,7);
@@ -5365,8 +5604,12 @@ $("reg-listo").onclick=async()=>{
     show(volver); await loadAll();
     if(volver==="metas") renderMetas();
     if(volver==="meta") renderMeta();
-    avisarOK(CAP_GUARDADO[R.tipo]||"Movimiento guardado", _resumen);
-  }catch(e){ avisarError(e,"No se pudo guardar"); } finally{ botonOcupado($("reg-listo"),false); }
+    avisarGuardadoConDeshacer(CAP_GUARDADO[R.tipo]||"Movimiento guardado", _resumen, _creados);
+  }catch(e){
+    /* si falló a mitad de camino (ej. la compra entró pero las cuotas no), no dejo restos */
+    if(_creados.length) await deshacerCreados(_creados).catch(()=>{});
+    avisarError(e,"No se pudo guardar");
+  } finally{ botonOcupado($("reg-listo"),false); }
 };
 $("add-top").onclick=()=>openReg(null);
 $("nav-add").onclick=()=>openReg(calDay, tipoVista()||"gasto", (vista==="meta"?activeGoalId:null));
@@ -5715,6 +5958,35 @@ $("det-mas").onclick=()=>{
 
 const VOZ_MODELOS=["gemini-3.5-flash-lite","gemini-2.5-flash-lite","gemini-3.5-flash","gemini-2.5-flash"];
 function geminiKey(){ try{ return localStorage.getItem("miscuentas_gemini_key")||""; }catch(e){ return ""; } }
+/* v3.9 · LA KEY DE GEMINI PASA AL SERVIDOR
+   Antes la key vivía en localStorage: cualquier script que corriera en la página
+   (una extensión, una librería comprometida) podía leerla y gastarla. Ahora, si la
+   Edge Function "gemini-proxy" está publicada con el secreto GEMINI_API_KEY, la app
+   le pide todo a ella y la key nunca llega al navegador. Cuando detecta el servidor,
+   borra la key vieja de este dispositivo. Sin servidor, sigue andando como antes. */
+let IA_SERVIDOR=null;   /* null: no sé todavía · true: hay proxy con key · false: no hay */
+async function detectarIAServidor(){
+  if(IA_SERVIDOR!==null || !sb || !sb.functions) return IA_SERVIDOR;
+  try{
+    const {data,error}=await sb.functions.invoke("gemini-proxy",{body:{ping:true}});
+    IA_SERVIDOR = !error && !!(data&&data.configurado);
+  }catch(e){ IA_SERVIDOR=false; }
+  if(IA_SERVIDOR && geminiKey()){ try{ localStorage.removeItem("miscuentas_gemini_key"); }catch(e){} }
+  return IA_SERVIDOR;
+}
+function iaActiva(){ return IA_SERVIDOR===true || !!geminiKey(); }
+async function llamarGemini(body){
+  if(IA_SERVIDOR===true){
+    const {data,error}=await sb.functions.invoke("gemini-proxy",{body:{modelo:geminiModelo(),body}});
+    if(error) throw new Error(error.message||"el servidor de IA no respondió");
+    return data;
+  }
+  const key=geminiKey(); if(!key) throw new Error("sin-key");
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModelo()}:generateContent`,
+    {method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error("http "+r.status);
+  return r.json();
+}
 function geminiModelo(){ try{ return localStorage.getItem("miscuentas_gemini_model")||VOZ_MODELOS[0]; }catch(e){ return VOZ_MODELOS[0]; } }
 
 let V = null;   // {texto, monto, categoria, cuenta, card, cuotas, fecha, comercio, tipo, pair, split, auto:{}}
@@ -6213,7 +6485,7 @@ function vozCompleto(){ return !!(V && V.monto>0); }
 
 /* ---------------- Gemini (opcional) ---------------- */
 async function interpretarIA(){
-  const key=geminiKey(); if(!key) return {ok:false,motivo:"sin-key"};
+  if(!iaActiva()) return {ok:false,motivo:"sin-key"};
   const cats=catsAlfa().map(c=>c.nombre);
   const ctas=ACCOUNTS.map(a=>({key:a.key,nombre:a.nombre}));
   const tars=CARDS.map(c=>({id:c.id,nombre:cardTitulo(c)}));
@@ -6249,10 +6521,8 @@ Devolvé:
   const body={contents:[{parts:[{text:prompt}]}],
     generationConfig:{temperature:0, responseMimeType:"application/json", maxOutputTokens:300}};
   try{
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModelo()}:generateContent?key=${encodeURIComponent(key)}`,
-      {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    if(!r.ok) return {ok:false,motivo:"http "+r.status};
-    const j=await r.json();
+    /* v3.9 · por el servidor si está; la key ya no viaja en la URL (?key=), va en un header */
+    const j=await llamarGemini(body);
     const txt=(((j.candidates||[])[0]||{}).content||{}).parts?.[0]?.text||"";
     const d=JSON.parse(txt.replace(/^```json|```$/g,"").trim());
     if(d.monto>0) V.monto=round2(d.monto);
@@ -6270,8 +6540,7 @@ Devolvé:
   }catch(e){ return {ok:false,motivo:e.message}; }
 }
 async function leerTicket(file){
-  const key=geminiKey();
-  if(!key){ toast("La foto del ticket todavía no está activa",{sub:"Escribí o dictá el gasto: lo interpreto igual, sin configurar nada.",ms:5200}); return; }
+  if(!iaActiva()){ toast("La foto del ticket todavía no está activa",{sub:"Escribí o dictá el gasto: lo interpreto igual, sin configurar nada.",ms:5200}); return; }
   $("voz-estado").textContent="Leyendo el ticket…";
   const b64=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(",")[1]); fr.readAsDataURL(file); });
   const cats=catsAlfa().map(c=>c.nombre);
@@ -6280,9 +6549,7 @@ async function leerTicket(file){
     {inline_data:{mime_type:file.type||"image/jpeg", data:b64}}]}],
     generationConfig:{temperature:0, responseMimeType:"application/json", maxOutputTokens:300}};
   try{
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModelo()}:generateContent?key=${encodeURIComponent(key)}`,
-      {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    const j=await r.json();
+    const j=await llamarGemini(body);
     const txt=(((j.candidates||[])[0]||{}).content||{}).parts?.[0]?.text||"";
     const d=JSON.parse(txt.replace(/^```json|```$/g,"").trim());
     if(d.monto>0) V.monto=round2(d.monto);
@@ -6346,7 +6613,7 @@ function arrancarDictado(){
     }
     pintarBotonMic();
     interpretarLocal(); pintarDictado();
-    if(geminiKey() && !vozCompleto()) reforzarIA();
+    if(iaActiva() && !vozCompleto()) reforzarIA();
   };
   try{ rec.start(); }
   catch(e){ pararDictado(); $("voz-estado").textContent="No pude prender el micrófono."; }
@@ -6361,7 +6628,7 @@ function pararDictado(){
 function toggleDictado(){
   if(!hayDictado()){ toast("Este navegador no deja dictar",{sub:"Escribilo como hablás y lo interpreto igual.",ms:5000}); return; }
   if(quiereEscuchar){ pararDictado(); interpretarLocal(); pintarDictado();
-    if(geminiKey() && !vozCompleto()) reforzarIA(); return; }
+    if(iaActiva() && !vozCompleto()) reforzarIA(); return; }
   quiereEscuchar=true;
   dictBase = V.texto ? V.texto+" " : "";
   dictFirme = "";
@@ -6383,7 +6650,7 @@ function pintarDictado(){
   $("voz").setAttribute("data-t",V.tipo);
 }
 async function reforzarIA(){
-  if(!geminiKey() || !(V.texto||"").trim()) return;
+  if(!iaActiva() || !(V.texto||"").trim()) return;
   $("voz-estado").textContent="Pensando…";
   const r=await interpretarIA();
   $("voz-estado").textContent = r.ok ? "Lo entendí con ayuda de la IA." : "";
@@ -6505,7 +6772,7 @@ function renderVozFilas(){
   $("voz-guardar").textContent=TIT2[V.tipo]||"Guardar gasto";
   $("voz").setAttribute("data-t",V.tipo);
   $("voz-guardar").disabled=!vozCompleto();
-  $("voz-ia").classList.toggle("hidden", !geminiKey());
+  $("voz-ia").classList.toggle("hidden", !iaActiva());
   if(V.corregido && !quiereEscuchar && $("voz-estado").textContent==="")
     $("voz-estado").textContent="Tomé lo último que dijiste.";
 }
@@ -6562,6 +6829,7 @@ async function vozGuardar(){
   if(!vozCompleto()){ marcarMal(null,"Todavía no sé cuánto fue. Escribilo o decilo, por ejemplo: 12.300 en el super.","voz-err"); try{ $("voz-texto").focus(); }catch(e){} return; }
   botonOcupado($("voz-guardar"),true);
   const desc=(V.descripcion||V.comercio||V.categoria||"").toString();
+  const _creados=[];   /* v3.9 · Deshacer también para lo dictado */
   try{
     if(V.tipo==="tarjeta"){
       const card=cardById(V.card);
@@ -6570,23 +6838,28 @@ async function vozGuardar(){
       const {data,error}=await sb.from("card_purchases").insert({fecha_compra:V.fecha,tarjeta:card?cardLabel(card):"Otra",
         card_id:V.card||null,descripcion:desc,comercio:V.comercio,categoria:V.categoria,monto_total:V.monto,cuotas:n,user_id:user.id}).select().single();
       if(error) throw error;
+      if(data) _creados.push({t:"card_purchases",id:data.id});
       const base=round2(V.monto/n); const rows=[]; let ac=0;
       for(let i=1;i<=n;i++){ const m=(i===n)?round2(V.monto-ac):base; ac=round2(ac+base);
         rows.push({purchase_id:data.id,nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:false,user_id:user.id}); }
-      await sb.from("card_installments").insert(rows);
+      /* v3.9 · antes un error acá se ignoraba y quedaba una compra sin cuotas */
+      const {error:e2}=await sb.from("card_installments").insert(rows); if(e2) throw e2;
     } else if(V.tipo==="ahorro"){
-      const {error}=await sb.from("savings_entries").insert({user_id:user.id,goal_id:null,fecha:V.fecha,
-        cuenta:V.cuenta,monto:V.monto,descripcion:desc||null});
+      const {data:_se,error}=await sb.from("savings_entries").insert({user_id:user.id,goal_id:null,fecha:V.fecha,
+        cuenta:V.cuenta,monto:V.monto,descripcion:desc||null}).select("id").single();
       if(error) throw error;
+      if(_se) _creados.push({t:"savings_entries",id:_se.id});
     } else if(V.tipo==="compartido"){
       if(!PAIRS.length){ toast("Todavía no compartís con nadie",{sub:"Andá a Más → Compartido y vinculá a alguien primero.",tipo:"err"}); botonOcupado($("voz-guardar"),false); return; }
-      const {error}=await sb.from("shared_txns").insert({pair_id:V.pair,fecha:V.fecha,titulo:desc||"Gasto compartido",
-        monto:V.monto,pagado_por:V.pagador||user.id,dividido:V.split||"ambos",categoria:V.categoria,created_by:user.id});
+      const {data:_sh,error}=await sb.from("shared_txns").insert({pair_id:V.pair,fecha:V.fecha,titulo:desc||"Gasto compartido",
+        monto:V.monto,pagado_por:V.pagador||user.id,dividido:V.split||"ambos",categoria:V.categoria,created_by:user.id}).select("id").single();
       if(error) throw error;
+      if(_sh) _creados.push({t:"shared_txns",id:_sh.id});
     } else {
-      const {error}=await sb.from("transactions").insert({fecha:V.fecha,cuenta:V.cuenta,tipo:V.tipo==="ingreso"?"ingreso":"gasto",
-        monto:V.monto,categoria:V.categoria,descripcion:desc,comercio:V.comercio,user_id:user.id});
+      const {data:_tx,error}=await sb.from("transactions").insert({fecha:V.fecha,cuenta:V.cuenta,tipo:V.tipo==="ingreso"?"ingreso":"gasto",
+        monto:V.monto,categoria:V.categoria,descripcion:desc,comercio:V.comercio,user_id:user.id}).select("id").single();
       if(error) throw error;
+      if(_tx){ _creados.push({t:"transactions",id:_tx.id}); marcarReciente(_tx.id); }
     }
     if(V.fecha.slice(0,7)!==VMONTH) VMONTH=V.fecha.slice(0,7);
     const _resumen=`${fmt(V.monto, V.moneda||CUR)}${V.categoria?" en "+V.categoria:""}`;
@@ -6598,8 +6871,11 @@ async function vozGuardar(){
     if(_volver==="metas") renderMetas();
     if(_volver==="meta") renderMeta();
     if(_volver==="movs") renderMovs();
-    avisarOK(CAP_GUARDADO[V.tipo]||"Gasto guardado", _resumen);
-  }catch(e){ avisarError(e,"No se pudo guardar"); }
+    avisarGuardadoConDeshacer(CAP_GUARDADO[V.tipo]||"Gasto guardado", _resumen, _creados);
+  }catch(e){
+    if(_creados.length) await deshacerCreados(_creados).catch(()=>{});
+    avisarError(e,"No se pudo guardar");
+  }
   finally{ botonOcupado($("voz-guardar"),false); }
 }
 
@@ -6634,7 +6910,7 @@ $("voz-texto").addEventListener("input",()=>{
   clearTimeout(vozTimer); vozTimer=setTimeout(()=>renderVozFilas(),260);
 });
 let vozTimer=null;
-$("voz-texto").addEventListener("blur",()=>{ interpretarLocal(); renderVoz(); if(geminiKey() && V.texto && !vozCompleto()) reforzarIA(); });
+$("voz-texto").addEventListener("blur",()=>{ interpretarLocal(); renderVoz(); if(iaActiva() && V.texto && !vozCompleto()) reforzarIA(); });
 $("voz-texto").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("voz-texto").blur(); } });
 /* v3.2 · dos entradas para la misma lectura: la cámara y la galería */
 ["foto-camara","foto-galeria"].forEach(id=>{
@@ -6706,23 +6982,41 @@ function copiaResumen(d){
   return COPIA_TABLAS.map(x=>({n:x.n, c:((d.tablas||{})[x.t]||[]).length}))
     .filter(x=>x.c>0).map(x=>`${x.c} ${x.n}`).join(" · ") || "nada";
 }
-function descargarCopia(){
+async function descargarCopia(){
   const d=copiaArmar();
-  const nombre=`mis-cuentas-copia-${todayISO()}.json`;
-  const blob=new Blob([JSON.stringify(d,null,1)],{type:"application/json"});
+  /* v3.9 · por defecto la copia sale con contraseña: si alguien se queda con el archivo, no puede leerlo */
+  const cifrar = !$("pv-cifrar") || $("pv-cifrar").checked;
+  let contenido=JSON.stringify(d,null,1), nombre=`mis-cuentas-copia-${todayISO()}.json`;
+  if(cifrar){
+    const pass=await pedirClave({titulo:"Contraseña para la copia",doble:true,min:8,ok:"Descargar",
+      texto:"La vas a necesitar para restaurarla. Si te la olvidás, la copia no se puede abrir: no hay forma de recuperarla."});
+    if(pass==null) return;
+    try{ contenido=JSON.stringify(await cifrarTexto(contenido,pass)); nombre=`mis-cuentas-copia-${todayISO()}-protegida.json`; }
+    catch(e){ avisarError(e,"No pude cifrar la copia"); return; }
+  }
+  const blob=new Blob([contenido],{type:"application/json"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=nombre; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   const el=$("pv-estado"); if(el) el.textContent=`Listo: ${nombre} · ${copiaResumen(d)}`;
   /* v3.7 · el texto chico del panel se perdia; el aviso lo hace visible */
-  toast("Descargando la copia",{sub:`${nombre} · ${copiaResumen(d)}`,icono:"bajar",ms:5000});
+  toast(cifrar?"Descargando la copia protegida":"Descargando la copia",{sub:`${nombre} · ${copiaResumen(d)}`,icono:"bajar",ms:5000});
 }
 
 /* ---------- restaurar ---------- */
 let copiaPendiente=null;
 function copiaLeerArchivo(file){
   const fr=new FileReader();
-  fr.onload=()=>{
+  fr.onload=async()=>{
     let d; try{ d=JSON.parse(String(fr.result)); }catch(e){ $("pv-estado").textContent="Ese archivo no es una copia válida."; return; }
+    /* v3.9 · copia protegida: se pide la contraseña y se descifra acá mismo */
+    if(d && d._cifrado===CIFRADO_ID){
+      for(let intento=0;;intento++){
+        const pass=await pedirClave({titulo:"Esta copia tiene contraseña",ok:"Abrir",
+          texto:intento?"Esa no es. Probá de nuevo.":"Escribí la que usaste cuando la descargaste."});
+        if(pass==null){ $("pv-estado").textContent="No abrí la copia."; return; }
+        try{ d=JSON.parse(await descifrarTexto(d,pass)); break; }catch(e){ if(intento>=4){ $("pv-estado").textContent="Contraseña incorrecta."; return; } }
+      }
+    }
     if(!d || !d.tablas || d._app!=="Mis Cuentas"){ $("pv-estado").textContent="Ese archivo no parece una copia de Mis Cuentas."; return; }
     copiaPendiente=d;
     const nuevos=copiaContarNuevos(d);
