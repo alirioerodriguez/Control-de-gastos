@@ -907,6 +907,37 @@ canvas{max-height:270px}
 .gsep::before,.gsep::after{content:"";height:1px;flex:1;background:var(--line)}
 
 /* =========================================================================
+   v4.1 · PLAN (la pestaña que antes era Tarjetas)
+   ========================================================================= */
+.plancab{display:flex;align-items:flex-start;gap:16px;margin-top:16px}
+.planseg{display:flex;gap:2px;margin-top:16px;padding:3px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10)}
+.plan-aho{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:5px 11px;border-radius:999px;
+  background:rgba(255,255,255,.08);font-size:13px;font-weight:700;color:var(--on-dark-2)}
+.plan-aho span{color:var(--teal-hi);display:grid;place-items:center}
+.plan-aho b{color:var(--teal-hi);font-weight:800}
+.planseg button{flex:1 1 auto;min-width:0;min-height:44px;border:0;border-radius:999px;background:transparent;color:var(--on-dark-2);
+  font-size:clamp(11.5px,3.3vw,13px);letter-spacing:-.01em;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;transition:background .16s ease,color .16s ease}
+.planseg button.on{background:var(--card);color:var(--ink);box-shadow:var(--md-e1)}
+@media (max-width:360px){ .planseg button{font-size:11px} }
+.plasticos{display:grid;gap:12px}
+.plastico{border-radius:var(--r);padding:16px;color:#fff;position:relative;overflow:hidden;box-shadow:var(--md-e2);animation:dvIn .45s both}
+.plastico::after{content:"";position:absolute;right:-40px;top:-60px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none}
+.plastico>*{position:relative;z-index:1}
+.pl-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.pl-marca{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+.pl-nom{font-size:17px;font-weight:800;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-edit{width:44px;height:44px;flex:none;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;display:grid;place-items:center;margin:-6px -6px 0 0}
+.pl-k{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.8;margin-top:14px}
+.pl-v{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:1px;overflow-wrap:anywhere}
+.pl-pie{font-size:13px;font-weight:700;opacity:.88;margin-top:4px}
+.pl-barra{height:8px;border-radius:999px;background:rgba(255,255,255,.22);overflow:hidden;margin-top:12px}
+.pl-barra i{display:block;height:100%;border-radius:999px;background:#fff}
+.pl-lim{font-size:11px;font-weight:700;opacity:.85;margin-top:5px}
+.pl-resu{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.18);font-size:13px}
+.pl-resu b{font-weight:800}
+.pl-pagar{flex:none;border:0;border-radius:999px;background:#fff;color:#1c1a18;font-weight:800;font-size:13px;padding:0 16px;min-height:44px}
+
+/* =========================================================================
    v4.0 · RESPONSIVE
    En el celu queda todo como estaba. Desde 720 px (tablet o compu) la barra
    de abajo pasa a ser una barra lateral, el contenido se centra con un ancho
@@ -958,6 +989,8 @@ canvas{max-height:270px}
   /* Inicio: las cuatro fichas en fila; cuentas y recientes lado a lado */
   #app .g2{grid-template-columns:repeat(4,1fr)}
   #movs .g2{grid-template-columns:1fr 1fr}
+  .plasticos{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+  .planseg{max-width:560px}
 
   /* hojas: ventanas centradas en vez de subir desde abajo */
   .ov{place-items:center;padding:24px}
@@ -1243,18 +1276,23 @@ canvas{max-height:270px}
 
 <div id="tar" class="screen hidden">
   <div class="sub-hd">
-    <div class="sub-bar"><button class="bk" id="tar-back" aria-label="Volver" data-ic="atras" data-ic-size="18"></button><h2>Tarjetas</h2>
+    <div class="sub-bar"><button class="bk" id="tar-back" aria-label="Volver" data-ic="atras" data-ic-size="18"></button><h2>Plan</h2>
       <button class="hd-ico" id="tar-cfg" aria-label="Agregar una tarjeta" title="Agregar tarjeta" data-ic="tarjeta" data-ic-size="18"></button></div>
-    <div style="margin-top:16px"><div class="lbl-up">Deuda total (cuotas + saldo impago)</div>
-      <div style="display:flex;align-items:center;gap:14px;margin-top:3px">
-        <div class="num" id="tar-total" style="font-size:32px;font-weight:800;color:#fff;flex:1;overflow-wrap:anywhere">$0,00</div>
-        <button class="addbig tapz" id="tar-add" aria-label="Cargar una compra con tarjeta" title="Cargar una compra" data-ic="mas" data-ic-size="22" style="background:var(--amber)"></button>
-      </div></div>
+    <!-- v4.1 · Plan: arriba la respuesta a "¿cuánto pago de tarjeta el mes que viene?" (test, tarea 2)
+         y lo que ya guardaste. La deuda total queda abajo, en "Qué te espera". -->
+    <div class="plancab">
+      <div style="flex:1;min-width:0"><div class="lbl-up" id="tar-prox-lbl">El mes que viene pagás</div>
+        <div class="num" id="tar-total" style="font-size:clamp(26px,8.6vw,36px);font-weight:800;color:#fff;overflow-wrap:anywhere;margin-top:2px;line-height:1.1">$0,00</div>
+        <div style="font-size:13px;color:var(--on-dark-2);margin-top:4px" id="tar-prox-sub"></div>
+        <div class="plan-aho"><span data-ic="chanchito" data-ic-size="14" aria-hidden="true"></span>Ya ahorrado <b class="num" id="tar-aho">$0,00</b></div></div>
+      <button class="addbig tapz" id="tar-add" aria-label="Cargar una compra con tarjeta" title="Cargar una compra" data-ic="mas" data-ic-size="22" style="background:var(--amber);align-self:center"></button>
+    </div>
+    <div class="planseg" data-planseg="tar"></div>
   </div>
   <div class="body">
-    <div class="sec"><b>Resumen de <span id="tar-mes">—</span></b></div>
-    <div class="panel" id="tar-resumen"></div>
-    <div class="panel pad"><div class="sec" style="padding:0 0 12px"><b>Proyección por mes</b></div>
+    <div id="tar-plasticos"></div>
+    <div class="sec"><b>Qué te espera</b><span>próximos meses</span></div>
+    <div class="panel pad">
       <canvas id="chart-proj"></canvas><div class="hint" id="proj-hint"></div></div>
     <div class="sec"><b>Compras en cuotas</b><span id="compras-count"></span></div>
     <div class="panel" id="compras-list"></div>
@@ -1276,6 +1314,7 @@ canvas{max-height:270px}
     </div>
     <div style="font-size:13px;font-weight:700;margin-top:4px" id="aho-delta"></div>
     <div class="mesbars" id="aho-bars"></div>
+    <div class="planseg" data-planseg="metas"></div>
   </div>
   <div class="body">
     <div class="sec" id="metas-sec"><b id="metas-sec-txt">Para qué estás ahorrando</b><span id="metas-count"></span></div>
@@ -1375,6 +1414,7 @@ canvas{max-height:270px}
 <div id="sub" class="screen hidden">
   <div class="sub-hd">
     <div class="sub-bar"><button class="bk" id="sub-back" aria-label="Volver" data-ic="atras" data-ic-size="18"></button><h2 id="sub-title">—</h2></div>
+    <div class="planseg hidden" data-planseg="sub"></div>
   </div>
   <div class="body"><div id="sub-body"></div><div style="height:6px"></div></div>
 </div>
@@ -1523,8 +1563,7 @@ canvas{max-height:270px}
   <button data-nav="app" class="on"><span data-ic="casa" data-ic-size="20"></span><span>Inicio</span></button>
   <button data-nav="movs"><span data-ic="lista" data-ic-size="20"></span><span>Movimientos</span></button>
   <div class="nav-fabw" style="display:grid;place-items:center"><button class="navfab tapz" id="nav-add" aria-label="Registrar un movimiento contándoselo a la app" data-ic="mas" data-ic-size="24"></button></div>
-  <button data-nav="tar"><span data-ic="tarjeta" data-ic-size="20"></span><span>Tarjetas</span></button>
-  <button data-nav="metas" class="solo-compu"><span data-ic="chanchito" data-ic-size="20"></span><span>Ahorros</span></button>
+  <button data-nav="tar"><span data-ic="tarjeta" data-ic-size="20"></span><span>Plan</span></button>
   <button data-nav="cal" class="solo-compu"><span data-ic="calendario" data-ic-size="20"></span><span>Calendario</span></button>
   <button data-nav="mas"><span data-ic="menu" data-ic-size="20"></span><span>Más</span></button>
   <button class="nav-yo solo-compu" id="side-yo" type="button" aria-label="Tu perfil"><span class="me av" id="side-me">?</span><span class="yt"><b id="side-nombre">Mi cuenta</b><small id="side-mail"></small></span></button>
@@ -1699,7 +1738,8 @@ canvas{max-height:270px}
     <div class="fld"><label>Día de cierre</label><input id="k-cierre" type="number" inputmode="numeric" min="1" max="31" placeholder="Ej: 25"></div>
     <div class="fld"><label>Interés mensual %</label><input id="k-tasa" type="text" inputmode="decimal" placeholder="Ej: 8,5"></div>
   </div>
-  <div class="hint">El día de cierre define en qué mes cae la primera cuota. El interés se usa solo si un mes no pagás todo el resumen.</div>
+  <div class="fld"><label>Límite (opcional)</label><input id="k-limite" type="text" inputmode="decimal" placeholder="Ej: 1.500.000"></div>
+  <div class="hint">El día de cierre define en qué mes cae la primera cuota. El interés se usa solo si un mes no pagás todo el resumen. Con el límite, la tarjeta muestra cuánto tenés usado.</div>
   <div class="err" id="card-err"></div>
   <div class="r2"><button class="btn ghost" style="flex:1" id="card-cancel">Cancelar</button><button class="btn" style="flex:1" id="card-save">Guardar</button></div>
 </div></div>
@@ -1926,7 +1966,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.17-v4.0-responsive-y-google";
+const APP_VERSION = "2026.10.17-v4.1-plan";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -2514,21 +2554,22 @@ function show(w){
   if(dentro){
     vista=w;
     marcarNav(w);
+    pintarPlanSeg();
     UI.vista=w; UI.sub=subView; UI.goal=activeGoalId; saveUI();
   }
   window.scrollTo(0,0);
   pintarFab();
   if(w==="tar"||w==="mas"||w==="sub") setTimeout(resizeCharts,40);
 }
-/* v4.0 · en la compu la barra lateral tiene también Ahorros y Calendario */
+/* v4.0 · en la compu la barra lateral tiene también Calendario */
 const COMPU=window.matchMedia("(min-width:720px)");
 function marcarNav(w){
-  /* v3.8 · Movimientos vuelve a la barra en el lugar de Ahorros.
-     En el celu Ahorros se abre desde la ficha del Inicio o desde Más, así que marca "Más". */
+  /* v4.1 · Ahorros, Fijos y Presupuestos viven dentro de Plan, así que marcan "Plan". */
   const navKey = (w==="cuentas") ? "app"
-               : (COMPU.matches && (w==="meta"||w==="metas")) ? "metas"
+               : (w==="meta"||w==="metas") ? "tar"
+               : (w==="sub" && (subView==="fijos"||subView==="presu")) ? "tar"
                : (COMPU.matches && w==="cal") ? "cal"
-               : (w==="meta"||w==="metas"||w==="sub"||w==="cal") ? "mas" : w;
+               : (w==="sub"||w==="cal") ? "mas" : w;
   document.querySelectorAll("[data-nav]").forEach(b=>b.classList.toggle("on", b.dataset.nav===navKey));
 }
 try{ COMPU.addEventListener("change",()=>{ if(CON_NAV.includes(vista)){ marcarNav(vista); pintarFab(); } setTimeout(resizeCharts,60); }); }catch(e){}
@@ -3502,7 +3543,9 @@ $("tar-back").onclick=()=>show("app"); $("mas-back").onclick=()=>show("app"); $(
 /* v2 · el engranaje de "Más" desaparece: Ajustes es un grupo dentro de esta misma pantalla (H-11) */
 /* v3.3 · cerrar sesión vive en la hoja de cuenta */
 $("metas-back").onclick=()=>show("app"); $("meta-back").onclick=()=>{ show("metas"); renderMetas(); };
-$("sub-back").onclick=()=>{ subView=null; show("mas"); renderMasMenu(); };
+/* v4.1 · Fijos y Presupuestos son pestañas del Plan: volver lleva al Inicio, igual que desde Plan */
+$("sub-back").onclick=()=>{ const enPlan=subView==="fijos"||subView==="presu"; subView=null;
+  if(enPlan){ show("app"); return; } show("mas"); renderMasMenu(); };
 /* v2 · el refresco manual se movió a Más → Ajustes; la app ya recarga sola al volver a la pestaña */
 /* v3.5 · era un engranaje que llevaba a "administrar tarjetas". El engranaje
    promete ajustes y lo que hacía falta ahí era dar de alta una tarjeta: ahora
@@ -3510,26 +3553,73 @@ $("sub-back").onclick=()=>{ subView=null; show("mas"); renderMasMenu(); };
 $("tar-cfg").onclick=()=>openCard(null);
 
 /* ===================== TARJETAS ===================== */
+/* ===================== PLAN (v4.1) =====================
+   La pestaña que antes era Tarjetas. Junta lo que ya está comprometido:
+   tarjetas, ahorros, fijos y presupuestos. Abre siempre en Tarjetas porque
+   "¿cuánto pago el mes que viene?" fue la tarea más difícil del test. */
+const PLAN_TABS=[["tar","Tarjetas"],["metas","Ahorros"],["fijos","Fijos"],["presu","Presupuestos"]];
+function planTabActiva(){ return vista==="tar" ? "tar" : (vista==="metas"||vista==="meta") ? "metas" : (vista==="sub" ? subView : null); }
+function pintarPlanSeg(){
+  const act=planTabActiva();
+  document.querySelectorAll("[data-planseg]").forEach(el=>{
+    const enSub=el.dataset.planseg==="sub";
+    if(enSub) el.classList.toggle("hidden", !(subView==="fijos"||subView==="presu"));
+    el.setAttribute("role","tablist"); el.setAttribute("aria-label","Partes del plan");
+    el.innerHTML=PLAN_TABS.map(([k,n])=>`<button type="button" role="tab" aria-selected="${k===act}" class="${k===act?"on":""}" data-plantab="${k}">${n}</button>`).join("");
+    el.querySelectorAll("[data-plantab]").forEach(b=>b.onclick=()=>irPlan(b.dataset.plantab));
+  });
+}
+function irPlan(k){
+  if(k==="tar"){ subView=null; show("tar"); renderTarjetas(); }
+  else if(k==="metas"){ subView=null; show("metas"); renderMetas(); }
+  else { subView=k; show("sub"); renderSub(); pintarFab(); }
+  pintarPlanSeg();
+}
+/* tarjeta "de plástico": colores por marca, legibles con texto blanco */
+const PLASTICO={visa:"linear-gradient(135deg,#1d3f8f,#2a69ab)",mastercard:"linear-gradient(135deg,#3a2f2a,#8a3b1a)",
+  amex:"linear-gradient(135deg,#0f5c63,#178a8a)",otra:"linear-gradient(135deg,#3a3531,#5a524b)"};
 function renderTarjetas(){
-  $("tar-total").textContent=money(deudaTarjetas(CUR),CUR);
-  $("tar-mes").textContent=mesLargo(VMONTH);
-  const rel=$("tar-resumen");
-  if(!CARDS.length){ rel.innerHTML=`<div class="empty">Todavía no cargaste tarjetas.<br><button class="btn sm" id="tar-new" style="margin-top:10px">Agregar tarjeta</button></div>`;
-    if($("tar-new")) $("tar-new").onclick=()=>openSub("tarjetas");
+  const hoy=curMonth(), prox=mesSuma(hoy,1);
+  const deCur=CARDS.filter(c=>monedaTarjeta(c)===CUR);
+  const proxTotal=round2(deCur.reduce((a,c)=>a+resumenMes(c.id,prox).total,0));
+  $("tar-prox-lbl").textContent=`En ${mesLargo(prox).split(" ")[0]} pagás`;
+  $("tar-total").textContent=money(proxTotal,CUR);
+  $("tar-prox-sub").textContent = deCur.length>1 ? `Sumando tus ${deCur.length} tarjetas` : (deCur.length===1 ? "De tu tarjeta" : "");
+  $("tar-aho").textContent=money(ahorroTotal(CUR),CUR);
+  pintarPlanSeg();
+
+  const pl=$("tar-plasticos");
+  if(!CARDS.length){ pl.innerHTML=`<div class="panel"><div class="empty">Todavía no cargaste tarjetas.<br><button class="btn sm" id="tar-new" style="margin-top:10px">Agregar tarjeta</button></div></div>`;
+    if($("tar-new")) $("tar-new").onclick=()=>openCard(null);
   } else {
-    rel.innerHTML=CARDS.map(c=>{
-      const r=resumenMes(c.id,VMONTH), cur=monedaTarjeta(c);
-      const estado = r.registrado
-        ? (r.restante>0 ? `Pagaste ${fmt(r.pagado,cur)} · queda ${fmt(r.restante,cur)}` : "Pagado")
-        : (r.total>0 ? "Sin registrar" : "Sin consumos");
-      const col=r.registrado?(r.restante>0?"var(--amber)":"var(--green)"):"var(--ink-2)";
-      return `<div class="row rowz"><div class="ri" style="background:var(--amber-bg);color:var(--amber)">${icon('tarjeta',16)}</div>
-        <div class="rt"><div class="rtop"><b>${esc(cardTitulo(c))}</b><div class="rv num" style="color:${col}">${money(r.total,cur)}</div></div>
-        <span>${esc(estado)}${r.arrastre>0?` · viene ${fmt(r.arrastre,cur)}`:""}</span></div>
-        ${(r.total>0||r.registrado)?`<button class="chip" style="padding:7px 10px;font-size:13px;flex:none" data-pay="${c.id}">${r.registrado?"Editar":"Registrar"}</button>`:""}</div>`;
-    }).join('<div class="sep"></div>');
-    rel.querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>openPay(b.dataset.pay,VMONTH));
+    pl.innerHTML=`<div class="plasticos">`+CARDS.map(c=>{
+      const cur=monedaTarjeta(c), rp=resumenMes(c.id,prox), rv=resumenMes(c.id,VMONTH);
+      const nCuo=cuotasDeTarjetaMes(c.id,prox).filter(x=>!x.pagada).length;
+      const estado = rv.registrado ? (rv.restante>0 ? `queda ${fmt(rv.restante,cur)}` : "pagado") : (rv.total>0 ? fmt(rv.total,cur) : "sin consumos");
+      const usado=round2(cuotasDeTarjeta(c.id).filter(x=>!x.pagada).reduce((a,x)=>a+Number(x.monto),0)+saldoFinanciado(c.id));
+      const lim=c.limite!=null?Number(c.limite):0, pct=lim?Math.min(100,usado/lim*100):0;
+      return `<div class="plastico" style="background:${PLASTICO[c.marca]||PLASTICO.otra}">
+        <div class="pl-top"><div style="min-width:0"><div class="pl-marca">${esc(cardMarca(c))}${c.banco?" · "+esc(c.banco):""}</div>
+          <div class="pl-nom">${esc(c.alias||cardMarca(c)+(c.banco?" "+c.banco:""))}</div></div>
+          <button class="pl-edit" data-editcard="${c.id}" aria-label="Editar ${esc(cardTitulo(c))}">${icon('editar',16)}</button></div>
+        <div class="pl-k">Esta tarjeta en ${esc(mesLargo(prox).split(" ")[0])}</div>
+        <div class="pl-v num">${money(rp.total,cur)}</div>
+        <div class="pl-pie"><span>${nCuo} cuota${nCuo===1?"":"s"}${c.cierre_dia?` · cierra el ${c.cierre_dia}`:""}${rp.arrastre>0?` · viene ${fmt(rp.arrastre,cur)}`:""}</span></div>
+        ${lim?`<div class="pl-barra" aria-hidden="true"><i style="width:${pct}%"></i></div>
+          <div class="pl-lim">${fmt(usado,cur)} usados de ${fmt(lim,cur)}</div>`:""}
+        <div class="pl-resu"><span>Resumen de ${esc(mesLargo(VMONTH).split(" ")[0])}: <b>${esc(estado)}</b></span>
+          ${(rv.total>0||rv.registrado)?`<button class="pl-pagar" data-pay="${c.id}">${rv.registrado?(rv.restante>0?"Editar pago":"Ver pago"):"Pagar"}</button>`:""}</div>
+      </div>`;
+    }).join("")+`</div>`;
+    pl.querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>openPay(b.dataset.pay,VMONTH));
+    pl.querySelectorAll("[data-editcard]").forEach(b=>b.onclick=()=>openCard(b.dataset.editcard));
   }
+  /* "Qué te espera": la frase va con el gráfico, y acá vive la deuda total */
+  const h=$("proj-hint");
+  if(h){ const a=cuotasDelMes(prox,CUR), b=cuotasDelMes(mesSuma(prox,1),CUR), d=deudaTarjetas(CUR);
+    h.textContent = d>0
+      ? `${b<a?`Después de ${mesLargo(prox).split(" ")[0]} bajás ${fmt(round2(a-b),CUR)} en cuotas.`:b>a?`Después de ${mesLargo(prox).split(" ")[0]} subís ${fmt(round2(b-a),CUR)} en cuotas.`:"Las cuotas se mantienen el mes siguiente."} En total te quedan ${fmt(d,CUR)} por pagar.`
+      : "No tenés cuotas pendientes."; }
 
   const cel=$("compras-list");
   const activas=PURCH.map(p=>({p,r:compraResumen(p)})).filter(x=>x.r.total>0);
@@ -4900,6 +4990,7 @@ function openCard(id){
   $("k-moneda").value=c?monedaTarjeta(c):CUR;
   $("k-cierre").value=c&&c.cierre_dia?c.cierre_dia:"";
   $("k-tasa").value=c&&c.tasa_mensual!=null?String(c.tasa_mensual).replace(".",","):"";
+  $("k-limite").value=c&&c.limite!=null?String(c.limite).replace(".",","):"";
   $("card-err").textContent="";
   $("card-ov").classList.remove("hidden");
 }
@@ -4912,10 +5003,20 @@ $("card-save").onclick=async()=>{
   const tasa=$("k-tasa").value.trim()?parseMonto($("k-tasa").value):null;
   const payload={user_id:user.id,marca:$("k-marca").value,banco:banco||null,alias:$("k-alias").value.trim()||null,
     moneda:$("k-moneda").value,cierre_dia:cierre,tasa_mensual:(tasa!=null&&!isNaN(tasa))?tasa:null};
+  /* v4.1 · límite opcional. La columna puede no existir todavía en Supabase */
+  const limTxt=$("k-limite").value.trim(), lim=limTxt?parseMonto(limTxt):null;
+  if(limTxt && (isNaN(lim)||lim<=0)){ $("card-err").textContent="El límite tiene que ser un número mayor a cero."; return; }
+  payload.limite=lim;
   $("card-save").disabled=true;
-  const {error}= editingCard ? await sb.from("cards").update(payload).eq("id",editingCard) : await sb.from("cards").insert(payload);
+  const guardarCard=p=> editingCard ? sb.from("cards").update(p).eq("id",editingCard) : sb.from("cards").insert(p);
+  let {error}=await guardarCard(payload), sinLimite=false;
+  if(error && /limite/i.test(String(error.message||""))){
+    delete payload.limite; sinLimite=true;
+    ({error}=await guardarCard(payload));
+  }
   $("card-save").disabled=false;
   if(error){ errorEnCaja("card-err", error, "No pude guardar la tarjeta"); return; }
+  if(sinLimite && lim) toast("Guardé la tarjeta sin el límite",{tipo:"err",ms:8000,sub:"Falta correr el SQL nuevo en Supabase. Está en Más → Ayuda."});
   const _era=!!editingCard;
   $("card-ov").classList.add("hidden"); editingCard=null; await loadAll(); if(subView) renderSub();
   avisarOK(_era?"Tarjeta actualizada":"Tarjeta agregada", `${payload.marca.toUpperCase()}${banco?" · "+banco:""}${cierre?` · cierra el ${cierre}`:""}`);
@@ -5126,6 +5227,8 @@ function subAyuda(){
 alter table accounts       add column if not exists tipo  text;
 alter table savings_goals  add column if not exists tipo  text;
 alter table savings_goals  add column if not exists rubro text;
+-- v4.1 · límite de la tarjeta (opcional)
+alter table cards          add column if not exists limite numeric;
 
 create table if not exists savings_valuations (
   id      uuid primary key default gen_random_uuid(),
@@ -5362,8 +5465,8 @@ function renderCharts(){
     if(chartProj) chartProj.destroy();
     if(pk.length){ chartProj=new Chart($("chart-proj"),{type:"bar",data:{labels:pk.map(mesCorto),datasets:[{label:"A pagar",data:pk.map(k=>round2(proj[k])),backgroundColor:getComputedStyle(document.documentElement).getPropertyValue('--amber').trim()||"#a15c00",borderRadius:6}]},
       options:{responsive:true,animation:{duration:700,easing:'easeOutCubic',delay:c=>(c.type==='data'&&c.mode==='default')?(c.dataIndex*130+c.datasetIndex*65):0},animations:{y:{from:c=>c.chart.scales.y.getPixelForValue(0)}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` A pagar: ${fmt(c.raw,CUR)}`}}},scales:{x:{ticks:{color:gc}},y:{ticks:{color:gc,callback:v=>fmtCompact(v,CUR)}}}}});
-      $("proj-hint").textContent=`Total pendiente en cuotas: ${fmt(round2(pk.reduce((a,k)=>a+proj[k],0)),CUR)}`; }
-    else { chartProj=null; $("proj-hint").textContent="No tenés cuotas pendientes."; }
+      }   /* v4.1 · la frase de abajo la escribe renderTarjetas */
+    else { chartProj=null; }
   }
   resizeCharts();
 }
