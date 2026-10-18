@@ -4354,6 +4354,7 @@ const CFG=[
   {k:"categorias",n:"Categorías",       s:"Crear, editar, color y emoji",         ic:"lista",     col:"violet"},
   {k:"tema",      n:"Apariencia",       s:"Colores, y el modo para daltonismo",   ic:"paleta",    col:"teal"},
   {k:"asistente", n:"Asistente de voz",  s:"Dictar gastos y leer tickets",         ic:"micro",     col:"red"},
+  {k:"honorapp",  n:"honorapp",          s:"Tus cobros a pacientes como ingresos", ic:"ingreso",   col:"green"},
   {k:"ayuda",     n:"Ayuda",            s:"Cómo funciona cada cosa",              ic:"ayuda",     col:"amber"},
   {k:"diagnostico",n:"Diagnóstico",     s:"Si algo falló, acá queda anotado",     ic:"herramienta",col:"red"}
 ];
@@ -4639,6 +4640,7 @@ function renderSub(){
   if(subView==="ayuda") el.innerHTML=subAyuda();
   if(subView==="asistente") el.innerHTML=subAsistente();
   if(subView==="diagnostico") el.innerHTML=subDiagnostico();
+  if(subView==="honorapp") el.innerHTML=subHonorapp();
   pintarIconos(el);
   bindSub();
 }
@@ -4749,6 +4751,7 @@ function subTema(){
 }
 function bindSub(){
   const el=$("sub-body");
+  if(subView==="honorapp") cargarHonorapp();
   if(subView==="diagnostico"){
     $("dg-ok").onclick=()=>avisarOK("Así se ve cuando algo se guarda","Gasto guardado · $ 12.300 en Super");
     $("dg-err").onclick=()=>avisarError(new Error("Prueba: Failed to fetch"),"Así se ve cuando algo falla");
@@ -5115,6 +5118,55 @@ function subSeguridad(){
     <button class="btn w" id="sg-pass-save">Cambiar contraseña</button>
   </div>
   <div class="err" id="sg-err" style="text-align:center"></div>`;
+}
+/* --- honorapp ---
+   Enlace con honorapp (app de cobros a pacientes del mismo autor). Si las dos cuentas usan el mismo mail,
+   honorapp manda lo cobrado cada mes como un ingreso por moneda (sólo totales, nada de pacientes).
+   Lo que llega tiene origen "honorapp" y se actualiza en el mismo movimiento. Ver supabase/enlace-honorapp.sql. */
+const HONORAPP_URL="https://control-de-facturacion-eight.vercel.app/ajustes";
+function subHonorapp(){
+  return `<div class="panel pad"><div id="hn-body"><p class="hint">Cargando…</p></div></div>`;
+}
+async function cargarHonorapp(){
+  const box=$("hn-body"); if(!box) return;
+  const {data:enl,error}=await sb.from("enlace_honorapp").select("*").maybeSingle();
+  if(error){ box.innerHTML=`<div class="warn">No pude leer el enlace con honorapp. ${esc(error.message)}</div>`; return; }
+  const activo=!!(enl&&enl.activo);
+  const recibidos=TX.filter(t=>t.origen==="honorapp");
+  const opciones=(sel,vacio)=>`<option value="">${vacio}</option>`+ACCOUNTS.map(a=>
+    `<option value="${esc(a.key)}" ${a.key===sel?"selected":""}>${esc(a.nombre)}${a.moneda?" ("+esc(a.moneda)+")":""}</option>`).join("");
+  const nombre=k=>{ const a=ACCOUNTS.find(x=>x.key===k); return a?a.nombre:k; };
+  const sugARS=(enl&&enl.cuenta_ars)||((ACCOUNTS.find(a=>(a.moneda||"ARS")==="ARS")||{}).key)||"";
+  const sugUSD=(enl&&enl.cuenta_usd)||((ACCOUNTS.find(a=>a.moneda==="USD"||a.moneda==="USDT")||{}).key)||"";
+  box.innerHTML=`
+    <div class="lbl-up">${activo?"Enlazada con honorapp":"Enlazar con honorapp"}</div>
+    ${activo
+      ? `<p class="hint">Tus cobros de honorapp llegan como ingresos${enl.cuenta_ars?" a <b>"+esc(nombre(enl.cuenta_ars))+"</b> (pesos)":""}${enl.cuenta_ars&&enl.cuenta_usd?" y":""}${enl.cuenta_usd?" a <b>"+esc(nombre(enl.cuenta_usd))+"</b> (dólares)":""}, uno por mes, con la categoría Honorarios.
+          ${enl.ultimo_envio?"Último envío: <b>"+new Date(enl.ultimo_envio).toLocaleDateString("es-AR")+"</b>.":"Todavía no llegó nada."}
+          ${recibidos.length?" Tenés "+recibidos.length+" "+(recibidos.length===1?"ingreso":"ingresos")+" desde honorapp.":""}</p>
+         <p class="hint">Para mandar o actualizar los cobros: en honorapp, Ajustes → Mis Cuentas → <b>Enviar a Mis Cuentas</b>.</p>`
+      : `<p class="hint">Si atendés pacientes y usás <b>honorapp</b> con el mismo mail (<b>${esc(user&&user.email||"")}</b>), lo que cobrás cada mes llega acá como ingreso. Sólo viajan los totales, nunca los nombres de tus pacientes.</p>`}
+    <div class="fld" style="margin-top:10px"><label>Los pesos caen en</label><select id="hn-ars">${opciones(sugARS,"No recibir pesos")}</select></div>
+    <div class="fld"><label>Los dólares caen en</label><select id="hn-usd">${opciones(sugUSD,"No recibir dólares")}</select></div>
+    <button class="btn w" id="hn-guardar" style="margin-top:14px">${activo?"Guardar cuentas":"Enlazar"}</button>
+    ${activo?'<button class="btn ghost w" id="hn-desenlazar" style="margin-top:8px">Desenlazar</button>':""}
+    <a class="btn ghost w" href="${HONORAPP_URL}" target="_blank" rel="noopener" style="margin-top:8px;display:block;text-align:center">Abrir honorapp</a>`;
+  $("hn-guardar").onclick=async()=>{
+    const ars=$("hn-ars").value||null, usd=$("hn-usd").value||null;
+    if(!ars&&!usd){ toast("Elegí al menos una cuenta",{tipo:"err"}); return; }
+    botonOcupado($("hn-guardar"),true);
+    const {error:e2}=await sb.from("enlace_honorapp").upsert({user_id:user.id,cuenta_ars:ars,cuenta_usd:usd,activo:true});
+    botonOcupado($("hn-guardar"),false);
+    if(e2){ avisarError(e2,"No se pudo enlazar con honorapp"); return; }
+    avisarOK(activo?"Cuentas guardadas":"Enlazada con honorapp", activo?"":"Ahora mandá tus cobros desde honorapp → Ajustes.");
+    cargarHonorapp();
+  };
+  if($("hn-desenlazar")) $("hn-desenlazar").onclick=async()=>{
+    if(!await confirmar({titulo:"¿Desenlazar honorapp?",texto:"Dejan de llegar cobros nuevos. Los ingresos que ya llegaron se quedan.",ok:"Desenlazar",peligro:true})) return;
+    const {error:e3}=await sb.from("enlace_honorapp").update({activo:false}).eq("user_id",user.id);
+    if(e3){ avisarError(e3,"No se pudo desenlazar"); return; }
+    avisarOK("Listo: se desenlazó honorapp"); cargarHonorapp();
+  };
 }
 function subPrivacidad(){
   return `<div class="panel pad">
