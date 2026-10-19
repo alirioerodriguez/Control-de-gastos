@@ -937,6 +937,19 @@ canvas{max-height:270px}
 .pl-lim{font-size:11px;font-weight:700;opacity:.85;margin-top:5px}
 .pl-resu{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.18);font-size:13px}
 .pl-resu b{font-weight:800}
+/* v4.5 · carga más rápida */
+.reghint{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;font-size:12px;font-weight:700;color:rgba(255,255,255,.78)}
+.reghint span{display:grid;place-items:center}
+.frec{padding:2px 0 6px}
+.frec-lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:2px 0 6px}
+#reg .frec .chipsrow{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+#reg .frec .chipsrow::-webkit-scrollbar{display:none}
+.frecchip{flex:0 0 auto;gap:7px;padding:8px 13px;color:var(--ink);max-width:240px}
+.frecchip .fn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.frecchip b{font-weight:800;color:var(--acc);white-space:nowrap}
+.regvarios{padding:10px 2px 0}
+.regvarios .st b{font-size:14px}
+.regvarios .st span{font-size:12px}
 /* v4.3 · panel de honorapp en Más */
 .hnpanel{margin-bottom:12px;border-color:color-mix(in srgb, var(--green) 30%, var(--line));background:color-mix(in srgb, var(--green-bg) 55%, var(--card))}
 .hn-cab{display:flex;align-items:center;gap:12px}
@@ -1518,6 +1531,8 @@ canvas{max-height:270px}
     </div>
     <div class="regsub" id="reg-sub"></div>
     <div class="chipsrow regchips" id="reg-quick"></div>
+    <!-- v4.5 · con el monto escrito, tocar una categoría guarda -->
+    <div class="reghint hidden" id="reg-hint"><span data-ic="chispa" data-ic-size="13" aria-hidden="true"></span>Tocá la categoría y se guarda</div>
   </div>
 
   <div class="regtabs" id="reg-tipos"></div>
@@ -1563,7 +1578,11 @@ canvas{max-height:270px}
       <button class="vozic" id="reg-mic" aria-label="Dictar el gasto por voz" title="Dictar" data-ic="micro" data-ic-size="19"></button>
       <button class="vozic" id="reg-cam" aria-label="Cargar la foto de un ticket" title="Foto del ticket" data-ic="camara" data-ic-size="19"></button>
     </div>
-    <div style="height:12px"></div>
+    <!-- v4.5 · varios seguidos: al guardar, la pantalla queda abierta con la misma cuenta y fecha -->
+    <div class="switchrow regvarios" id="reg-varios-row">
+      <div class="st"><b>Cargar varios seguidos</b><span>Al guardar, queda abierta para el próximo.</span></div>
+      <button class="switch" id="reg-varios" role="switch" aria-checked="false" aria-label="Cargar varios seguidos"></button>
+    </div>
   </div>
 
   <div id="reg-cats" class="hidden">
@@ -1986,7 +2005,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.19-v4.4-legales-google";
+const APP_VERSION = "2026.10.19-v4.5-carga-rapida";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -2568,6 +2587,7 @@ function show(w){
   document.querySelectorAll(".ov:not(.hidden)").forEach(o=>{ if(o.id!=="conf-ov") o.classList.add("hidden"); });
   editingTr=null;
   PANTALLAS.forEach(id=>{ const el=$(id); if(el) el.classList.toggle("hidden", id!==w); });
+  if(w!=="reg") seguirCargando=false;   /* v4.5 · "cargar varios" dura mientras la carga esté abierta */
   const dentro=CON_NAV.includes(w);
   $("nav").classList.toggle("hidden", !dentro);
   document.body.classList.toggle("con-nav", dentro);   /* v4.0 · en la compu corre el contenido a la derecha de la barra lateral */
@@ -4373,7 +4393,7 @@ const CFG=[
   {k:"tarjetas",  n:"Tarjetas",         s:"Banco, marca, cierre e interés",       ic:"tarjeta",   col:"amber"},
   {k:"categorias",n:"Categorías",       s:"Crear, editar, color y emoji",         ic:"lista",     col:"violet"},
   {k:"tema",      n:"Apariencia",       s:"Colores, y el modo para daltonismo",   ic:"paleta",    col:"teal"},
-  {k:"asistente", n:"Asistente de voz",  s:"Dictar gastos y leer tickets",         ic:"micro",     col:"red"},
+  {k:"asistente", n:"Carga y asistente",  s:"Carga rápida, dictado y tickets",         ic:"micro",     col:"red"},
   {k:"honorapp",  n:"honorapp",          s:"Tus cobros a pacientes como ingresos", ic:"ingreso",   col:"green"},
   {k:"ayuda",     n:"Ayuda",            s:"Cómo funciona cada cosa",              ic:"ayuda",     col:"amber"},
   {k:"diagnostico",n:"Diagnóstico",     s:"Si algo falló, acá queda anotado",     ic:"herramienta",col:"red"}
@@ -4803,6 +4823,9 @@ function bindSub(){
       $("sg-pass").value=""; $("sg-pass2").value=""; err("Contraseña cambiada."); };
   }
   if(subView==="asistente"){
+    /* v4.5 · carga rápida: se guarda en este dispositivo */
+    $("tg-sw").onclick=()=>{ UI.tocarGuarda = (UI.tocarGuarda===false); saveUI(); renderSub();
+      avisarOK(UI.tocarGuarda?"Tocar la categoría ahora guarda":"Tocar la categoría ya no guarda", UI.tocarGuarda?"Con el monto escrito, un toque y listo.":"Vas a guardar con el botón Guardar."); };
     $("as-probar").onclick=()=>openVoz("");
     $("as-guardar").onclick=()=>{ try{
       localStorage.setItem("miscuentas_gemini_model",$("as-model").value);
@@ -5243,7 +5266,15 @@ function subPrivacidad(){
 }
 function subAsistente(){
   const k=geminiKey();
-  return `<div class="panel pad">
+  return `<div class="panel pad" style="margin-bottom:12px">
+    <div class="lbl-up">Carga rápida</div>
+    <div class="switchrow">
+      <div class="st"><b>Tocar la categoría guarda</b>
+        <span>Con el monto ya escrito, tocás la categoría y queda guardado, sin apretar Guardar. Siempre podés deshacerlo desde el aviso.</span></div>
+      <button class="switch" id="tg-sw" role="switch" aria-checked="${UI.tocarGuarda!==false}" aria-label="Tocar la categoría guarda"></button>
+    </div>
+  </div>
+  <div class="panel pad">
     <div class="lbl-up">Cómo funciona</div>
     <p class="hint">Tocá el micrófono en el + y contale el gasto como se lo contarías a alguien:
       <b>"42.300 en Coto con Visa en 3 cuotas"</b>. La app sola entiende monto, comercio, cuenta,
@@ -5627,10 +5658,42 @@ function catsRecientes(tipo,n){
   lista.forEach(c=>{ if(out.length<n && !out.includes(c)) out.push(c); });
   return out;
 }
+/* ===================== v4.5 · CARGA MÁS RÁPIDA =====================
+   Lo que salió de comparar con otras apps de carga manual: la pantalla ya
+   estaba bien (monto primero, categoría con un toque). Lo que costaba era
+   corregir lo que venía puesto y repetir lo de siempre. */
+const _porReciente=(a,b)=>String(b.created_at||b.fecha||"").localeCompare(String(a.created_at||a.fecha||""));
+/* 1 · arranca en la última cuenta que usaste para ese tipo, no en la primera de la lista */
+function ultimaCuenta(tipo){
+  const keys=new Set(ACCOUNTS.map(a=>a.key)), tp=(tipo==="ingreso")?"ingreso":"gasto";
+  const u=TX.filter(x=>x.tipo===tp && keys.has(x.cuenta) && !x.origen).sort(_porReciente)[0];
+  return u ? u.cuenta : ((ACCOUNTS[0]||{}).key||null);
+}
+function ultimaTarjeta(){
+  const ids=new Set(CARDS.map(c=>c.id));
+  const u=PURCH.filter(p=>p.card_id && ids.has(p.card_id)).sort(_porReciente)[0];
+  return u ? u.card_id : ((CARDS[0]||{}).id||null);
+}
+/* 4 · lo que repetís: mismo monto, categoría, cuenta y comercio al menos 2 veces en 90 días */
+function frecuentes(tipo){
+  const keys=new Set(ACCOUNTS.map(a=>a.key)), desde=diasAtras(90), g={};
+  TX.filter(x=>x.tipo===tipo && x.fecha>=desde && !x.origen && keys.has(x.cuenta) && Number(x.monto)>0).forEach(x=>{
+    const nom=String(x.comercio||x.descripcion||"").trim();
+    const k=[x.categoria||"",x.cuenta,round2(Number(x.monto)),nom.toLowerCase()].join("|");
+    const v=(g[k] ||= {n:0,x,ult:""}); v.n++;
+    if(String(x.fecha)>v.ult){ v.ult=String(x.fecha); v.x=x; }
+  });
+  return Object.values(g).filter(v=>v.n>=2).sort((a,b)=>(b.n-a.n)||b.ult.localeCompare(a.ult)).slice(0,4).map(v=>v.x);
+}
+/* 2 · con el monto escrito, tocar la categoría guarda (gasto e ingreso; se apaga en Más → Carga y asistente) */
+function tocarGuarda(){ return UI.tocarGuarda!==false && (R.tipo==="gasto"||R.tipo==="ingreso") && !R.op && regTotal()>0; }
+/* 3 · cargar varios seguidos: vale mientras la pantalla esté abierta */
+var seguirCargando=false;   /* var: show() lo lee y puede correr antes de esta línea */
+
 function openReg(fecha,tipo,goalId,montoPre){
   const t=tipo||"gasto";
   R={tipo:t, buf:montoPre?String(round2(montoPre)).replace(".",","):"0", acum:null, op:null, listo:!!montoPre,
-     cat:catsRecientes(t,1)[0]||null, cuenta:(ACCOUNTS[0]||{}).key||null, card:(CARDS[0]||{}).id||null,
+     cat:catsRecientes(t,1)[0]||null, cuenta:ultimaCuenta(t), card:ultimaTarjeta(),
      goal:goalId||null, pair:(PAIRS[0]||{}).id||null, sentido:"guardar", split:"ambos", pct:50, pagador:(user||{}).id||null,
      /* la cuenta de arranque se corrige más abajo si la meta es de otra moneda */
      fecha: fecha || (VMONTH===curMonth()?todayISO():VMONTH+"-01"),
@@ -5690,7 +5753,9 @@ function renderReg(){
   q.innerHTML=html;
   q.querySelectorAll("[data-qg]").forEach(b=>b.onclick=()=>{ R.goal=b.dataset.qg||null; renderReg(); });
   q.querySelectorAll("[data-qp]").forEach(b=>b.onclick=()=>{ R.pair=b.dataset.qp; if(R.pagador!==(user||{}).id) R.pagador=otherId(PAIRS.find(x=>x.id===R.pair)||{}); renderReg(); });
-  q.querySelectorAll("[data-qk]").forEach(b=>b.onclick=()=>{ R.cat=b.dataset.qk; renderReg(); });
+  q.querySelectorAll("[data-qk]").forEach(b=>b.onclick=()=>{ R.cat=b.dataset.qk;
+    if(tocarGuarda()){ renderReg(); $("reg-listo").onclick(); return; }   /* v4.5 · con el monto escrito, guarda */
+    renderReg(); });
   if($("reg-mas-cat")) $("reg-mas-cat").onclick=()=>abrirCats();
   if($("reg-goal-new")) $("reg-goal-new").onclick=()=>openGoal(null);
   if($("reg-cta-nueva")) $("reg-cta-nueva").onclick=()=>{ const g=GOALS.find(x=>x.id===R.goal); abrirCuentas(g?monedaMeta(g):CUR); };
@@ -5704,6 +5769,7 @@ function renderReg(){
     const l=catsPara(tipoCat(R.tipo));
     if(!l.some(c=>c.nombre===R.cat)) R.cat=catsRecientes(R.tipo,1)[0]||null;
     if(R.tipo!=="gasto"&&R.tipo!=="ingreso") R.repite=false;
+    if(R.tipo==="gasto"||R.tipo==="ingreso") R.cuenta=ultimaCuenta(R.tipo);   /* v4.5 · el ingreso suele caer en otra cuenta */
     R.primera=null; renderReg();
   });
 
@@ -5806,7 +5872,27 @@ function renderReg(){
     if(tot>0) h+=`<div class="regsplit"><div><div class="k">Te toca</div><div class="v">${fmt(d.mio,cur)}</div></div>
       <div class="otro"><div class="k">${pagoYo?esc(o.apodo)+" te debe":"Le debés a "+esc(o.apodo)}</div><div class="v">${fmt(Math.abs(d.otro),cur)}</div></div></div>`;
   }
+  /* v4.5 · frecuentes: un toque y queda cargado. Sólo antes de empezar a escribir el monto */
+  let frec=[];
+  if((T==="gasto"||T==="ingreso") && R.buf==="0" && !R.expr){
+    frec=frecuentes(T);
+    if(frec.length) ct=`<div class="frec"><div class="frec-lbl">Repetir con un toque</div><div class="chipsrow">`+frec.map((x,i)=>{
+      const nom=String(x.comercio||x.descripcion||"").trim()||x.categoria||"Sin categoría";
+      return `<button class="chip frecchip" data-fr="${i}" aria-label="Cargar de nuevo ${esc(nom)}, ${esc(fmt(Number(x.monto),monedaCuenta(x.cuenta)))}">${x.categoria?catGlifo(x.categoria,15):""}<span class="fn">${esc(nom)}</span><b class="num">${esc(fmt(Number(x.monto),monedaCuenta(x.cuenta)))}</b></button>`;
+    }).join("")+`</div></div>`;
+  }
   top.innerHTML=ct; top.classList.toggle("hidden", !ct);
+  top.querySelectorAll("[data-fr]").forEach(b=>b.onclick=()=>{
+    const x=frec[Number(b.dataset.fr)]; if(!x) return;
+    R.buf=String(round2(Number(x.monto))).replace(".",","); R.listo=true; R.acum=null; R.op=null; R.expr="";
+    R.cat=x.categoria||null; R.cuenta=x.cuenta;
+    $("reg-comercio").value=x.comercio||""; $("reg-desc").value=x.descripcion||"";
+    renderReg(); $("reg-listo").onclick();
+  });
+  /* v4.5 · aviso de "tocá y se guarda", y el interruptor de cargar varios */
+  const hint=$("reg-hint"); if(hint){ hint.classList.toggle("hidden", !tocarGuarda()); pintarIconos(hint); }
+  $("reg-varios-row").classList.toggle("hidden", !(T==="gasto"||T==="ingreso"||esT));
+  $("reg-varios").setAttribute("aria-checked", String(seguirCargando));
   ex.innerHTML=h; pintarIconos(ex);
   top.querySelectorAll("[data-cu]").forEach(b=>b.onclick=()=>{ R.cuotas=Number(b.dataset.cu); R.avanzado=false; R.pagadas=0; renderReg(); });
   if($("reg-avz")) $("reg-avz").onclick=()=>{ R.avanzado=!R.avanzado; renderReg(); };
@@ -5866,7 +5952,8 @@ document.querySelectorAll("#reg [data-op]").forEach(b=>b.onclick=()=>{ const op=
 function borrarDigito(){ R.buf=R.buf.length>1?R.buf.slice(0,-1):"0"; if(R.buf===""||R.buf===",") R.buf="0"; renderReg(); }
 $("reg-del").onclick=borrarDigito;
 $("reg-del2").onclick=borrarDigito;
-$("reg-back").onclick=()=>{ const d=(vista==="sub"||vista==="mas")?"app":vista; show(CON_NAV.includes(d)?d:"app"); };
+$("reg-back").onclick=()=>{ seguirCargando=false; const d=(vista==="sub"||vista==="mas")?"app":vista; show(CON_NAV.includes(d)?d:"app"); };
+$("reg-varios").onclick=()=>{ seguirCargando=!seguirCargando; $("reg-varios").setAttribute("aria-checked", String(seguirCargando)); };
 
 /* ---- fila 1 ---- */
 $("reg-sel").onchange=()=>{
@@ -5934,7 +6021,9 @@ function renderRegCats(){
   $("reg-cat-list").innerHTML = rows.length? rows.map(c=>`<div class="row rowz" data-pick="${esc(c.nombre)}">
     <div style="font-size:20px;width:34px;text-align:center">${c.emoji||"🏷️"}</div><div class="rt"><b>${esc(c.nombre)}</b></div></div>`).join('<div class="sep"></div>')
     : `<div class="empty">No hay categorías con ese nombre.</div>`;
-  $("reg-cat-list").querySelectorAll("[data-pick]").forEach(el=>el.onclick=()=>{ R.cat=el.dataset.pick; $("reg-cats").classList.add("hidden"); renderReg(); });
+  $("reg-cat-list").querySelectorAll("[data-pick]").forEach(el=>el.onclick=()=>{ R.cat=el.dataset.pick; $("reg-cats").classList.add("hidden");
+    if(tocarGuarda()){ renderReg(); $("reg-listo").onclick(); return; }   /* v4.5 · igual que las categorías rápidas */
+    renderReg(); });
 }
 $("reg-cat-search").addEventListener("input",renderRegCats);
 $("reg-cat-new").onclick=()=>{ if(catsTableMissing){ toast("Todavía no puedo crear categorías",{sub:"Podés seguir cargando el gasto y elegir una de las que ya están.",tipo:"err"}); return; }
@@ -5996,6 +6085,14 @@ $("reg-listo").onclick=async()=>{
     const desde=(vista==="sub"||vista==="mas")?"app":vista;
     const volver = R.tipo==="ahorro" ? (activeGoalId?"meta":"metas") : (CON_NAV.includes(desde)?desde:"app");
     const _resumen=`${fmt(total,cur)}${R.cat?" en "+R.cat:""}`;
+    /* v4.5 · cargar varios seguidos: la pantalla queda abierta con el mismo tipo, cuenta, tarjeta y fecha */
+    if(seguirCargando && (R.tipo==="gasto"||R.tipo==="ingreso"||R.tipo==="tarjeta")){
+      const k={tipo:R.tipo,fecha:R.fecha,cuenta:R.cuenta,card:R.card};
+      await loadAll();
+      openReg(k.fecha,k.tipo); R.cuenta=k.cuenta; R.card=k.card; renderReg();
+      avisarGuardadoConDeshacer(CAP_GUARDADO[k.tipo]||"Movimiento guardado", _resumen+" · cargá el próximo", _creados);
+      return;
+    }
     show(volver); await loadAll();
     if(volver==="metas") renderMetas();
     if(volver==="meta") renderMeta();
