@@ -950,6 +950,34 @@ canvas{max-height:270px}
 .regvarios{padding:10px 2px 0}
 .regvarios .st b{font-size:14px}
 .regvarios .st span{font-size:12px}
+/* v4.7 · bienvenida: marca y paso */
+.onbmarca{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:var(--on-dark)}
+.onbmarca .logo{width:34px;margin:0;color:var(--red-hi);flex:none}
+.onbmarca b{font-size:15px;font-weight:800}
+.onbpaso{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--on-dark-2)}
+#onb .stepdot{justify-content:flex-start}
+/* v4.7 · recorrido por la app */
+#tour{position:fixed;inset:0;z-index:300}
+.tour-luz{position:fixed;border-radius:18px;box-shadow:0 0 0 3px var(--red),0 0 0 9999px rgba(18,14,12,.62);transition:all .2s ease;pointer-events:none}
+.tour-luz.sin{inset:0;border-radius:0;box-shadow:none;background:rgba(18,14,12,.62)}
+.tour-card{position:fixed;left:50%;transform:translateX(-50%);width:min(440px,calc(100% - 32px));background:var(--card);color:var(--ink);
+  border-radius:24px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.32);display:flex;flex-direction:column;gap:12px}
+.tour-card.centro{top:50%;transform:translate(-50%,-50%)}
+.tour-card.arriba{top:max(16px,env(safe-area-inset-top))}
+.tour-card.abajo{bottom:max(16px,env(safe-area-inset-bottom))}
+.tour-card.lado{left:auto;right:24px;top:50%;transform:translateY(-50%);width:min(380px,calc(100% - 32px))}
+.tour-top{display:flex;align-items:center;gap:12px}
+.tour-ic{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;background:var(--red-bg);color:var(--red-ink);flex:none}
+.tour-n{font-size:13px;font-weight:700;color:var(--ink-2)}
+.tour-saltar{margin-left:auto;color:var(--ink-2);text-decoration:none}
+.tour-card h2{font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.2;margin:2px 0 0}
+.tour-card p{font-size:15px;line-height:1.55;color:var(--ink-2);margin:0}
+.tour-barra{display:flex;gap:5px}
+.tour-barra i{flex:1;height:5px;border-radius:999px;background:var(--line);display:block}
+.tour-barra i.on{background:var(--red)}
+.tour-btns{display:flex;gap:10px}
+.tour-btns .btn:last-child{flex:1}
+@media(prefers-reduced-motion:reduce){.tour-luz{transition:none}}
 /* v4.3 · panel de honorapp en Más */
 .hnpanel{margin-bottom:12px;border-color:color-mix(in srgb, var(--green) 30%, var(--line));background:color-mix(in srgb, var(--green-bg) 55%, var(--card))}
 .hn-cab{display:flex;align-items:center;gap:12px}
@@ -1162,6 +1190,9 @@ canvas{max-height:270px}
 <!-- ===================== PRIMERA VEZ (v2 · hallazgos H-12 y H-13) ===================== -->
 <div id="onb" class="hidden">
   <div class="onbhd">
+    <!-- v4.7 · marca y en qué paso estás, como el resto de la app -->
+    <div class="onbmarca"><svg class="logo" id="logo-onb" aria-hidden="true" focusable="false" viewBox="0 0 1272.84 877.71" xmlns="http://www.w3.org/2000/svg"></svg>
+      <b>Mis Cuentas</b><span class="onbpaso" id="onb-paso">Paso 1 de 2</span></div>
     <div class="stepdot" id="onb-dots"><i class="on"></i><i></i></div>
     <h1 id="onb-tit">¿Dónde tenés la plata?</h1>
     <p id="onb-sub">Elegí las cuentas y billeteras que usás. Después podés agregar o sacar las que quieras.</p>
@@ -2006,7 +2037,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.19-v4.6-google";
+const APP_VERSION = "2026.10.19-v4.7-recorrido";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -2639,7 +2670,7 @@ function resizeCharts(){ [chartFlow,chartCat,chartProj].forEach(c=>{ try{ c&&c.r
 function configured(){ return SUPABASE_URL.startsWith("http") && SUPABASE_ANON_KEY.length>20; }
 let recoveryMode = /type=recovery/.test(window.location.hash) || /[?&]type=recovery/.test(window.location.search);
 document.documentElement.setAttribute("data-cvd", UI.cvd?"1":"0");
-$("logo-auth").innerHTML=LOGO; $("logo-auth-2").innerHTML=LOGO; $("logo-nav").innerHTML=LOGO; pintarIconos(); if($("app-ver-2")) $("app-ver-2").textContent=APP_VERSION;
+$("logo-auth").innerHTML=LOGO; $("logo-auth-2").innerHTML=LOGO; $("logo-nav").innerHTML=LOGO; $("logo-onb").innerHTML=LOGO; pintarIconos(); if($("app-ver-2")) $("app-ver-2").textContent=APP_VERSION;
 
 if(!configured()){ show("setup"); }
 else{
@@ -4386,7 +4417,8 @@ const MAS=[
   {k:"presu",    n:"Presupuesto",      s:"Un límite por categoría",               ic:"gasto",     col:"red"},
   {k:"dividir",  n:"Compartido",       s:"Lo que dividís con otra persona",       ic:"gente",     col:"violet"},
   {k:"graficos", n:"Gráficos",         s:"Ingresos, gastos y categorías",         ic:"ingreso",   col:"teal"},
-  {k:"exportar", n:"Exportar a CSV",   s:"Bajate todos tus movimientos",          ic:"exportar",  col:"blue",   go:()=>$("mv-export").onclick()}
+  {k:"exportar", n:"Exportar a CSV",   s:"Bajate todos tus movimientos",          ic:"exportar",  col:"blue",   go:()=>$("mv-export").onclick()},
+  {k:"recorrido",n:"Ver el recorrido", s:"Cómo funciona la app, paso a paso",     ic:"chispa",    col:"violet", go:()=>iniciarRecorrido()}
 ];
 /* v3.3 · Ajustes se parte con una regla que se dice en una frase:
    lo TUYO vive detrás del avatar, lo de la APP vive en "Más". */
@@ -4574,6 +4606,7 @@ function renderOnb(){
     ? "Elegí las cuentas y billeteras que usás. Después podés agregar o sacar las que quieras."
     : "Con esto la app puede mostrarte cuánto te queda de verdad, no solo lo que gastaste.";
   $("onb-dots").innerHTML = p1 ? '<i class="on"></i><i></i>' : '<i class="on"></i><i class="on"></i>';
+  $("onb-paso").textContent = p1 ? "Paso 1 de 2 · Tus cuentas" : "Paso 2 de 2 · Cuánto tenés";
   $("onb-next").textContent = p1 ? "Seguir" : "Empezar a usar la app";
   $("onb-skip").textContent = p1 ? "Lo cargo después" : "Dejarlo en cero por ahora";
 
@@ -4656,7 +4689,9 @@ async function onbGuardar(conSaldos){
     enOnboarding=false;
     show("app");
     await loadAll();
-    avisarOK("Listo, ya podés empezar","Tocá el + y contame tu primer gasto.");
+    /* v4.7 · al terminar la bienvenida arranca el recorrido por la app */
+    if(!recorridoVisto()) setTimeout(()=>iniciarRecorrido(),350);
+    else avisarOK("Listo, ya podés empezar","Tocá el + y contame tu primer gasto.");
   }catch(e){
     avisarError(e,"No se pudo guardar la configuración");
   }finally{
@@ -7571,6 +7606,115 @@ async function copiaRestaurar(){
     + (fallos.length?`<br><span style="color:var(--red)">No pude con: ${esc(fallos.join(" | "))}</span>`:"");
   if(btn) btn.disabled=false;
   renderSub();
+}
+
+/* =========================================================================
+   v4.7 · RECORRIDO POR LA APP
+   Como en honorapp: arranca solo después de la bienvenida, resalta cada parte
+   y cuenta para qué sirve. Se saltea cuando quieras y se vuelve a ver desde
+   Más → "Ver el recorrido".
+   ========================================================================= */
+const RECORRIDO=[
+  {ir:"app", ic:"chispa", titulo:"¡Te damos la bienvenida!",
+   texto:"Mis Cuentas te ayuda a saber cuánta plata tenés, en qué se te va y cuánto te queda por pagar de tarjeta. En un minuto te mostramos todo. Podés saltearlo y volver a verlo desde Más."},
+  {ir:"app", obj:()=>$("h-total"), ic:"billetera", titulo:"Cuánto tenés disponible",
+   texto:"Es la suma de tus cuentas y billeteras, sin lo que reservaste para ahorrar. Tocalo para ver el detalle de cada cuenta. Con la pastilla de abajo ves el total con ahorros."},
+  {ir:"app", obj:()=>COMPU.matches?$("side-add"):$("nav-add"), ic:"mas", titulo:"Cargar un gasto en segundos",
+   texto:"Escribís el monto con el teclado y tocás la categoría: queda guardado. Lo que repetís seguido aparece para cargarlo con un toque, y también podés dictarlo o sacarle una foto al ticket."},
+  {ir:"app", obj:()=>document.querySelector("#app .g2"), ic:"ingreso", titulo:"Tu mes de un vistazo",
+   texto:"Lo que entró, lo que salió, lo que ahorraste y lo que debés de tarjeta este mes. Tocá cualquiera para ver el detalle."},
+  {ir:"app", obj:()=>document.querySelector("#app .mespill"), ic:"calendario", titulo:"Cambiar de mes",
+   texto:"Tocá el mes para ver el calendario día por día, o la flecha para mirar otro mes."},
+  {ir:"movs", obj:()=>$("mv-pasar"), ic:"transferir", titulo:"Pasar plata entre tus cuentas",
+   texto:"En Movimientos buscás y filtrás todo lo que cargaste. Con este botón pasás plata de una cuenta tuya a otra: no cuenta como gasto y tu total no cambia."},
+  {ir:"tar", obj:()=>$("tar-total"), ic:"tarjeta", titulo:"Plan: lo que ya está comprometido",
+   texto:"Arriba ves cuánto pagás de tarjeta el mes que viene, sumando todas. Cada tarjeta muestra su parte y sus cuotas. Desde acá también llegás a Ahorros, Fijos y Presupuestos."},
+  {ir:"mas", obj:()=>document.querySelector("#mas-menu .panel"), ic:"menu", titulo:"Más",
+   texto:"Gastos compartidos, categorías, gráficos, apariencia, copia de seguridad y la carga rápida. Si atendés pacientes, al final está honorapp, que manda tus cobros acá."},
+  {ir:"app", ic:"celular", titulo:"Llevala en el celular",
+   texto:"Instalala como una app. En Android: menú ⋮ → «Instalar app». En iPhone: Compartir → «Agregar a inicio». Lo que cargás en el celu aparece en la compu y al revés."},
+  {ir:"app", ic:"listo", titulo:"¡Listo!",
+   texto:"Empezá cargando tu primer gasto con el +. Si querés repasar algo, el recorrido está en Más → «Ver el recorrido»."}
+];
+let TOUR=null;
+function claveRecorrido(){ return "miscuentas_recorrido_"+((user&&user.id)||"anon"); }
+function recorridoVisto(){ try{ return localStorage.getItem(claveRecorrido())==="visto"; }catch(e){ return false; } }
+function irPantallaRecorrido(v){
+  if(vista===v && !$(v).classList.contains("hidden")) return;
+  if(v==="movs"){ detStat="todos"; show("movs"); renderMovs(); }
+  else if(v==="tar"){ subView=null; show("tar"); renderTarjetas(); }
+  else if(v==="mas"){ subView=null; show("mas"); renderMasMenu(); }
+  else show("app");
+}
+function iniciarRecorrido(){
+  if(TOUR) return;
+  TOUR={i:0};
+  document.addEventListener("keydown",teclaRecorrido);
+  window.addEventListener("resize",ubicarRecorrido);
+  pintarRecorrido();
+}
+function terminarRecorrido(){
+  const box=$("tour"); if(box) box.remove();
+  TOUR=null;
+  document.removeEventListener("keydown",teclaRecorrido);
+  window.removeEventListener("resize",ubicarRecorrido);
+  try{ localStorage.setItem(claveRecorrido(),"visto"); }catch(e){}
+  irPantallaRecorrido("app");
+}
+function teclaRecorrido(e){
+  if(!TOUR) return;
+  if(e.key==="Escape"){ e.preventDefault(); terminarRecorrido(); }
+  if(e.key==="ArrowRight"){ e.preventDefault(); pasoRecorrido(1); }
+  if(e.key==="ArrowLeft" && TOUR.i>0){ e.preventDefault(); pasoRecorrido(-1); }
+}
+function pasoRecorrido(d){
+  if(!TOUR) return;
+  const n=TOUR.i+d;
+  if(n>=RECORRIDO.length){ terminarRecorrido(); return; }
+  TOUR.i=Math.max(0,n); pintarRecorrido();
+}
+function pintarRecorrido(){
+  const p=RECORRIDO[TOUR.i], ult=TOUR.i===RECORRIDO.length-1, total=RECORRIDO.length;
+  irPantallaRecorrido(p.ir);
+  let box=$("tour");
+  if(!box){ box=document.createElement("div"); box.id="tour"; box.setAttribute("role","dialog"); box.setAttribute("aria-modal","true");
+    box.setAttribute("aria-labelledby","tour-tit"); document.body.appendChild(box); }
+  const glifo = p.ic==="listo"
+    ? `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`
+    : icon(p.ic,22);
+  box.innerHTML=`<div class="tour-luz sin" id="tour-luz" aria-hidden="true"></div>
+    <div class="tour-card centro" id="tour-card">
+      <div class="tour-top"><span class="tour-ic">${glifo}</span>
+        <span class="tour-n">Paso ${TOUR.i+1} de ${total}</span>
+        ${ult?"":`<button class="linkbtn tour-saltar" id="tour-saltar" type="button">Saltar</button>`}</div>
+      <h2 id="tour-tit">${esc(p.titulo)}</h2>
+      <p>${esc(p.texto)}</p>
+      <div class="tour-barra" aria-hidden="true">${RECORRIDO.map((_,i)=>`<i class="${i<=TOUR.i?"on":""}"></i>`).join("")}</div>
+      <div class="tour-btns">
+        ${TOUR.i>0?`<button class="btn ghost" id="tour-ant" type="button">Anterior</button>`:""}
+        <button class="btn" id="tour-sig" type="button">${TOUR.i===0?"Empezar el recorrido":ult?"Empezar a usar la app":"Siguiente"}</button>
+      </div>
+    </div>`;
+  $("tour-sig").onclick=()=>pasoRecorrido(1);
+  if($("tour-ant")) $("tour-ant").onclick=()=>pasoRecorrido(-1);
+  if($("tour-saltar")) $("tour-saltar").onclick=terminarRecorrido;
+  setTimeout(()=>{ ubicarRecorrido(true); try{ $("tour-sig").focus({preventScroll:true}); }catch(e){} },80);
+}
+/* resalta el elemento del paso y pone la tarjeta del lado contrario, para no taparlo */
+function ubicarRecorrido(conScroll){
+  if(!TOUR) return;
+  const p=RECORRIDO[TOUR.i], luz=$("tour-luz"), card=$("tour-card"); if(!luz||!card) return;
+  const el=p.obj?p.obj():null;
+  let r=el?el.getBoundingClientRect():null;
+  if(!r || r.width===0 || r.height===0){ luz.className="tour-luz sin"; card.className="tour-card centro"; return; }
+  if(conScroll===true){ el.scrollIntoView({block:"center"}); r=el.getBoundingClientRect(); }
+  const m=8;
+  luz.className="tour-luz";
+  luz.style.top=(r.top-m)+"px"; luz.style.left=(r.left-m)+"px";
+  luz.style.width=(r.width+m*2)+"px"; luz.style.height=(r.height+m*2)+"px";
+  /* si lo resaltado ocupa más de media pantalla, en la compu la tarjeta va al costado */
+  const alto=r.height>window.innerHeight*0.5;
+  card.className="tour-card "+(alto&&COMPU.matches?"lado":alto?"abajo":((r.top+r.height/2)>window.innerHeight/2?"arriba":"abajo"));
 }
 
 </script>
