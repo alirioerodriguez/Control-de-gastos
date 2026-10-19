@@ -21,6 +21,20 @@ create policy "enlace propio" on public.enlace_honorapp
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
 
+-- Gmail: gmail.com y googlemail.com son la misma casilla, y no distingue puntos ni lo que va después de «+».
+create or replace function public.mail_canonico(p_email text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select case
+    when split_part(lower(trim(p_email)), '@', 2) in ('gmail.com', 'googlemail.com')
+      then replace(split_part(split_part(lower(trim(p_email)), '@', 1), '+', 1), '.', '') || '@gmail.com'
+    else lower(trim(p_email))
+  end;
+$$;
+
 -- Busca la cuenta por mail confirmado (solo la usa la función, con service_role).
 create or replace function public.usuario_por_mail(p_email text)
 returns uuid
@@ -30,7 +44,8 @@ security definer
 set search_path = ''
 as $$
   select id from auth.users
-  where lower(email) = lower(trim(p_email)) and email_confirmed_at is not null
+  where public.mail_canonico(email) = public.mail_canonico(p_email) and email_confirmed_at is not null
+  order by created_at
   limit 1;
 $$;
 revoke all on function public.usuario_por_mail(text) from public, anon, authenticated;
