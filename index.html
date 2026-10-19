@@ -1634,7 +1634,7 @@ canvas{max-height:270px}
   <button data-nav="app" class="on"><span data-ic="casa" data-ic-size="20"></span><span>Inicio</span></button>
   <button data-nav="movs"><span data-ic="lista" data-ic-size="20"></span><span>Movimientos</span></button>
   <div class="nav-fabw" style="display:grid;place-items:center"><button class="navfab tapz" id="nav-add" aria-label="Registrar un movimiento contándoselo a la app" data-ic="mas" data-ic-size="24"></button></div>
-  <button data-nav="tar"><span data-ic="tarjeta" data-ic-size="20"></span><span>Plan</span></button>
+  <button data-nav="tar"><span data-ic="brujula" data-ic-size="20"></span><span>Plan</span></button>
   <button data-nav="cal" class="solo-compu"><span data-ic="calendario" data-ic-size="20"></span><span>Calendario</span></button>
   <button data-nav="mas"><span data-ic="menu" data-ic-size="20"></span><span>Más</span></button>
   <button class="nav-yo solo-compu" id="side-yo" type="button" aria-label="Tu perfil"><span class="me av" id="side-me">?</span><span class="yt"><b id="side-nombre">Mi cuenta</b><small id="side-mail"></small></span></button>
@@ -2021,6 +2021,7 @@ Object.assign(ICON_D,{
   candado:"<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />",
   escudo:"<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" />",
   ayuda:"<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" /> <path d=\"M12 17h.01\" />",
+  brujula:"<circle cx=\"12\" cy=\"12\" r=\"10\" /> <polygon points=\"16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76\" />",
   chanchito:"<path d=\"M11 17h3v2a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-3a3.16 3.16 0 0 0 2-2h1a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-1a5 5 0 0 0-2-4V3a4 4 0 0 0-3.2 1.6l-.3.4H11a6 6 0 0 0-6 6v1a5 5 0 0 0 2 4v3a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1z\" /> <path d=\"M16 10h.01\" />",
   persona:"<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\" /> <circle cx=\"12\" cy=\"7\" r=\"4\" />",
   puntos:"<circle cx=\"12\" cy=\"5\" r=\"1\" /> <circle cx=\"12\" cy=\"12\" r=\"1\" /> <circle cx=\"12\" cy=\"19\" r=\"1\" />",
@@ -2037,7 +2038,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.19-v4.7-recorrido";
+const APP_VERSION = "2026.10.19-v4.8-brujula";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -2840,6 +2841,8 @@ async function onSession(s){
     show(v); await loadAll();
     if(v==="sub") renderSub();
     if(v==="meta") renderMeta();
+    /* v4.8 · el recorrido arranca una vez para todas las cuentas, también las que ya existían */
+    if(ACCOUNTS.length && !enOnboarding && !recorridoVisto()) setTimeout(()=>{ if(!enOnboarding) iniciarRecorrido(); },600);
   }
   else { user=null; currentUid=null; booted=false; renderAuthMode(); show("auth"); }
 }
@@ -7627,7 +7630,7 @@ const RECORRIDO=[
    texto:"Tocá el mes para ver el calendario día por día, o la flecha para mirar otro mes."},
   {ir:"movs", obj:()=>$("mv-pasar"), ic:"transferir", titulo:"Pasar plata entre tus cuentas",
    texto:"En Movimientos buscás y filtrás todo lo que cargaste. Con este botón pasás plata de una cuenta tuya a otra: no cuenta como gasto y tu total no cambia."},
-  {ir:"tar", obj:()=>$("tar-total"), ic:"tarjeta", titulo:"Plan: lo que ya está comprometido",
+  {ir:"tar", obj:()=>$("tar-total"), ic:"brujula", titulo:"Plan: lo que ya está comprometido",
    texto:"Arriba ves cuánto pagás de tarjeta el mes que viene, sumando todas. Cada tarjeta muestra su parte y sus cuotas. Desde acá también llegás a Ahorros, Fijos y Presupuestos."},
   {ir:"mas", obj:()=>document.querySelector("#mas-menu .panel"), ic:"menu", titulo:"Más",
    texto:"Gastos compartidos, categorías, gráficos, apariencia, copia de seguridad y la carga rápida. Si atendés pacientes, al final está honorapp, que manda tus cobros acá."},
