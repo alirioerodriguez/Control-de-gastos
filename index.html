@@ -935,6 +935,20 @@ canvas{max-height:270px}
 .pl-lim{font-size:11px;font-weight:700;opacity:.85;margin-top:5px}
 .pl-resu{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.18);font-size:13px}
 .pl-resu b{font-weight:800}
+/* v4.3 · panel de honorapp en Más */
+.hnpanel{margin-bottom:12px;border-color:color-mix(in srgb, var(--green) 30%, var(--line));background:color-mix(in srgb, var(--green-bg) 55%, var(--card))}
+.hn-cab{display:flex;align-items:center;gap:12px}
+.hn-cab svg,.hnpanel-ok svg{flex:none}
+.hn-tit{display:block;font-size:17px;font-weight:800;color:var(--ink);line-height:1.25;margin-top:2px}
+.hn-p{font-size:13px;color:var(--ink-2);line-height:1.5;margin:12px 0 0}
+.hn-enlace{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:11px 13px;border-radius:16px;background:var(--card);
+  border:1px dashed color-mix(in srgb, var(--green) 45%, var(--line));font-size:13px;line-height:1.45;color:var(--ink-2)}
+.hn-enlace svg{color:var(--green);flex:none;margin-top:1px}
+.hn-enlace b{color:var(--ink)}
+.hnpanel-ok{display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer}
+.hnpanel-ok .hn-tx{flex:1;min-width:0;display:block}
+.hnpanel-ok .hn-tx b{display:block;font-size:15px;font-weight:800;color:var(--ink)}
+.hnpanel-ok .hn-tx span{display:block;font-size:13px;color:var(--ink-2);margin-top:2px}
 .pl-pagar{flex:none;border:0;border-radius:999px;background:#fff;color:#1c1a18;font-weight:800;font-size:13px;padding:0 16px;min-height:44px}
 
 /* =========================================================================
@@ -1401,6 +1415,8 @@ canvas{max-height:270px}
   <div class="body">
     <div id="mas-perfil"></div>
     <div id="mas-resumen"></div>
+    <!-- v4.3 · panel de honorapp: la app hermana para quien atiende pacientes, y cómo se conectan -->
+    <div id="mas-honorapp"></div>
     <div id="mas-menu"></div>
     <!-- v3.3 · cerrar sesión se fue a la hoja de cuenta, detrás del avatar -->
     <p class="hint" style="text-align:center">Mis Cuentas · versión <b id="app-ver-2">—</b></p>
@@ -1966,7 +1982,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.17-v4.1-plan";
+const APP_VERSION = "2026.10.19-v4.3-panel-honorapp";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -4386,6 +4402,7 @@ function renderMasMenu(){
   /* mini resumen arriba */
   const {ing,gas}=totalesMes(VMONTH,CUR);
   renderPerfilCard("mas-perfil");
+  renderPanelHonorapp();
   $("mas-resumen").innerHTML=`<div class="panel pad" style="margin-bottom:12px">
     <div class="sec" style="padding:0 0 4px"><b>${esc(mesLargo(VMONTH))}</b></div>
     <div style="display:flex;gap:18px;margin-top:8px;flex-wrap:wrap">
@@ -5124,6 +5141,31 @@ function subSeguridad(){
    honorapp manda lo cobrado cada mes como un ingreso por moneda (sólo totales, nada de pacientes).
    Lo que llega tiene origen "honorapp" y se actualiza en el mismo movimiento. Ver supabase/enlace-honorapp.sql. */
 const HONORAPP_URL="https://control-de-facturacion-eight.vercel.app/ajustes";
+const HONORAPP_HOME="https://control-de-facturacion-eight.vercel.app/";
+/* v4.3 · panel de Más: "¿Atendés pacientes? Probá honorapp", y que se sepa que las dos apps se conectan.
+   Si ya está enlazada, el panel lo dice y lleva al detalle del enlace. */
+const LOGO_HONORAPP=`<svg width="40" height="40" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect width="48" height="48" rx="12" fill="var(--green)"/><path d="M16 10v28M16 27c0-5 3.5-8 7.5-8s7.5 3 7.5 8v6l5-5" fill="none" stroke="var(--on-accent)" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+async function renderPanelHonorapp(){
+  const caja=$("mas-honorapp"); if(!caja||!user) return;
+  let activo=false;
+  try{ const {data}=await sb.from("enlace_honorapp").select("activo").maybeSingle(); activo=!!(data&&data.activo); }catch(e){}
+  if(!$("mas-honorapp")) return;
+  caja.innerHTML = activo
+    ? `<button class="panel pad rowz hnpanel hnpanel-ok" id="hn-panel-ver" type="button">
+        ${LOGO_HONORAPP}
+        <span class="hn-tx"><b>Enlazada con honorapp</b><span>Tus cobros a pacientes llegan acá como ingresos, uno por mes.</span></span>
+        <span style="color:var(--ink-3);flex:none">${icon('adelante',16)}</span></button>`
+    : `<div class="panel pad hnpanel">
+        <div class="hn-cab">${LOGO_HONORAPP}<div><div class="lbl-up" style="color:var(--green)">De quien hizo Mis Cuentas</div>
+          <b class="hn-tit">¿Atendés pacientes? Probá honorapp</b></div></div>
+        <p class="hn-p">Anotás sesiones y pagos, ves de un vistazo quién te debe, mandás el recordatorio por WhatsApp y le pasás el reporte del mes a tu contadora.</p>
+        <div class="hn-enlace">${icon('transferir',18)}<span><b>Las dos apps se conectan.</b> Si usás el mismo mail en las dos, lo que cobrás cada mes en honorapp llega acá como ingreso. Solo viajan los totales, nunca los nombres de tus pacientes.</span></div>
+        <div class="r2" style="margin-top:14px">
+          <a class="btn" href="${HONORAPP_HOME}" target="_blank" rel="noopener noreferrer" style="flex:1;display:grid;place-items:center;text-align:center;text-decoration:none;background:var(--green);color:var(--on-accent)">Probar honorapp</a>
+          <button class="btn ghost" id="hn-panel-como" type="button" style="flex:1">Cómo se conectan</button></div>
+      </div>`;
+  const ver=$("hn-panel-ver")||$("hn-panel-como"); if(ver) ver.onclick=()=>openSub("honorapp");
+}
 function subHonorapp(){
   return `<div class="panel pad"><div id="hn-body"><p class="hint">Cargando…</p></div></div>`;
 }
