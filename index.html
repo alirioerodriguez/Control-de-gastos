@@ -905,6 +905,8 @@ canvas{max-height:270px}
 .gnota{text-align:center;font-size:11px;color:var(--ink-2);margin:8px 0 0}
 .gsep{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--ink-2);margin:16px 0}
 .gsep::before,.gsep::after{content:"";height:1px;flex:1;background:var(--line)}
+.authlegal{text-align:center;font-size:12px;color:var(--ink-2);margin:14px 0 0;line-height:1.5}
+.authlegal a{color:var(--ink-2);text-decoration:underline;text-underline-offset:2px;padding:8px 0}
 
 /* =========================================================================
    v4.1 · PLAN (la pestaña que antes era Tarjetas)
@@ -1091,6 +1093,8 @@ canvas{max-height:270px}
     <button class="btn w" id="au-submit">Entrar</button>
     <p style="text-align:center;margin:14px 0 0;font-size:13px;color:var(--ink-2)"><span id="au-switch-txt">¿Primera vez?</span> <button class="linkbtn" id="au-switch">Crear cuenta</button></p>
     <p style="text-align:center;margin:8px 0 0"><button class="linkbtn" id="au-forgot" style="color:var(--ink-2)">Olvidé mi clave</button></p>
+    <!-- v4.4 · páginas públicas: Google las pide para el ingreso con Google -->
+    <p class="authlegal">Al entrar aceptás los <a href="/terminos">términos</a> y la <a href="/privacidad">política de privacidad</a>.</p>
   </div>
   </div>
 </div>
@@ -1982,7 +1986,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.19-v4.3-panel-honorapp";
+const APP_VERSION = "2026.10.19-v4.4-legales-google";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
