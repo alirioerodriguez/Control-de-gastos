@@ -2038,7 +2038,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.19-v4.8-brujula";
+const APP_VERSION = "2026.10.19-v4.9-guardado-seguro";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -3599,7 +3599,10 @@ $("mv-export").onclick=()=>{
      bajaba un CSV con solo el encabezado. */
   if(rows.length<2){ toast("No hay nada para exportar",{sub:"Cargá algún movimiento y volvé a intentar.",tipo:"err"}); return; }
   try{
-    const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\n");
+    /* v4.9 · un campo que empieza con = + - @ Excel lo toma como fórmula (inyección de CSV).
+       Se le antepone un apóstrofo para que lo muestre como texto. */
+    const celda=c=>{ let s=String(c==null?"":c); if(/^[=+\-@\t\r]/.test(s)) s="'"+s; return `"${s.replace(/"/g,'""')}"`; };
+    const csv=rows.map(r=>r.map(celda).join(";")).join("\n");
     const blob=new Blob([String.fromCharCode(0xFEFF)+csv],{type:"text/csv;charset=utf-8"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="mis-cuentas.csv"; a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),4000);
@@ -3957,9 +3960,10 @@ $("saldo-save").onclick=async()=>{
 };
 
 /* --- crear o editar una transferencia --- */
+let idTrNuevo=null;   /* v4.9 · id del pase nuevo: fijo mientras la hoja esté abierta */
 function nuevaTransf(origen){
   if(ACCOUNTS.length<2){ toast("Necesitás dos cuentas",{sub:"Una para sacar y otra para poner. Agregá la segunda acá abajo.",tipo:"err"}); return; }
-  editingTr=null;
+  editingTr=null; idTrNuevo=nuevoId();
   $("tr-tit").textContent="Pasar plata";
   $("t-save").textContent="Pasar";
   $("t-fecha").value=todayISO(); $("t-monto").value=""; $("t-desc").value="";
@@ -4673,21 +4677,24 @@ async function onbGuardar(conSaldos){
   try{
     const filas=ONB.elegidas.map(n=>{ const d=onbDef(n);
       return {user_id:user.id, key:slug(n), nombre:n, moneda:d.mon||"ARS", tipo:d.t||"banco"}; });
-    let {error}=await sb.from("accounts").insert(filas);
+    /* v4.9 · si un intento anterior ya creó alguna cuenta, no se vuelve a crear
+       (antes chocaba con la regla de unicidad y la bienvenida quedaba trabada) */
+    const _upAcc=f=>sb.from("accounts").upsert(f,{onConflict:"user_id,key",ignoreDuplicates:true});
+    let {error}=await _upAcc(filas);
     if(error && faltaColumna(error)){
       colsNuevasMissing=true;
-      ({error}=await sb.from("accounts").insert(filas.map(f=>{ const g={...f}; delete g.tipo; return g; })));
+      ({error}=await _upAcc(filas.map(f=>{ const g={...f}; delete g.tipo; return g; })));
     }
     if(error) throw error;
     const {data}=await sb.from("accounts").select("*").order("created_at",{ascending:true});
     ACCOUNTS=data||[];
     if(conSaldos){
-      const movs=ONB.elegidas
-        .map(n=>({n, m:round2(ONB.saldos[n]||0)}))
-        .filter(x=>x.m>0)
-        .map(x=>({user_id:user.id, fecha:todayISO(), cuenta:slug(x.n), tipo:"ingreso",
-                  monto:x.m, categoria:"Saldo inicial", descripcion:"Lo que tenía cuando empecé"}));
-      if(movs.length){ const {error:e2}=await sb.from("transactions").insert(movs); if(e2) throw e2; }
+      const movs=[];
+      for(const x of ONB.elegidas.map(n=>({n, m:round2(ONB.saldos[n]||0)})).filter(x=>x.m>0))
+        movs.push({id:await idFijo(`saldo-inicial:${user.id}:${slug(x.n)}`), user_id:user.id, fecha:todayISO(), cuenta:slug(x.n), tipo:"ingreso",
+                   monto:x.m, categoria:"Saldo inicial", descripcion:"Lo que tenía cuando empecé"});
+      /* v4.9 · el saldo inicial de cada cuenta tiene un id fijo: reintentar no lo duplica */
+      if(movs.length){ const {error:e2}=await sb.from("transactions").upsert(movs,{onConflict:"id",ignoreDuplicates:true}); if(e2) throw e2; }
     }
     enOnboarding=false;
     show("app");
@@ -4918,11 +4925,15 @@ function bindSub(){
       if(error){ avisarError(error); return; } await loadAll(); renderSub();
       avisarOK("Fijo agregado",`${_d||$("r-cat").value} · ${fmt(m,CUR)} por mes.`); };
     $("r-all").onclick=async()=>{ if(!REC.length) return; if(!await confirmar({titulo:`¿Registro los ${REC.length} fijos con fecha de hoy?`,texto:"Se van a cargar como movimientos nuevos. Si alguno ya lo registraste, después lo podés borrar.",ok:"Registrar todos"})) return;
-      const _n=REC.length;
-      const {error}=await sb.from("transactions").insert(REC.map(r=>({fecha:todayISO(),cuenta:r.cuenta,tipo:r.tipo,monto:r.monto,categoria:r.categoria,descripcion:r.descripcion,user_id:user.id})));
+      const _n=REC.length, _hoy=todayISO();
+      /* v4.9 · cada fijo de hoy tiene siempre el mismo id: si se reintenta, los que ya entraron no se repiten */
+      const filas=[]; for(const r of REC) filas.push({id:await idFijo(`fijo:${r.id}:${_hoy}`),fecha:_hoy,cuenta:r.cuenta,tipo:r.tipo,monto:r.monto,categoria:r.categoria,descripcion:r.descripcion,user_id:user.id});
+      const {data:_ins,error}=await sb.from("transactions").upsert(filas,{onConflict:"id",ignoreDuplicates:true}).select("id");
       if(error){ avisarError(error,"No pude registrar los fijos"); return; }
+      const _nuevos=(_ins||[]).length, _ya=_n-_nuevos;
       await loadAll(); renderSub();
-      avisarOK(`Registré ${_n} fijo${_n===1?"":"s"}`,`Con fecha de hoy. Ya aparecen en Movimientos.`); };
+      avisarOK(_nuevos?`Registré ${_nuevos} fijo${_nuevos===1?"":"s"}`:"Ya estaban registrados",
+        _ya?`${_ya} ya los habías registrado hoy y no los repetí.`:`Con fecha de hoy. Ya aparecen en Movimientos.`); };
     el.querySelectorAll("[data-reg]").forEach(b=>b.onclick=async()=>{
       const r=REC.find(x=>x.id===b.dataset.reg); if(!r) return;
       const ya=TX.some(t=>t.fecha.slice(0,7)===curMonth() && t.cuenta===r.cuenta && t.tipo===r.tipo && Number(t.monto)===Number(r.monto) && (t.descripcion||"")===(r.descripcion||""));
@@ -5533,12 +5544,15 @@ $("t-save").onclick=async()=>{
       ok:"Pasarla igual"});
     if(!ok) return;
   }
+  if($("t-save").dataset.busy==="1") return;   /* v4.9 · traba de doble toque */
   botonOcupado($("t-save"),true);
   const fila={fecha:$("t-fecha").value,origen:o,destino:d,monto:m,descripcion:$("t-desc").value.trim()||null};
+  if(!editingTr && !idTrNuevo) idTrNuevo=nuevoId();
   const {error} = editingTr
     ? await sb.from("transfers").update(fila).eq("id",editingTr)
-    : await sb.from("transfers").insert({user_id:user.id,...fila});
+    : await insertarUna("transfers",{id:idTrNuevo,user_id:user.id,...fila},"id");
   botonOcupado($("t-save"),false);
+  if(!error && !editingTr) idTrNuevo=null;
   /* v3.7 · traducirError devuelve {t,s}: asignarlo como texto mostraba
      literalmente "[object Object]" en vez del motivo. */
   if(error){ const _e=traducirError(error); $("t-err").textContent=`${_e.t}. ${_e.s}`; return; }
@@ -5736,7 +5750,8 @@ function openReg(fecha,tipo,goalId,montoPre){
      goal:goalId||null, pair:(PAIRS[0]||{}).id||null, sentido:"guardar", split:"ambos", pct:50, pagador:(user||{}).id||null,
      /* la cuenta de arranque se corrige más abajo si la meta es de otra moneda */
      fecha: fecha || (VMONTH===curMonth()?todayISO():VMONTH+"-01"),
-     repite:false, cuotas:1, primera:null, pagadas:0, avanzado:false, expr:""};
+     repite:false, cuotas:1, primera:null, pagadas:0, avanzado:false, expr:"",
+     ids:{} /* v4.9 · ids fijos de este movimiento: si se reintenta, no se duplica */};
   if(t==="ahorro" && goalId){
     const g=GOALS.find(x=>x.id===goalId);
     const c=cuentasDeMoneda(monedaMeta(g))[0];
@@ -6069,10 +6084,41 @@ $("reg-cat-new").onclick=()=>{ if(catsTableMissing){ toast("Todavía no puedo cr
   const n=($("reg-cat-search").value||"").trim(); openCat(null); if(n) $("cat-nombre").value=n; };
 
 /* ---- guardar ---- */
+/* v4.9 · GUARDADO SEGURO
+   1) traba: mientras se guarda, un segundo toque (en Guardar, en una categoría
+      o en un frecuente) no hace nada.
+   2) idempotencia: cada movimiento lleva un id generado acá, fijo mientras la
+      pantalla siga abierta. Si la red se corta después de que el servidor
+      guardó, el reintento choca con ese id y se toma como "ya estaba". */
+let guardandoReg=false;
+function nuevoId(){
+  try{ return crypto.randomUUID(); }catch(e){}
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{ const r=Math.random()*16|0; return (c==="x"?r:(r&3|8)).toString(16); });
+}
+/* id que siempre sale igual para el mismo texto (por ejemplo, "este fijo, hoy") */
+async function idFijo(texto){
+  const h=new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(texto))));
+  h[6]=(h[6]&0x0f)|0x50; h[8]=(h[8]&0x3f)|0x80;
+  const x=[...h.slice(0,16)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  return `${x.slice(0,8)}-${x.slice(8,12)}-${x.slice(12,16)}-${x.slice(16,20)}-${x.slice(20,32)}`;
+}
+function idPara(clave){ return ((R.ids ||= {})[clave] ||= nuevoId()); }
+function esDuplicado(err){ return !!err && (err.code==="23505" || /duplicate key/i.test(String(err.message||""))); }
+/* inserta una fila con id propio; si ya estaba (reintento), devuelve la que está */
+async function insertarUna(tabla, fila, columnas){
+  let {data,error}=await sb.from(tabla).insert(fila).select(columnas||"*").single();
+  if(error && esDuplicado(error)){
+    ({data,error}=await sb.from(tabla).select(columnas||"*").eq("id",fila.id).maybeSingle());
+    if(!error && !data) error={message:"No pude confirmar si se guardó"};
+  }
+  return {data,error};
+}
 $("reg-listo").onclick=async()=>{
+  if(guardandoReg) return;   /* v4.9 · ya hay un guardado en curso */
   const total=regTotal(); if(!(total>0)){ toast("Falta el monto",{sub:"Escribí cuánto fue con el teclado numérico.",tipo:"err"}); try{ $("reg-disp").classList.add("campo-mal"); setTimeout(()=>$("reg-disp").classList.remove("campo-mal"),2200); }catch(e){} return; }
   if(R.tipo==="ahorro" && ahorroTablesMissing){ toast("Los ahorros todavía no están disponibles",{sub:"El resto de la app funciona normal. Podés cargarlo como gasto por ahora.",tipo:"err"}); return; }
   if(R.tipo==="compartido" && !PAIRS.length){ toast("Todavía no compartís con nadie",{sub:"Andá a Más → Compartido y vinculá a alguien primero.",tipo:"err"}); return; }
+  guardandoReg=true;
   botonOcupado($("reg-listo"),true);
   const cur=regMoneda();
   const desc=$("reg-desc").value.trim(), comercio=$("reg-comercio").value.trim()||null;
@@ -6082,40 +6128,41 @@ $("reg-listo").onclick=async()=>{
       const card=cardById(R.card);
       const n=Math.max(1,R.cuotas), pagadas=Math.min(n,Math.max(0,R.pagadas));
       const primera=(R.primera||primeraCuotaMes(R.fecha,card))+"-01";
-      const {data,error}=await sb.from("card_purchases").insert({fecha_compra:R.fecha,tarjeta:R.card?cardLabel(card):"Otra",card_id:R.card||null,
-        descripcion:desc,comercio,categoria:R.cat,monto_total:total,cuotas:n,user_id:user.id}).select().single();
+      const {data,error}=await insertarUna("card_purchases",{id:idPara("compra"),fecha_compra:R.fecha,tarjeta:R.card?cardLabel(card):"Otra",card_id:R.card||null,
+        descripcion:desc,comercio,categoria:R.cat,monto_total:total,cuotas:n,user_id:user.id});
       if(error) throw error;
       if(data) _creados.push({t:"card_purchases",id:data.id});   /* las cuotas se borran en cascada */
       const base=round2(total/n); const rows=[]; let ac=0;
       for(let i=1;i<=n;i++){ const m=(i===n)?round2(total-ac):base; ac=round2(ac+base);
-        rows.push({purchase_id:data.id,nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:i<=pagadas,user_id:user.id}); }
-      const {error:e2}=await sb.from("card_installments").insert(rows); if(e2) throw e2;
+        rows.push({id:idPara(`cuota-${n}-${i}`),purchase_id:data.id,nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:i<=pagadas,user_id:user.id}); }
+      /* v4.9 · si un reintento encuentra cuotas ya creadas, las deja como están */
+      const {error:e2}=await sb.from("card_installments").upsert(rows,{onConflict:"id",ignoreDuplicates:true}); if(e2) throw e2;
     }
     else if(R.tipo==="ahorro"){
-      const {data:_se,error}=await sb.from("savings_entries").insert({user_id:user.id,goal_id:R.goal||null,fecha:R.fecha,
-        cuenta:R.cuenta,monto:R.sentido==="guardar"?total:-total,descripcion:desc||null}).select("id").single();
+      const {data:_se,error}=await insertarUna("savings_entries",{id:idPara("ahorro"),user_id:user.id,goal_id:R.goal||null,fecha:R.fecha,
+        cuenta:R.cuenta,monto:R.sentido==="guardar"?total:-total,descripcion:desc||null},"id");
       if(error) throw error;
       if(_se) _creados.push({t:"savings_entries",id:_se.id});
     }
     else if(R.tipo==="compartido"){
-      const base={pair_id:R.pair,fecha:R.fecha,titulo:desc||"Gasto compartido",
+      const base={id:idPara("compartido"),pair_id:R.pair,fecha:R.fecha,titulo:desc||"Gasto compartido",
         monto:total,pagado_por:R.pagador||user.id,dividido:R.split,categoria:R.cat,created_by:user.id};
-      let {data:_sh,error}=await sb.from("shared_txns").insert({...base,cuenta:R.cuenta,porcentaje:R.split==="pct"?R.pct:null}).select("id").single();
+      let {data:_sh,error}=await insertarUna("shared_txns",{...base,cuenta:R.cuenta,porcentaje:R.split==="pct"?R.pct:null},"id");
       /* si todavía no corriste el SQL nuevo, guardo igual sin esas dos columnas */
       if(error && /column|schema cache/i.test(error.message||"")){
-        ({data:_sh,error}=await sb.from("shared_txns").insert(R.split==="pct"?{...base,dividido:"ambos"}:base).select("id").single());
+        ({data:_sh,error}=await insertarUna("shared_txns",R.split==="pct"?{...base,dividido:"ambos"}:base,"id"));
       }
       if(error) throw error;
       if(_sh) _creados.push({t:"shared_txns",id:_sh.id});
     }
     else{
-      const {data:_nuevo,error}=await sb.from("transactions").insert({fecha:R.fecha,cuenta:R.cuenta,tipo:R.tipo,
-        monto:total,categoria:R.cat,descripcion:desc,comercio,user_id:user.id}).select().single();
+      const {data:_nuevo,error}=await insertarUna("transactions",{id:idPara("mov"),fecha:R.fecha,cuenta:R.cuenta,tipo:R.tipo,
+        monto:total,categoria:R.cat,descripcion:desc,comercio,user_id:user.id});
       if(error) throw error;
       if(_nuevo){ marcarReciente(_nuevo.id); _creados.push({t:"transactions",id:_nuevo.id}); }   /* v3.7 · para resaltar la fila recién creada */
       if(R.repite){
         const ya=REC.some(r=>r.cuenta===R.cuenta && r.tipo===R.tipo && Number(r.monto)===total && (r.descripcion||"")===desc);
-        if(!ya){ const {data:_rc,error:e3}=await sb.from("recurring").insert({cuenta:R.cuenta,tipo:R.tipo,monto:total,categoria:R.cat,descripcion:desc,user_id:user.id}).select("id").single();
+        if(!ya){ const {data:_rc,error:e3}=await insertarUna("recurring",{id:idPara("fijo"),cuenta:R.cuenta,tipo:R.tipo,monto:total,categoria:R.cat,descripcion:desc,user_id:user.id},"id");
           if(e3) avisarError(e3,"Guardé el movimiento, pero no lo pude dejar como fijo");
           else if(_rc) _creados.push({t:"recurring",id:_rc.id}); }
       }
@@ -6140,7 +6187,7 @@ $("reg-listo").onclick=async()=>{
     /* si falló a mitad de camino (ej. la compra entró pero las cuotas no), no dejo restos */
     if(_creados.length) await deshacerCreados(_creados).catch(()=>{});
     avisarError(e,"No se pudo guardar");
-  } finally{ botonOcupado($("reg-listo"),false); }
+  } finally{ guardandoReg=false; botonOcupado($("reg-listo"),false); }
 };
 $("add-top").onclick=()=>openReg(null);
 $("nav-add").onclick=()=>openReg(calDay, tipoVista()||"gasto", (vista==="meta"?activeGoalId:null));
@@ -6536,8 +6583,11 @@ function vozHoy(){
   return "Hoy es "+t.charAt(0).toUpperCase()+t.slice(1)+". Podés decirme \u201cel miércoles de la semana pasada\u201d.";
 }
 const CAP_GUARDADO={gasto:"Gasto guardado", ingreso:"Ingreso guardado", tarjeta:"Compra guardada", ahorro:"Ahorro guardado", compartido:"Gasto compartido guardado"};
+/* v4.9 · ids fijos de lo dictado mientras la hoja esté abierta, y traba de doble toque */
+let vozIds={}, guardandoVoz=false;
+function idVoz(clave){ return (vozIds[clave] ||= nuevoId()); }
 function openVoz(pre){
-  vozNuevo();
+  vozNuevo(); vozIds={};
   const ce=$("voz-err"); if(ce) ce.textContent="";
   if($("voz-hoy")) $("voz-hoy").textContent=vozHoy();
   /* v3 · la hoja hereda el tipo que esté eligiendo la calculadora */
@@ -7358,7 +7408,9 @@ function vozEditar(campo){
 
 /* ---------------- guardar ---------------- */
 async function vozGuardar(){
+  if(guardandoVoz) return;
   if(!vozCompleto()){ marcarMal(null,"Todavía no sé cuánto fue. Escribilo o decilo, por ejemplo: 12.300 en el super.","voz-err"); try{ $("voz-texto").focus(); }catch(e){} return; }
+  guardandoVoz=true;
   botonOcupado($("voz-guardar"),true);
   const desc=(V.descripcion||V.comercio||V.categoria||"").toString();
   const _creados=[];   /* v3.9 · Deshacer también para lo dictado */
@@ -7367,29 +7419,29 @@ async function vozGuardar(){
       const card=cardById(V.card);
       const n=Math.max(1,V.cuotas);
       const primera=primeraCuotaMes(V.fecha,card)+"-01";
-      const {data,error}=await sb.from("card_purchases").insert({fecha_compra:V.fecha,tarjeta:card?cardLabel(card):"Otra",
-        card_id:V.card||null,descripcion:desc,comercio:V.comercio,categoria:V.categoria,monto_total:V.monto,cuotas:n,user_id:user.id}).select().single();
+      const {data,error}=await insertarUna("card_purchases",{id:idVoz("compra"),fecha_compra:V.fecha,tarjeta:card?cardLabel(card):"Otra",
+        card_id:V.card||null,descripcion:desc,comercio:V.comercio,categoria:V.categoria,monto_total:V.monto,cuotas:n,user_id:user.id});
       if(error) throw error;
       if(data) _creados.push({t:"card_purchases",id:data.id});
       const base=round2(V.monto/n); const rows=[]; let ac=0;
       for(let i=1;i<=n;i++){ const m=(i===n)?round2(V.monto-ac):base; ac=round2(ac+base);
-        rows.push({purchase_id:data.id,nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:false,user_id:user.id}); }
+        rows.push({id:idVoz(`cuota-${n}-${i}`),purchase_id:data.id,nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:false,user_id:user.id}); }
       /* v3.9 · antes un error acá se ignoraba y quedaba una compra sin cuotas */
-      const {error:e2}=await sb.from("card_installments").insert(rows); if(e2) throw e2;
+      const {error:e2}=await sb.from("card_installments").upsert(rows,{onConflict:"id",ignoreDuplicates:true}); if(e2) throw e2;
     } else if(V.tipo==="ahorro"){
-      const {data:_se,error}=await sb.from("savings_entries").insert({user_id:user.id,goal_id:null,fecha:V.fecha,
-        cuenta:V.cuenta,monto:V.monto,descripcion:desc||null}).select("id").single();
+      const {data:_se,error}=await insertarUna("savings_entries",{id:idVoz("ahorro"),user_id:user.id,goal_id:null,fecha:V.fecha,
+        cuenta:V.cuenta,monto:V.monto,descripcion:desc||null},"id");
       if(error) throw error;
       if(_se) _creados.push({t:"savings_entries",id:_se.id});
     } else if(V.tipo==="compartido"){
-      if(!PAIRS.length){ toast("Todavía no compartís con nadie",{sub:"Andá a Más → Compartido y vinculá a alguien primero.",tipo:"err"}); botonOcupado($("voz-guardar"),false); return; }
-      const {data:_sh,error}=await sb.from("shared_txns").insert({pair_id:V.pair,fecha:V.fecha,titulo:desc||"Gasto compartido",
-        monto:V.monto,pagado_por:V.pagador||user.id,dividido:V.split||"ambos",categoria:V.categoria,created_by:user.id}).select("id").single();
+      if(!PAIRS.length){ toast("Todavía no compartís con nadie",{sub:"Andá a Más → Compartido y vinculá a alguien primero.",tipo:"err"}); return; }
+      const {data:_sh,error}=await insertarUna("shared_txns",{id:idVoz("compartido"),pair_id:V.pair,fecha:V.fecha,titulo:desc||"Gasto compartido",
+        monto:V.monto,pagado_por:V.pagador||user.id,dividido:V.split||"ambos",categoria:V.categoria,created_by:user.id},"id");
       if(error) throw error;
       if(_sh) _creados.push({t:"shared_txns",id:_sh.id});
     } else {
-      const {data:_tx,error}=await sb.from("transactions").insert({fecha:V.fecha,cuenta:V.cuenta,tipo:V.tipo==="ingreso"?"ingreso":"gasto",
-        monto:V.monto,categoria:V.categoria,descripcion:desc,comercio:V.comercio,user_id:user.id}).select("id").single();
+      const {data:_tx,error}=await insertarUna("transactions",{id:idVoz("mov"),fecha:V.fecha,cuenta:V.cuenta,tipo:V.tipo==="ingreso"?"ingreso":"gasto",
+        monto:V.monto,categoria:V.categoria,descripcion:desc,comercio:V.comercio,user_id:user.id},"id");
       if(error) throw error;
       if(_tx){ _creados.push({t:"transactions",id:_tx.id}); marcarReciente(_tx.id); }
     }
@@ -7408,7 +7460,7 @@ async function vozGuardar(){
     if(_creados.length) await deshacerCreados(_creados).catch(()=>{});
     avisarError(e,"No se pudo guardar");
   }
-  finally{ botonOcupado($("voz-guardar"),false); }
+  finally{ guardandoVoz=false; botonOcupado($("voz-guardar"),false); }
 }
 
 /* ---------------- enganches ---------------- */
