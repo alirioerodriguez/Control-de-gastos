@@ -8,6 +8,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Mis Cuentas">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="/icono.svg">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<script>if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -894,6 +898,12 @@ canvas{max-height:270px}
 .fotoop .ft b{display:block;font-size:15px;font-weight:800;color:var(--ink)}
 .fotoop .ft span{display:block;font-size:13px;color:var(--ink-2);margin-top:1px}
 .fotoop:active{transform:scale(.985)}
+/* v5.0 · iPhone hace zoom al tocar un campo con letra menor a 16 px. En pantallas
+   táctiles los campos van a 16 px (el !important pisa los estilos en línea).
+   No se bloquea el zoom: eso sería un problema de accesibilidad. */
+@media (hover:none) and (pointer:coarse){
+  input, select, textarea{ font-size:16px !important; }
+}
 
 /* =========================================================================
    v4.0 · INGRESO CON GOOGLE
@@ -2038,7 +2048,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.19-v4.9-guardado-seguro";
+const APP_VERSION = "2026.10.19-v5.0-auditoria";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -2530,6 +2540,8 @@ function avatarInner(f,n){
 /* ---------- estado ---------- */
 let sb=null, user=null, PROFILE=null;
 let TX=[], PURCH=[], INST=[], BUD=[], REC=[], TRF=[], CARDS=[], PAIRS=[], STXN=[], OTHERPROF={}, ACCOUNTS=[];
+/* v5.0 · PAIRS son los vínculos aceptados; INVITES, los que esperan respuesta */
+let PAIRS_TODOS=[], INVITES=[];
 let CATS=[], GOALS=[], SENT=[], STMT=[];
 let activePairId=null, linkFound=null, editingShared=null, editingCat=null, editingCard=null, editingGoal=null, activeGoalId=null, payCtx=null;
 let chartFlow=null, chartCat=null, chartProj=null;
@@ -2896,7 +2908,10 @@ async function loadAll(){
         accion:{txt:"Reintentar", fn:()=>loadAll()}});
     }
     TX=t.data||[]; PURCH=p.data||[]; INST=i.data||[]; BUD=b.data||[]; REC=r.data||[]; TRF=tr.data||[];
-    PAIRS=pa.data||[]; STXN=st.data||[]; CARDS=ca.data||[]; PROFILE=pr.data||null; ACCOUNTS=ac.data||[];
+    PAIRS_TODOS=pa.data||[];
+    PAIRS=PAIRS_TODOS.filter(p=>(p.estado||"aceptado")==="aceptado");
+    INVITES=PAIRS_TODOS.filter(p=>p.estado==="pendiente");
+    STXN=st.data||[]; CARDS=ca.data||[]; PROFILE=pr.data||null; ACCOUNTS=ac.data||[];
     /* v4.0 · si entró con Google y todavía no puso nombre ni foto, se usan los de Google */
     { const gm=(user&&user.user_metadata)||{}; const gn=gm.full_name||gm.name, gf=gm.avatar_url||gm.picture;
       if(PROFILE && gn && !PROFILE.nombre){
@@ -2918,7 +2933,7 @@ async function loadAll(){
     CUR=(PROFILE&&PROFILE.moneda)||"ARS";
     if(PROFILE&&PROFILE.tema&&PROFILE.tema!==UI.tema) aplicarTema(PROFILE.tema);
     CTA_NOMBRE={}; CTA_MON={}; ACCOUNTS.forEach(a=>{ CTA_NOMBRE[a.key]=a.nombre; CTA_MON[a.key]=a.moneda||"ARS"; });
-    const otherIds=[...new Set(PAIRS.map(x=> x.a===user.id?x.b:x.a))];
+    const otherIds=[...new Set(PAIRS_TODOS.map(x=> x.a===user.id?x.b:x.a))];
     OTHERPROF={}; if(otherIds.length){ const {data}=await sb.rpc("perfiles_de",{ids:otherIds}); (data||[]).forEach(x=>{ OTHERPROF[x.user_id]={apodo:x.apodo,foto_url:x.foto_url}; }); }
     fillAccountSelects(); fillCatSelects(); renderMe();
     detectarIAServidor();   /* v3.9 · no bloquea: la IA es opcional */
@@ -3137,7 +3152,7 @@ function modoTotal(){ return UI.modoTotal==="total"?"total":"disp"; }
 function cifraInicio(cur,modo){ return (modo||modoTotal())==="total" ? totalConAhorros(cur) : disponibleDebito(cur); }
 function totalesMes(m,cur){
   let ing=0,gas=0;
-  TX.forEach(t=>{ if(t.fecha.slice(0,7)!==m) return; if(cur && (CTA_MON[t.cuenta]||"ARS")!==cur) return;
+  TX.forEach(t=>{ if(t.fecha.slice(0,7)!==m) return; if(cur && (CTA_MON[t.cuenta]||"ARS")!==cur) return; if(esSaldoInicial(t)) return;
     if(t.tipo==="ingreso") ing+=Number(t.monto); else gas+=Number(t.monto); });
   return {ing:round2(ing),gas:round2(gas)};
 }
@@ -3157,7 +3172,9 @@ function cardSub(c){ if(!c) return ""; return c.alias ? cardMarca(c)+(c.banco?" 
 function primeraCuotaMes(fechaCompra, card){
   const mes=fechaCompra.slice(0,7);
   const dia=Number(fechaCompra.slice(8,10));
-  const cierre=card&&card.cierre_dia?Number(card.cierre_dia):null;
+  let cierre=card&&card.cierre_dia?Number(card.cierre_dia):null;
+  /* v5.0 · un cierre el 30 o 31 en un mes más corto (febrero) cierra el último día de ese mes */
+  if(cierre){ const [y,mm]=mes.split("-").map(Number); cierre=Math.min(cierre, new Date(y,mm,0).getDate()); }
   return mesSuma(mes, (cierre && dia>cierre) ? 2 : 1);
 }
 function cuotasDeTarjetaMes(cardId,mes){
@@ -3282,7 +3299,7 @@ function renderInicio(){
   const pend=INST.filter(x=>!x.pagada).length;
   $("st-tar-s").textContent= pend? pend+" cuota"+(pend===1?"":"s")+" por pagar" : "Sin cuotas pendientes";
 
-  const cats={}; TX.forEach(t=>{ if(t.tipo!=="gasto"||t.fecha.slice(0,7)!==VMONTH) return; if((CTA_MON[t.cuenta]||"ARS")!==CUR) return;
+  const cats={}; TX.forEach(t=>{ if(t.tipo!=="gasto"||t.fecha.slice(0,7)!==VMONTH) return; if((CTA_MON[t.cuenta]||"ARS")!==CUR) return; if(esSaldoInicial(t)) return;
     const c=t.categoria||"Otros"; cats[c]=(cats[c]||0)+Number(t.monto); });
   const ks=Object.keys(cats).sort((a,b)=>cats[b]-cats[a]).slice(0,4);
   const tot=ks.reduce((a,c)=>a+cats[c],0);
@@ -3372,6 +3389,9 @@ function renderLoQueViene(){
 }
 function renderAlertas(){
   const av=[];
+  /* v5.0 · alguien te invitó a compartir gastos */
+  INVITES.filter(p=>p.b===user.id).forEach(p=>{ const op=otherProf(p.a);
+    av.push({txt:`${op.apodo||"Alguien"} te invitó a compartir gastos. Tocá para aceptar o rechazar.`,go:()=>openSub("dividir")}); });
   // resúmenes de tarjeta de meses pasados sin registrar
   const mesAct=curMonth();
   CARDS.forEach(c=>{
@@ -3859,8 +3879,12 @@ function renderCuentas(){
     const a=ACCOUNTS.find(x=>String(x.id)===String(b.dataset.delAcc)); if(!a) return;
     const usos=TX.filter(t=>t.cuenta===a.key).length+TRF.filter(t=>t.origen===a.key||t.destino===a.key).length+SENT.filter(x=>x.cuenta===a.key).length;
     if(usos>0){ toast("Esa cuenta tiene movimientos",{sub:`${usos} movimiento(s) quedarían sin cuenta. Movelos o borralos antes.`,tipo:"err"}); return; }
+    /* v5.0 · también los fijos y los compartidos que pagaste desde esa cuenta (la base lo vuelve a revisar) */
+    const fijos=REC.filter(r=>r.cuenta===a.key).length, comp=STXN.filter(s=>s.cuenta===a.key && s.created_by===user.id).length;
+    if(fijos||comp){ toast("Esa cuenta está en uso",{sub:[fijos?`${fijos} fijo(s)`:"",comp?`${comp} gasto(s) compartido(s)`:""].filter(Boolean).join(" y ")+" la usan. Cambiales la cuenta o borralos antes.",tipo:"err"}); return; }
     if(await confirmar({titulo:`¿Borrás ${a.nombre}?`,texto:"No tiene movimientos, así que no se pierde nada.",ok:"Borrar",peligro:true})){
       const {error}=await sb.from("accounts").delete().eq("id",a.id);
+      if(error && /en uso/i.test(String(error.message||""))){ toast("Esa cuenta está en uso",{sub:"La usa el enlace con honorapp u otro registro. Cambialo antes de borrarla.",tipo:"err"}); return; }
       if(error){ avisarError(error,"No pude borrar la cuenta"); return; }
       await loadAll();
       avisarOK("Cuenta borrada",`${a.nombre} ya no está en la lista.`);
@@ -4798,7 +4822,19 @@ function subDividir(){
       <div class="rt"><b>${esc(op.apodo)}</b><span>${txt}</span></div>
       <button class="chip" style="padding:7px 11px;font-size:13px" data-open-pair="${p.id}">Ver</button>
       <button class="iconx" data-del-pair="${p.id}">${icon('borrar',16)}</button></div>`; }).join('<div class="sep"></div>');
-  return `<div class="panel pad">
+  /* v5.0 · invitaciones: el vínculo queda pendiente hasta que la otra persona acepta */
+  const recibidas=INVITES.filter(p=>p.b===user.id), enviadas=INVITES.filter(p=>p.a===user.id);
+  const invites = (recibidas.length||enviadas.length) ? `<div class="sec"><b>Invitaciones</b></div><div class="panel">`
+    + recibidas.map(p=>{ const op=otherProf(p.a); return `<div class="row"><div class="ri" style="background:var(--violet-bg);color:var(--violet)">${icon('gente',16)}</div>
+        <div class="rt"><b>${esc(op.apodo||"Alguien")}</b><span>Te invitó a compartir gastos</span></div>
+        <button class="chip" style="padding:7px 11px;font-size:13px" data-rechazar="${p.id}">Rechazar</button>
+        <button class="btn sm" data-aceptar="${p.id}">Aceptar</button></div>`; }).join('<div class="sep"></div>')
+    + (recibidas.length&&enviadas.length?'<div class="sep"></div>':'')
+    + enviadas.map(p=>{ const op=otherProf(p.b); return `<div class="row"><div class="ri" style="background:var(--soft);color:var(--ink-2)">${icon('gente',16)}</div>
+        <div class="rt"><b>${esc(op.apodo&&op.apodo!=="usuario"?op.apodo:"Invitación enviada")}</b><span>Esperando que la acepte</span></div>
+        <button class="chip" style="padding:7px 11px;font-size:13px" data-cancelar-inv="${p.id}">Cancelar</button></div>`; }).join('<div class="sep"></div>')
+    + `</div>` : "";
+  return `${invites}<div class="panel pad">
     <div style="display:flex;gap:8px"><input id="link-email" type="email" placeholder="correo@ejemplo.com" style="flex:1;border:1px solid var(--line);border-radius:16px;padding:12px 14px;font-size:15px;background:var(--card);color:var(--ink)">
       <button class="btn sm" id="link-search">Buscar</button></div>
     <div id="link-result" style="margin-top:8px"></div></div>
@@ -5143,14 +5179,30 @@ function bindDividir(){
     if(!f){ box.innerHTML='<div class="hint">No encontré a nadie con ese mail.</div>'; return; }
     if(f.user_id===user.id){ box.innerHTML='<div class="hint">Ese sos vos.</div>'; return; }
     if(PAIRS.some(p=>otherId(p)===f.user_id)){ box.innerHTML='<div class="hint">Ya compartís gastos con esta persona.</div>'; return; }
+    if(INVITES.some(p=>otherId(p)===f.user_id)){ box.innerHTML='<div class="hint">Ya hay una invitación pendiente con esta persona. Mirala en Invitaciones.</div>'; return; }
     linkFound=f;
     box.innerHTML=`<div class="row" style="padding:12px 0"><div class="rt"><b>${esc(f.apodo||"(sin apodo)")}</b><span>${esc(email)}</span></div>
-      <button class="btn sm" id="link-confirm">Vincular</button></div>`;
-    $("link-confirm").onclick=async()=>{ const {error}=await sb.from("shared_pairs").insert({a:user.id,b:linkFound.user_id});
-      if(error){ avisarError(error); return; } await loadAll(); renderSub();
-      avisarOK(`Ya compartís gastos con ${linkFound.apodo||"esa persona"}`,"Cargá un gasto compartido y los dos lo van a ver."); };
+      <button class="btn sm" id="link-confirm">Invitar</button></div>
+      <p class="hint" style="margin:0">Le llega una invitación. Cuando la acepte, los dos van a ver los gastos compartidos.</p>`;
+    $("link-confirm").onclick=async()=>{ const {error}=await sb.from("shared_pairs").insert({a:user.id,b:linkFound.user_id,estado:"pendiente"});
+      if(error){ avisarError(error,"No pude mandar la invitación"); return; } await loadAll(); renderSub();
+      avisarOK(`Invitación enviada a ${linkFound.apodo||"esa persona"}`,"Cuando la acepte, van a poder cargar gastos compartidos."); };
   };
   el.querySelectorAll("[data-open-pair]").forEach(b=>b.onclick=()=>{ activePairId=b.dataset.openPair; renderPairDetail(); });
+  /* v5.0 · aceptar, rechazar o cancelar una invitación */
+  el.querySelectorAll("[data-aceptar]").forEach(b=>b.onclick=async()=>{
+    botonOcupado(b,true);
+    const {error}=await sb.from("shared_pairs").update({estado:"aceptado"}).eq("id",b.dataset.aceptar);
+    botonOcupado(b,false);
+    if(error){ avisarError(error,"No pude aceptar la invitación"); return; }
+    await loadAll(); renderSub(); avisarOK("Invitación aceptada","Ya pueden cargar gastos compartidos."); });
+  const quitarInv=(id,titulo,ok)=>async()=>{
+    if(!await confirmar({titulo,texto:"No se comparte nada hasta que haya una invitación aceptada.",ok})) return;
+    const {error}=await sb.from("shared_pairs").delete().eq("id",id);
+    if(error){ avisarError(error,"No pude hacerlo"); return; }
+    await loadAll(); renderSub(); toast(ok==="Rechazar"?"Invitación rechazada":"Invitación cancelada",{icono:"borrar"}); };
+  el.querySelectorAll("[data-rechazar]").forEach(b=>b.onclick=quitarInv(b.dataset.rechazar,"¿Rechazás la invitación?","Rechazar"));
+  el.querySelectorAll("[data-cancelar-inv]").forEach(b=>b.onclick=quitarInv(b.dataset.cancelarInv,"¿Cancelás la invitación?","Cancelar invitación"));
   el.querySelectorAll("[data-del-pair]").forEach(b=>b.onclick=async()=>{ if(!await confirmar({titulo:"¿Dejás de compartir gastos?",texto:"Se borran todos los gastos compartidos con esa persona. Esto no se puede deshacer.",ok:"Dejar de compartir",peligro:true,escribir:"borrar"})) return;
     const {error}=await sb.from("shared_pairs").delete().eq("id",b.dataset.delPair);
     if(error){ avisarError(error,"No pude dejar de compartir"); return; }
@@ -5494,8 +5546,13 @@ $("pf-save").onclick=async()=>{ $("pf-save").disabled=true; $("pf-err").textCont
    Todo vive en la pestaña "Más" de la barra de abajo. */
 
 /* ===================== EDITAR MOVIMIENTO ===================== */
+/* v5.0 · el saldo inicial suma al saldo de la cuenta, pero no es un ingreso ni un gasto del mes */
+function esSaldoInicial(t){ return t && t.categoria==="Saldo inicial"; }
 function openEdit(id){ const t=TX.find(x=>x.id===id); if(!t) return; editing=id;
   $("e-fecha").value=t.fecha; $("e-cuenta").value=t.cuenta; $("e-tipo").value=t.tipo; $("e-monto").value=Number(t.monto).toFixed(2).replace(".",",");
+  /* v5.0 · al editar solo se ofrecen cuentas de la misma moneda: el monto no se convierte solo */
+  const _mon=monedaCuenta(t.cuenta);
+  [...$("e-cuenta").options].forEach(o=>{ const otra=monedaCuenta(o.value)!==_mon; o.disabled=otra; o.hidden=otra; });
   fillCatSelect("e-cat",t.tipo,t.categoria||""); $("e-desc").value=t.descripcion||""; $("edit-ov").classList.remove("hidden"); }
 $("e-tipo").addEventListener("change",()=>fillCatSelect("e-cat",$("e-tipo").value,""));
 $("e-cancel").onclick=()=>{ $("edit-ov").classList.add("hidden"); editing=null; };
@@ -5503,7 +5560,8 @@ $("edit-ov").onclick=e=>{ if(e.target.id==="edit-ov"){ $("edit-ov").classList.ad
 /* v3.7 · antes esto guardaba sin avisar y, si la base fallaba, el error se
    perdia en silencio: la ventana se cerraba igual y parecia guardado. */
 $("e-save").onclick=async()=>{ const m=round2(parseMonto($("e-monto").value)); if(!(m>0)){ marcarMal("e-monto","Escribí cuánto fue, con números. Por ejemplo 3200."); return; }
-  const _id=editing;
+  const _id=editing, _orig=TX.find(x=>x.id===editing);
+  if(_orig && monedaCuenta($("e-cuenta").value)!==monedaCuenta(_orig.cuenta)){ marcarMal("e-cuenta",`Esa cuenta es en ${monedaCuenta($("e-cuenta").value)} y el movimiento en ${monedaCuenta(_orig.cuenta)}. Elegí una cuenta de la misma moneda.`); return; }
   botonOcupado($("e-save"),true);
   const {error}=await sb.from("transactions").update({fecha:$("e-fecha").value,cuenta:$("e-cuenta").value,tipo:$("e-tipo").value,monto:m,categoria:$("e-cat").value,descripcion:$("e-desc").value.trim()}).eq("id",editing);
   botonOcupado($("e-save"),false);
@@ -5617,7 +5675,7 @@ function axisColor(){ return getComputedStyle(document.documentElement).getPrope
 function renderCharts(){
   const gc=axisColor();
   if($("chart-flow")){
-    const months={}; TX.forEach(t=>{ if((CTA_MON[t.cuenta]||"ARS")!==CUR) return; const k=t.fecha.slice(0,7); (months[k] ||= {ing:0,gas:0});
+    const months={}; TX.forEach(t=>{ if((CTA_MON[t.cuenta]||"ARS")!==CUR || esSaldoInicial(t)) return; const k=t.fecha.slice(0,7); (months[k] ||= {ing:0,gas:0});
       if(t.tipo==="ingreso") months[k].ing+=Number(t.monto); else months[k].gas+=Number(t.monto); });
     const keys=Object.keys(months).sort().slice(-6);
     if(chartFlow) chartFlow.destroy();
@@ -5628,7 +5686,7 @@ function renderCharts(){
         scales:{x:{ticks:{color:gc}},y:{ticks:{color:gc,callback:v=>fmtCompact(v,CUR)}}}}});
   }
   if($("chart-cat")){
-    const cats={}; TX.filter(t=>t.tipo==="gasto"&&t.fecha.slice(0,7)===VMONTH&&(CTA_MON[t.cuenta]||"ARS")===CUR)
+    const cats={}; TX.filter(t=>t.tipo==="gasto"&&t.fecha.slice(0,7)===VMONTH&&(CTA_MON[t.cuenta]||"ARS")===CUR&&!esSaldoInicial(t))
       .forEach(t=>{ const c=t.categoria||"Otros"; cats[c]=(cats[c]||0)+Number(t.monto); });
     const ck=Object.keys(cats).sort((a,b)=>cats[b]-cats[a]); const tot=round2(ck.reduce((a,c)=>a+cats[c],0));
     if(chartCat) chartCat.destroy();
@@ -5883,7 +5941,7 @@ function renderReg(){
     ct=`<div class="chipsrow">`+CUOTAS_RAPIDAS.map(n=>`<button class="chip ${R.cuotas===n&&!R.avanzado?'on':''}" data-cu="${n}">${n===1?"1 pago":n+" cuotas"}</button>`).join("")
       +`<button class="chip ${R.avanzado?'on':''}" id="reg-avz">•••</button></div>`;
     if(R.avanzado) h+=`<div class="g2" style="margin-top:10px">
-        <div class="fld" style="margin:0"><label>Cuotas</label><input id="reg-cuotas" type="number" inputmode="numeric" min="1" value="${R.cuotas}"></div>
+        <div class="fld" style="margin:0"><label>Cuotas</label><input id="reg-cuotas" type="number" inputmode="numeric" min="1" max="60" value="${R.cuotas}"></div>
         <div class="fld" style="margin:0"><label>Ya pagué</label><input id="reg-pagadas" type="number" inputmode="numeric" min="0" value="${R.pagadas}"></div>
         <div class="fld" style="margin:0;grid-column:1 / -1"><label>Primera cuota</label><input id="reg-primera" type="month" value="${primera}"></div>
       </div>`;
@@ -5950,7 +6008,8 @@ function renderReg(){
   ex.innerHTML=h; pintarIconos(ex);
   top.querySelectorAll("[data-cu]").forEach(b=>b.onclick=()=>{ R.cuotas=Number(b.dataset.cu); R.avanzado=false; R.pagadas=0; renderReg(); });
   if($("reg-avz")) $("reg-avz").onclick=()=>{ R.avanzado=!R.avanzado; renderReg(); };
-  if($("reg-cuotas")) $("reg-cuotas").oninput=()=>{ R.cuotas=Math.max(1,parseInt($("reg-cuotas").value)||1); renderRegSoft(); };
+  /* v5.0 · tope de 60 cuotas (la base también lo exige) */
+  if($("reg-cuotas")) $("reg-cuotas").oninput=()=>{ R.cuotas=Math.min(60,Math.max(1,parseInt($("reg-cuotas").value)||1)); renderRegSoft(); };
   if($("reg-pagadas")) $("reg-pagadas").oninput=()=>{ R.pagadas=Math.min(R.cuotas,Math.max(0,parseInt($("reg-pagadas").value)||0)); renderRegSoft(); };
   if($("reg-primera")) $("reg-primera").onchange=()=>{ if($("reg-primera").value){ R.primera=$("reg-primera").value; renderReg(); } };
   if($("reg-pct")) $("reg-pct").oninput=()=>{ R.pct=Math.max(0,Math.min(100,parseInt($("reg-pct").value)||0)); renderReg(); };
@@ -6126,17 +6185,17 @@ $("reg-listo").onclick=async()=>{
   try{
     if(R.tipo==="tarjeta"){
       const card=cardById(R.card);
-      const n=Math.max(1,R.cuotas), pagadas=Math.min(n,Math.max(0,R.pagadas));
+      const n=Math.min(60,Math.max(1,R.cuotas)), pagadas=Math.min(n,Math.max(0,R.pagadas));
       const primera=(R.primera||primeraCuotaMes(R.fecha,card))+"-01";
-      const {data,error}=await insertarUna("card_purchases",{id:idPara("compra"),fecha_compra:R.fecha,tarjeta:R.card?cardLabel(card):"Otra",card_id:R.card||null,
-        descripcion:desc,comercio,categoria:R.cat,monto_total:total,cuotas:n,user_id:user.id});
-      if(error) throw error;
-      if(data) _creados.push({t:"card_purchases",id:data.id});   /* las cuotas se borran en cascada */
+      const compra={id:idPara("compra"),fecha_compra:R.fecha,tarjeta:R.card?cardLabel(card):"Otra",card_id:R.card||null,
+        descripcion:desc,comercio,categoria:R.cat,monto_total:total,cuotas:n};
       const base=round2(total/n); const rows=[]; let ac=0;
       for(let i=1;i<=n;i++){ const m=(i===n)?round2(total-ac):base; ac=round2(ac+base);
-        rows.push({id:idPara(`cuota-${n}-${i}`),purchase_id:data.id,nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:i<=pagadas,user_id:user.id}); }
-      /* v4.9 · si un reintento encuentra cuotas ya creadas, las deja como están */
-      const {error:e2}=await sb.from("card_installments").upsert(rows,{onConflict:"id",ignoreDuplicates:true}); if(e2) throw e2;
+        rows.push({id:idPara(`cuota-${n}-${i}`),nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:i<=pagadas}); }
+      /* v5.0 · compra y cuotas en un solo paso en la base: entran las dos o ninguna */
+      const {error}=await sb.rpc("crear_compra_cuotas",{p_compra:compra,p_cuotas:rows});
+      if(error) throw error;
+      _creados.push({t:"card_purchases",id:compra.id});   /* las cuotas se borran en cascada */
     }
     else if(R.tipo==="ahorro"){
       const {data:_se,error}=await insertarUna("savings_entries",{id:idPara("ahorro"),user_id:user.id,goal_id:R.goal||null,fecha:R.fecha,
@@ -6426,7 +6485,7 @@ async function guardarCampo(valor){
   /* si viene de "Contame el gasto", no toca la base: sólo actualiza el borrador */
   if(campoEdit.voz){
     if(campo==="monto"){ const m=round2(parseMonto(valor)); if(!(m>0)){ $("campo-err").textContent="Poné un monto mayor a cero."; return; } V.monto=m; }
-    else if(campo==="cuotas"){ V.cuotas=Math.max(1,parseInt(valor)||1); if(V.cuotas>1) V.tipo="tarjeta"; }
+    else if(campo==="cuotas"){ V.cuotas=Math.min(60,Math.max(1,parseInt(valor)||1)); if(V.cuotas>1) V.tipo="tarjeta"; }
     else if(campo==="fecha") V.fecha=valor;
     else if(campo==="comercio") V.comercio=valor.trim()||null;
     else if(campo==="descripcion") V.descripcion=valor.trim()||null;
@@ -7417,17 +7476,17 @@ async function vozGuardar(){
   try{
     if(V.tipo==="tarjeta"){
       const card=cardById(V.card);
-      const n=Math.max(1,V.cuotas);
+      const n=Math.min(60,Math.max(1,V.cuotas));
       const primera=primeraCuotaMes(V.fecha,card)+"-01";
-      const {data,error}=await insertarUna("card_purchases",{id:idVoz("compra"),fecha_compra:V.fecha,tarjeta:card?cardLabel(card):"Otra",
-        card_id:V.card||null,descripcion:desc,comercio:V.comercio,categoria:V.categoria,monto_total:V.monto,cuotas:n,user_id:user.id});
-      if(error) throw error;
-      if(data) _creados.push({t:"card_purchases",id:data.id});
+      const compra={id:idVoz("compra"),fecha_compra:V.fecha,tarjeta:card?cardLabel(card):"Otra",
+        card_id:V.card||null,descripcion:desc,comercio:V.comercio,categoria:V.categoria,monto_total:V.monto,cuotas:n};
       const base=round2(V.monto/n); const rows=[]; let ac=0;
       for(let i=1;i<=n;i++){ const m=(i===n)?round2(V.monto-ac):base; ac=round2(ac+base);
-        rows.push({id:idVoz(`cuota-${n}-${i}`),purchase_id:data.id,nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:false,user_id:user.id}); }
-      /* v3.9 · antes un error acá se ignoraba y quedaba una compra sin cuotas */
-      const {error:e2}=await sb.from("card_installments").upsert(rows,{onConflict:"id",ignoreDuplicates:true}); if(e2) throw e2;
+        rows.push({id:idVoz(`cuota-${n}-${i}`),nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:false}); }
+      /* v5.0 · compra y cuotas en un solo paso en la base: entran las dos o ninguna */
+      const {error}=await sb.rpc("crear_compra_cuotas",{p_compra:compra,p_cuotas:rows});
+      if(error) throw error;
+      _creados.push({t:"card_purchases",id:compra.id});
     } else if(V.tipo==="ahorro"){
       const {data:_se,error}=await insertarUna("savings_entries",{id:idVoz("ahorro"),user_id:user.id,goal_id:null,fecha:V.fecha,
         cuenta:V.cuenta,monto:V.monto,descripcion:desc||null},"id");
