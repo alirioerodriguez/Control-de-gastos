@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "ar.alirio.miscuentas",
+    "sha256_cert_fingerprints": [
+      "B0:79:DD:63:0F:03:6F:19:80:F5:F0:68:1A:95:65:54:8E:1B:2E:6A:67:13:1D:2D:14:47:F7:FB:A9:82:3A:E4"
+    ]
+  }
+}]
