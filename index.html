@@ -988,6 +988,57 @@ canvas{max-height:270px}
 .tour-btns{display:flex;gap:10px}
 .tour-btns .btn:last-child{flex:1}
 @media(prefers-reduced-motion:reduce){.tour-luz{transition:none}}
+/* v5.1 · pruebas con usuarios */
+#barra-prueba{position:fixed;left:0;right:0;top:0;z-index:250;background:#1e1b18;color:#fff;box-shadow:0 10px 28px rgba(0,0,0,.28);border-bottom:3px solid var(--red);padding-top:env(safe-area-inset-top,0px)}
+#barra-prueba .bp-in{max-width:960px;margin:0 auto;padding:10px 16px;display:flex;flex-direction:column;gap:10px}
+.bp-top{display:flex;align-items:center;gap:12px}
+.bp-tx{flex:1;min-width:0}
+.bp-n{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.7}
+.bp-tx b{display:block;font-size:15px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bp-reloj{font-size:17px;font-weight:800}
+.bp-ic{width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;flex:none;transform:rotate(-90deg)}
+.bp-p{margin:0;font-size:15px;line-height:1.45}
+.bp-sub{margin:0;font-size:13px;opacity:.75}
+.bp-btns{display:flex;flex-wrap:wrap;gap:8px}
+.bp-b{min-height:44px;border:0;border-radius:999px;padding:0 16px;font-weight:800;font-size:14px;background:rgba(255,255,255,.12);color:#fff}
+.bp-b.bp-pri{background:var(--red);color:var(--on-accent)}
+.bp-b.bp-link{background:transparent;text-decoration:underline;text-underline-offset:3px}
+.bp-b:disabled{opacity:.45}
+.bp-dif{display:flex;flex-wrap:wrap;gap:6px}
+.bp-d{min-height:40px;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:0 12px;background:transparent;color:#fff;font-weight:700;font-size:13px}
+.bp-d.on{background:#fff;color:#1e1b18;border-color:#fff}
+#bp-com{width:100%;border:0;border-radius:12px;padding:10px 12px;font:inherit;font-size:15px;resize:vertical;background:rgba(255,255,255,.1);color:#fff}
+#bp-com::placeholder{color:rgba(255,255,255,.6)}
+body.con-prueba{padding-top:var(--barra-prueba,0px)}
+body.con-prueba .ov{top:var(--barra-prueba,0px)}
+body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
+@media (min-width:720px){ body.con-prueba .nav{top:var(--barra-prueba,0px)} }
+.pr-q{display:flex;flex-direction:column;gap:6px;margin:14px 0 6px}
+.pr-q>b{font-size:14px;font-weight:800;color:var(--ink)}
+.pr-op{display:flex;align-items:center;gap:10px;min-height:40px;font-size:14px;color:var(--ink-2);cursor:pointer}
+.pr-op input{width:20px;height:20px;accent-color:var(--red);flex:none}
+.pr-nps{display:flex;flex-wrap:wrap;gap:6px}
+.pr-nps label{cursor:pointer}
+.pr-nps input{position:absolute;opacity:0;width:1px;height:1px}
+.pr-nps span{display:grid;place-items:center;width:40px;height:40px;border:1px solid var(--line);border-radius:12px;font-weight:800;color:var(--ink)}
+.pr-nps input:checked+span{background:var(--dark);color:#fff;border-color:transparent}
+.pr-nps input:focus-visible+span{outline:3px solid var(--foco);outline-offset:2px}
+#pr-comentario{width:100%;border:1px solid var(--line-in);border-radius:12px;padding:10px 12px;font:inherit;font-size:15px;background:var(--card);color:var(--ink)}
+.res-ej{margin-bottom:10px}
+.res-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.res-top b{font-size:15px;font-weight:800}
+.res-pts{font-size:13px;font-weight:800;white-space:nowrap}
+.res-bar{height:6px;border-radius:999px;background:var(--line-2);overflow:hidden;margin:8px 0 10px}
+.res-bar i{display:block;height:100%;border-radius:999px}
+.res-datos{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--ink-2)}
+.res-datos small{display:block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}
+.res-datos b{color:var(--ink);font-size:15px}
+.res-sub{font-size:12px;color:var(--ink-3);margin-top:8px}
+.res-com{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--ink-2)}
+.res-com li{margin:3px 0}
+.res-op{display:grid;grid-template-columns:minmax(0,1fr) 30% 24px;align-items:center;gap:8px;font-size:13px;color:var(--ink-2)}
+.res-op i{display:block;height:8px;border-radius:999px;background:var(--violet)}
+.res-op b{text-align:right;color:var(--ink)}
 /* v4.3 · panel de honorapp en Más */
 .hnpanel{margin-bottom:12px;border-color:color-mix(in srgb, var(--green) 30%, var(--line));background:color-mix(in srgb, var(--green-bg) 55%, var(--card))}
 .hn-cab{display:flex;align-items:center;gap:12px}
@@ -2048,7 +2099,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.19-v5.0-auditoria";
+const APP_VERSION = "2026.10.20-v5.1-pruebas";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -2144,6 +2195,7 @@ function _toastsBox(){
 /* toast(texto, {sub, accion:{txt,fn}, ms, tipo:"ok"|"err", alExpirar}) */
 function toast(texto, o){
   o=o||{};
+  if(o.tipo==="err") try{ pruebaError(texto); }catch(e){}   /* v5.1 · cuenta los errores que vio durante una prueba */
   const box=_toastsBox();
   const el=document.createElement("div");
   el.className="toast"+(o.tipo==="err"?" err":"");
@@ -2633,6 +2685,7 @@ function show(w){
   editingTr=null;
   PANTALLAS.forEach(id=>{ const el=$(id); if(el) el.classList.toggle("hidden", id!==w); });
   if(w!=="reg") seguirCargando=false;   /* v4.5 · "cargar varios" dura mientras la carga esté abierta */
+  try{ pruebaPantalla(w); }catch(e){}   /* v5.1 · pruebas con usuarios: tiempo por pantalla */
   const dentro=CON_NAV.includes(w);
   $("nav").classList.toggle("hidden", !dentro);
   document.body.classList.toggle("con-nav", dentro);   /* v4.0 · en la compu corre el contenido a la derecha de la barra lateral */
@@ -2853,8 +2906,9 @@ async function onSession(s){
     show(v); await loadAll();
     if(v==="sub") renderSub();
     if(v==="meta") renderMeta();
+    cargarPrueba();   /* v5.1 · si estaba haciendo las pruebas, vuelve la barra */
     /* v4.8 · el recorrido arranca una vez para todas las cuentas, también las que ya existían */
-    if(ACCOUNTS.length && !enOnboarding && !recorridoVisto()) setTimeout(()=>{ if(!enOnboarding) iniciarRecorrido(); },600);
+    if(ACCOUNTS.length && !enOnboarding && !recorridoVisto() && !PA) setTimeout(()=>{ if(!enOnboarding && !PA) iniciarRecorrido(); },600);
   }
   else { user=null; currentUid=null; booted=false; renderAuthMode(); show("auth"); }
 }
@@ -4449,7 +4503,8 @@ const MAS=[
   {k:"dividir",  n:"Compartido",       s:"Lo que dividís con otra persona",       ic:"gente",     col:"violet"},
   {k:"graficos", n:"Gráficos",         s:"Ingresos, gastos y categorías",         ic:"ingreso",   col:"teal"},
   {k:"exportar", n:"Exportar a CSV",   s:"Bajate todos tus movimientos",          ic:"exportar",  col:"blue",   go:()=>$("mv-export").onclick()},
-  {k:"recorrido",n:"Ver el recorrido", s:"Cómo funciona la app, paso a paso",     ic:"chispa",    col:"violet", go:()=>iniciarRecorrido()}
+  {k:"recorrido",n:"Ver el recorrido", s:"Cómo funciona la app, paso a paso",     ic:"chispa",    col:"violet", go:()=>iniciarRecorrido()},
+  {k:"pruebas",  n:"Probar la app",    s:"Ejercicios cortos para ayudarnos a mejorarla", ic:"lista", col:"violet"}
 ];
 /* v3.3 · Ajustes se parte con una regla que se dice en una frase:
    lo TUYO vive detrás del avatar, lo de la APP vive en "Más". */
@@ -4466,9 +4521,11 @@ const CFG=[
 const CUENTA=[
   {k:"perfil",    n:"Mi perfil",          s:"Nombre, foto y moneda principal",     ic:"persona", col:"blue"},
   {k:"seguridad", n:"Seguridad",          s:"Correo y contraseña",                 ic:"candado", col:"green"},
-  {k:"privacidad",n:"Privacidad y datos", s:"Qué guarda la app y cómo borrarlo",   ic:"escudo",  col:"violet"}
+  {k:"privacidad",n:"Privacidad y datos", s:"Qué guarda la app, borrarlo o eliminar tu cuenta",   ic:"escudo",  col:"violet"}
 ];
 const SECS=MAS.concat(CFG).concat(CUENTA);
+/* v5.1 · el tablero de resultados de las pruebas no va en el menú: se abre desde "Probar la app" */
+SECS.push({k:"resultados", n:"Resultados de las pruebas", s:"", ic:"grafico", col:"violet"});
 function filaMenu(c,attr){ return `<button class="cfgrow rowz" ${attr}="${c.k}">
     <div class="ri" style="background:var(--${c.col}-bg);color:var(--${c.col})">${icon(c.ic,17)}</div>
     <div class="rt" style="flex:1"><b>${c.n}</b><span>${c.s}</span></div>
@@ -4752,6 +4809,8 @@ function renderSub(){
   if(subView==="asistente") el.innerHTML=subAsistente();
   if(subView==="diagnostico") el.innerHTML=subDiagnostico();
   if(subView==="honorapp") el.innerHTML=subHonorapp();
+  if(subView==="pruebas") el.innerHTML=subPruebas();
+  if(subView==="resultados") el.innerHTML=subResultados();
   pintarIconos(el);
   bindSub();
 }
@@ -4875,6 +4934,8 @@ function subTema(){
 function bindSub(){
   const el=$("sub-body");
   if(subView==="honorapp") cargarHonorapp();
+  if(subView==="pruebas") bindPruebas();
+  if(subView==="resultados") cargarResultados();
   if(subView==="diagnostico"){
     $("dg-ok").onclick=()=>avisarOK("Así se ve cuando algo se guarda","Gasto guardado · $ 12.300 en Super");
     $("dg-err").onclick=()=>avisarError(new Error("Prueba: Failed to fetch"),"Así se ve cuando algo falla");
@@ -4930,6 +4991,7 @@ function bindSub(){
       if(error){ avisarError(error,"No se pudieron borrar"); return; }
       toast("Listo, borré el mes",{sub:`${mesLargo(VMONTH)} · ${ids.length} movimiento${ids.length===1?"":"s"}`,icono:"borrar"});
       await loadAll(); renderSub(); };
+    $("pv-eliminar-cuenta").onclick=eliminarMiCuenta;
   }
   if(subView==="categorias"){
     if($("cat-new")) $("cat-new").onclick=()=>openCat(null);
@@ -5364,7 +5426,25 @@ function subPrivacidad(){
     <div class="lbl-up" style="color:var(--red)">Zona peligrosa</div>
     <p class="hint">Borrar los movimientos del mes que estás viendo (${esc(mesLargo(VMONTH))}). No se puede deshacer.</p>
     <button class="btn ghost w" id="pv-borrar-mes" style="color:var(--red)">Borrar movimientos de ${esc(mesLargo(VMONTH))}</button>
+    <div class="sep" style="margin:16px 0"></div>
+    <p class="hint">Eliminar tu cuenta borra tu usuario y <b>todo</b> lo que cargaste: movimientos, cuentas, tarjetas, cuotas, metas, categorías, compartidos, tu perfil y el enlace con honorapp. No se puede deshacer. Si querés guardar algo, bajate antes la copia completa.</p>
+    <button class="btn danger w" id="pv-eliminar-cuenta">Eliminar mi cuenta</button>
   </div>`;
+}
+/* v5.1 · Eliminar mi cuenta (lo pide Google Play). Primero las fotos de avatars/<id>/ (desde SQL no se pueden),
+   después la función eliminar_mi_cuenta borra el usuario y todo se va en cascada. Ver supabase/eliminar-cuenta.sql. */
+async function eliminarMiCuenta(){
+  if(!await confirmar({titulo:"¿Eliminás tu cuenta?",texto:"Se borran tu usuario y todo lo que cargaste: movimientos, cuentas, tarjetas, cuotas, metas, categorías, compartidos y tu perfil. No se puede deshacer.",ok:"Eliminar mi cuenta",peligro:true,escribir:"eliminar"})) return;
+  const b=$("pv-eliminar-cuenta"); if(b){ b.disabled=true; b.textContent="Eliminando…"; }
+  try{
+    const {data:fotos}=await sb.storage.from('avatars').list(user.id,{limit:1000});
+    if(fotos&&fotos.length) await sb.storage.from('avatars').remove(fotos.map(f=>`${user.id}/${f.name}`));
+  }catch(e){}
+  const {error}=await sb.rpc("eliminar_mi_cuenta");
+  if(error){ if(b){ b.disabled=false; b.textContent="Eliminar mi cuenta"; } avisarError(error,"No pude eliminar tu cuenta"); return; }
+  try{ localStorage.removeItem("miscuentas_gemini_key"); }catch(e){}
+  await sb.auth.signOut({scope:"local"});
+  toast("Listo, tu cuenta se eliminó",{sub:"Borramos tu usuario y todos tus datos.",icono:"borrar"});
 }
 function subAsistente(){
   const k=geminiKey();
@@ -7829,6 +7909,367 @@ function ubicarRecorrido(conScroll){
   /* si lo resaltado ocupa más de media pantalla, en la compu la tarjeta va al costado */
   const alto=r.height>window.innerHeight*0.5;
   card.className="tour-card "+(alto&&COMPU.matches?"lado":alto?"abajo":((r.top+r.height/2)>window.innerHeight/2?"arriba":"abajo"));
+}
+
+/* =========================================================================
+   v5.1 · PRUEBAS CON USUARIOS  (Más → Probar la app)
+   Como en honorapp: ejercicios con tareas reales, una barra arriba con la
+   consigna y un reloj, y al terminar cada uno "Lo logré / No pude",
+   dificultad del 1 al 5 y un comentario. Se mide también por qué pantallas
+   pasó, cuántos toques hizo y cuántos errores vio. Al final, una encuesta.
+   Las cuentas admin ven el tablero de resultados (Más → Probar la app →
+   Ver resultados). No se guarda ningún dato financiero: solo cómo se usó.
+   ========================================================================= */
+const EJERCICIOS=[
+  {id:"gasto-super", titulo:"Anotar un gasto", inicio:"app", esperado:30,
+   instruccion:"Acabás de pagar $ 8.000 en el súper con Mercado Pago (o con la cuenta que uses). Anotalo.",
+   logrado:"El gasto de $ 8.000 aparece en Recientes."},
+  {id:"ingreso", titulo:"Anotar un ingreso", inicio:"app", esperado:40,
+   instruccion:"Te pagaron $ 250.000 de sueldo en tu banco. Registralo.",
+   logrado:"El ingreso aparece y sube lo que tenés disponible."},
+  {id:"mover-plata", titulo:"Pasar plata entre tus cuentas", inicio:"app", esperado:60,
+   instruccion:"Pasaste $ 50.000 de una cuenta tuya a otra. Registralo.",
+   logrado:"El pase aparece en Movimientos y tu total no cambió."},
+  {id:"tarjeta-mes", titulo:"Cuánto pagás de tarjeta", inicio:"app", esperado:40,
+   instruccion:"Fijate cuánto vas a pagar de tarjeta el mes que viene. Cuando lo encuentres, anotá el monto en el comentario.",
+   logrado:"Encontraste el monto del mes que viene."},
+  {id:"cuotas", titulo:"Compra en cuotas", inicio:"app", esperado:75,
+   instruccion:"Compraste una heladera de $ 600.000 en 6 cuotas con tu tarjeta. Cargala.",
+   logrado:"La compra aparece en Plan con 6 cuotas de $ 100.000."},
+  {id:"categoria-top", titulo:"En qué gastás más", inicio:"app", esperado:40,
+   instruccion:"Mirá en qué categoría gastaste más este mes. Anotala en el comentario.",
+   logrado:"Encontraste la categoría con más gastos."},
+  {id:"mes-pasado", titulo:"Mirar otro mes", inicio:"app", esperado:40,
+   instruccion:"Mirá cuánto gastaste el mes pasado.",
+   logrado:"El Inicio muestra el mes pasado."},
+  {id:"buscar-editar", titulo:"Corregir un gasto", inicio:"app", esperado:60,
+   instruccion:"Buscá el gasto del súper que cargaste y corregí el monto a $ 8.500.",
+   logrado:"El gasto del súper ahora dice $ 8.500."},
+  {id:"meta", titulo:"Ahorrar para algo", inicio:"app", esperado:60,
+   instruccion:"Creá una meta de ahorro que se llame «Vacaciones», de $ 500.000.",
+   logrado:"La meta Vacaciones aparece en Ahorros."},
+  {id:"fijo", titulo:"Un gasto que se repite", inicio:"app", esperado:60,
+   instruccion:"Pagás $ 300.000 de alquiler todos los meses. Dejalo cargado como gasto fijo.",
+   logrado:"El alquiler aparece en Gastos e ingresos fijos."},
+  {id:"exportar", titulo:"Descargar tus datos", inicio:"app", esperado:40,
+   instruccion:"Descargá todos tus movimientos en un archivo.",
+   logrado:"Se descargó el archivo y lo pudiste abrir."}
+];
+const ENC_PRUEBA={
+  hoy:{pregunta:"¿Cómo llevás hoy tus gastos?", opciones:["Otra app","Excel o planilla","Notas o WhatsApp","Cuaderno","De memoria, no los anoto"]},
+  sirvio:{pregunta:"¿Qué te sirvió más? Elegí hasta 3.", maximo:3, opciones:["Ver cuánto tengo disponible","Cargar gastos rápido","Las cuotas de la tarjeta","Pasar plata entre cuentas","Metas de ahorro","Gastos compartidos","Dictar o sacarle foto al ticket"]},
+  costo:{pregunta:"¿Hubo algo que te costó entender?", opciones:["Cargar un gasto","Pasar plata entre cuentas","Disponible y Total con ahorros","Tarjetas y cuotas (Plan)","Ahorros y metas","Buscar o corregir","Nada, fue todo claro"]},
+  falto:{pregunta:"¿Qué te faltó? Elegí todo lo que te serviría.", opciones:["Que se conecte con mi banco o Mercado Pago","Avisos de vencimientos","Presupuestos más claros","Más gráficos","Varias monedas con tipo de cambio","Nada, así está bien"]},
+  recomendaria:{pregunta:"Del 0 al 10, ¿qué tan probable es que se la recomiendes a alguien?"},
+  comentario:{pregunta:"¿Algo más que quieras contarnos?"}
+};
+const DIFICULTAD=["Muy fácil","Fácil","Normal","Difícil","Muy difícil"];
+const NOMBRE_PANTALLA={app:"Inicio",movs:"Movimientos",cuentas:"Tus cuentas",tar:"Plan · Tarjetas",metas:"Plan · Ahorros",meta:"Meta de ahorro",
+  mas:"Más",cal:"Calendario",reg:"Cargar movimiento",det:"Detalle de movimiento"};
+function nombrePantalla(w){
+  if(w==="sub"){ const d=SECS.find(c=>c.k===subView); return "Más · "+((d&&d.n)||subView||"?"); }
+  return NOMBRE_PANTALLA[w]||w;
+}
+let PRUEBA=null;   /* la fila de esta persona en "pruebas" */
+function _leerP(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(e){ return null; } }
+function _guardarP(k,v){ try{ if(v==null) localStorage.removeItem(k); else localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+let PA=_leerP("mc_prueba_activa");    /* {id, fase:"listo"|"corriendo"|"calificando", estado} */
+let CRONO=_leerP("mc_prueba_crono");  /* reloj del ejercicio en curso */
+function guardarPA(){ _guardarP("mc_prueba_activa",PA); }
+function guardarCrono(){ _guardarP("mc_prueba_crono",CRONO); }
+
+/* ---- reloj: tiempo activo y tiempo por pantalla (sin contar la app en segundo plano) ---- */
+function _sumarPantalla(c,ahora){
+  if(c.pantallaDesde==null) return;
+  const ms=ahora-c.pantallaDesde;
+  if(ms>=1000 || c.pantallas[c.pantalla]) c.pantallas[c.pantalla]=(c.pantallas[c.pantalla]||0)+ms;
+}
+function _cerrarTramo(c,ahora){
+  if(c.activoDesde!=null) c.acumulado+=ahora-c.activoDesde;
+  _sumarPantalla(c,ahora); c.activoDesde=null; c.pantallaDesde=null;
+}
+function msPrueba(){ const c=CRONO; if(!c) return 0; return c.acumulado+(c.activoDesde!=null?Date.now()-c.activoDesde:0); }
+function pruebaCorriendo(){ return !!(PA && PA.fase==="corriendo" && CRONO); }
+/* lo llama show(): cambio de pantalla */
+function pruebaPantalla(w){
+  if(!pruebaCorriendo()) return;
+  const nueva=nombrePantalla(w), c=CRONO, ahora=Date.now();
+  if(nueva===c.pantalla) return;
+  _sumarPantalla(c,ahora); c.pantalla=nueva; c.pantallaDesde=document.hidden?null:ahora;
+  if(c.recorrido.length<60) c.recorrido.push(nueva);
+  guardarCrono();
+}
+/* lo llama toast(): un error que vio la persona */
+function pruebaError(texto){ if(!pruebaCorriendo()) return; CRONO.errores++; if(CRONO.textosError.length<10) CRONO.textosError.push(String(texto).slice(0,120)); guardarCrono(); }
+document.addEventListener("click",e=>{ if(!pruebaCorriendo()) return; if(e.target.closest && e.target.closest("#barra-prueba")) return; CRONO.toques++; guardarCrono(); },true);
+document.addEventListener("visibilitychange",()=>{
+  if(!pruebaCorriendo()) return;
+  const ahora=Date.now();
+  if(document.hidden) _cerrarTramo(CRONO,ahora); else { CRONO.activoDesde=ahora; CRONO.pantallaDesde=ahora; }
+  guardarCrono();
+});
+function fmtDuracion(ms){ if(ms==null) return "—"; const s=Math.round(ms/1000); return s<60?`${s} s`:`${Math.floor(s/60)} min ${String(s%60).padStart(2,"0")} s`; }
+
+/* ---- datos ---- */
+async function cargarPrueba(){
+  try{
+    const {data,error}=await sb.from("pruebas").select("*").maybeSingle();
+    if(error) throw error;
+    PRUEBA=data||null;
+  }catch(e){ PRUEBA=null; }
+  if(!PRUEBA && PA){ PA=null; guardarPA(); }
+  pintarBarraPrueba();
+}
+async function guardarEjercicio(id,resultado){
+  if(!PRUEBA) return false;
+  const nuevos={...(PRUEBA.ejercicios||{}), [id]:resultado};
+  const {error}=await sb.from("pruebas").update({ejercicios:nuevos}).eq("id",PRUEBA.id);
+  if(error){ avisarError(error,"No se pudo guardar el resultado"); return false; }
+  PRUEBA.ejercicios=nuevos; return true;
+}
+function proximoEjercicio(desdeId){
+  const hechos=(PRUEBA&&PRUEBA.ejercicios)||{};
+  const i=EJERCICIOS.findIndex(e=>e.id===desdeId);
+  const resto=[...EJERCICIOS.slice(i+1),...EJERCICIOS.slice(0,i+1)];
+  return resto.find(e=>!hechos[e.id]||hechos[e.id].estado==="en_curso")||null;
+}
+function avanzarPrueba(desdeId){
+  const prox=proximoEjercicio(desdeId);
+  CRONO=null; guardarCrono();
+  if(prox){ PA={id:prox.id,fase:"listo"}; guardarPA(); pintarBarraPrueba(); }
+  else { PA=null; guardarPA(); pintarBarraPrueba(); openSub("pruebas"); avisarOK("¡Terminaste todos los ejercicios!","Falta una encuesta cortita."); }
+}
+
+/* ---- acciones ---- */
+async function crearPrueba(nombre){
+  const {data,error}=await sb.from("pruebas").insert({nombre:(nombre||"").trim()||null,
+    dispositivo:(window.innerWidth<720?"celular":"compu")+" · "+navigator.userAgent.slice(0,200), ancho:window.innerWidth}).select("*").single();
+  if(error){ avisarError(error,"No se pudo empezar"); return; }
+  PRUEBA=data; PA={id:EJERCICIOS[0].id,fase:"listo"}; guardarPA(); pintarBarraPrueba(); renderSub();
+}
+function empezarEjercicio(id){
+  const ej=EJERCICIOS.find(e=>e.id===id); if(!ej) return;
+  irPantallaRecorrido(ej.inicio);
+  const ahora=Date.now();
+  CRONO={acumulado:0,activoDesde:ahora,pantalla:nombrePantalla(ej.inicio),pantallaDesde:ahora,pantallas:{},toques:0,errores:0,textosError:[],recorrido:[nombrePantalla(ej.inicio)]};
+  guardarCrono(); PA={id,fase:"corriendo"}; guardarPA(); pintarBarraPrueba();
+  if(PRUEBA) guardarEjercicio(id,{estado:"en_curso",ms:0,inicio:new Date().toISOString(),pantallas:{}});
+}
+function terminarEjercicio(estado){
+  if(!PA||!CRONO) return;
+  _cerrarTramo(CRONO,Date.now()); guardarCrono();
+  PA={...PA,fase:"calificando",estado}; guardarPA(); pintarBarraPrueba();
+}
+async function calificarEjercicio(dificultad,comentario){
+  if(!PA||!PA.estado||!PRUEBA) return;
+  const c=CRONO||{acumulado:0,pantallas:{},toques:0,errores:0,textosError:[],recorrido:[]};
+  const res={estado:PA.estado, ms:Math.round(c.acumulado),
+    inicio:(PRUEBA.ejercicios[PA.id]&&PRUEBA.ejercicios[PA.id].inicio)||new Date().toISOString(), fin:new Date().toISOString(),
+    dificultad, comentario:(comentario||"").trim().slice(0,1000)||undefined,
+    pantallas:Object.fromEntries(Object.entries(c.pantallas).map(([k,v])=>[k,Math.round(v)])),
+    toques:c.toques, errores:c.errores, textosError:c.textosError, recorrido:c.recorrido};
+  if(!await guardarEjercicio(PA.id,res)) return;
+  toast("Guardado",{icono:"ok"});
+  avanzarPrueba(PA.id);
+}
+async function saltearEjercicio(){
+  if(!PA||!PRUEBA) return;
+  const res={estado:"salteado",ms:Math.round(msPrueba()),inicio:new Date().toISOString(),fin:new Date().toISOString(),pantallas:{}};
+  if(!await guardarEjercicio(PA.id,res)) return;
+  avanzarPrueba(PA.id);
+}
+function continuarPruebas(){
+  if(!PRUEBA) return;
+  const prox=EJERCICIOS.find(e=>!PRUEBA.ejercicios[e.id]||PRUEBA.ejercicios[e.id].estado==="en_curso");
+  if(prox){ PA={id:prox.id,fase:"listo"}; guardarPA(); pintarBarraPrueba(); }
+}
+function pausarPruebas(){ CRONO=null; guardarCrono(); PA=null; guardarPA(); pintarBarraPrueba(); openSub("pruebas"); }
+
+/* ---- barra fija arriba durante la prueba ---- */
+let _relojPrueba=null, _difElegida=null, _barraAbierta=true;
+function pintarBarraPrueba(){
+  let bar=$("barra-prueba");
+  const activo=PA && PRUEBA && EJERCICIOS.find(e=>e.id===PA.id);
+  if(!activo){ if(bar) bar.remove(); document.body.classList.remove("con-prueba"); document.documentElement.style.removeProperty("--barra-prueba");
+    clearInterval(_relojPrueba); _relojPrueba=null; return; }
+  if(!bar){ bar=document.createElement("div"); bar.id="barra-prueba"; bar.setAttribute("role","region"); bar.setAttribute("aria-label","Prueba de Mis Cuentas"); document.body.appendChild(bar); }
+  const ej=activo, n=EJERCICIOS.indexOf(ej)+1, f=PA.fase;
+  if(f!=="corriendo") _barraAbierta=true;
+  if(f==="calificando" && PA._limpio!==true){ _difElegida=null; }
+  bar.innerHTML=`<div class="bp-in">
+    <div class="bp-top"><div class="bp-tx"><span class="bp-n">Ejercicio ${n} de ${EJERCICIOS.length}${f==="listo"?" · por empezar":""}</span><b>${esc(ej.titulo)}</b></div>
+      ${f==="corriendo"?`<span class="bp-reloj num" id="bp-reloj">${fmtDuracion(msPrueba())}</span>
+        <button class="bp-ic" id="bp-toggle" type="button" aria-expanded="${_barraAbierta}" aria-label="${_barraAbierta?"Ocultar la consigna":"Ver la consigna"}">${icon(_barraAbierta?"atras":"adelante",16)}</button>`:""}</div>
+    ${f==="listo"?`<p class="bp-p">${esc(ej.instruccion)}</p>
+      <div class="bp-btns"><button class="bp-b bp-pri" id="bp-empezar" type="button">Empezar</button>
+        <button class="bp-b" id="bp-saltear" type="button">Saltear</button>
+        <button class="bp-b bp-link" id="bp-pausar" type="button">Pausar las pruebas</button></div>`:""}
+    ${f==="corriendo"&&_barraAbierta?`<p class="bp-p">${esc(ej.instruccion)}</p><p class="bp-sub">Lo lograste si: ${esc(ej.logrado)}</p>`:""}
+    ${f==="corriendo"?`<div class="bp-btns"><button class="bp-b bp-pri" id="bp-logre" type="button">Lo logré</button>
+        <button class="bp-b" id="bp-nopude" type="button">No pude</button></div>`:""}
+    ${f==="calificando"?`<p class="bp-p">${PA.estado==="logrado"?"¡Bien!":"Gracias por intentarlo."} ¿Qué tan fácil fue?</p>
+      <div class="bp-dif" role="radiogroup" aria-label="Dificultad">${DIFICULTAD.map((d,i)=>`<button type="button" role="radio" aria-checked="${_difElegida===i+1}" class="bp-d ${_difElegida===i+1?"on":""}" data-dif="${i+1}">${d}</button>`).join("")}</div>
+      <textarea id="bp-com" rows="2" maxlength="1000" placeholder="¿Qué te costó o qué esperabas encontrar? (opcional)"></textarea>
+      <div class="bp-btns"><button class="bp-b bp-pri" id="bp-guardar" type="button" ${_difElegida?"":"disabled"}>Guardar y seguir</button></div>`:""}
+  </div>`;
+  document.body.classList.add("con-prueba");
+  const medir=()=>document.documentElement.style.setProperty("--barra-prueba",bar.offsetHeight+"px");
+  medir(); requestAnimationFrame(medir);
+  const on=(id,fn)=>{ const b=$(id); if(b) b.onclick=fn; };
+  on("bp-empezar",()=>empezarEjercicio(ej.id));
+  on("bp-saltear",()=>saltearEjercicio());
+  on("bp-pausar",()=>pausarPruebas());
+  on("bp-logre",()=>terminarEjercicio("logrado"));
+  on("bp-nopude",()=>terminarEjercicio("no_pude"));
+  on("bp-toggle",()=>{ _barraAbierta=!_barraAbierta; pintarBarraPrueba(); });
+  bar.querySelectorAll("[data-dif]").forEach(b=>b.onclick=()=>{ const t=$("bp-com")?$("bp-com").value:""; _difElegida=Number(b.dataset.dif); PA._limpio=true; pintarBarraPrueba(); if($("bp-com")) $("bp-com").value=t; });
+  on("bp-guardar",async()=>{ const b=$("bp-guardar"); if(!_difElegida||b.dataset.busy==="1") return; botonOcupado(b,true);
+    const com=$("bp-com")?$("bp-com").value:""; delete PA._limpio; await calificarEjercicio(_difElegida,com); _difElegida=null; });
+  clearInterval(_relojPrueba); _relojPrueba=null;
+  if(f==="corriendo") _relojPrueba=setInterval(()=>{ const r=$("bp-reloj"); if(r) r.textContent=fmtDuracion(msPrueba()); },1000);
+}
+
+/* ---- pantalla: Más → Probar la app ---- */
+function subPruebas(){
+  const admin=!!(PROFILE&&PROFILE.es_admin);
+  const verRes=admin?`<button class="btn ghost w" id="pr-resultados" style="margin-top:12px">Ver resultados de todas las personas</button>`:"";
+  if(!PRUEBA){
+    return `<div class="panel pad">
+      <div class="lbl-up">Ayudanos a mejorar Mis Cuentas</div>
+      <p class="hint">Son ${EJERCICIOS.length} ejercicios cortos con tareas reales, unos 10 minutos en total. Arriba vas a ver qué hacer y un reloj. Cuando termines cada uno, nos contás si lo lograste, qué tan fácil fue y, si querés, qué te costó.</p>
+      <p class="hint">Medimos cuánto tardás, por qué pantallas pasás y cuántos toques hacés. No guardamos tus montos ni tus movimientos: solo cómo se usó la app. Podés usar datos inventados y borrarlos después.</p>
+      <div class="fld" style="margin-top:12px"><label for="pr-nombre">Tu nombre o un apodo (opcional)</label><input id="pr-nombre" type="text" maxlength="120" autocomplete="off"></div>
+      <button class="btn w" id="pr-empezar">Empezar las pruebas</button>${verRes}</div>`;
+  }
+  const hechos=PRUEBA.ejercicios||{};
+  const filas=EJERCICIOS.map((e,i)=>{ const r=hechos[e.id];
+    const est=!r?"Pendiente":r.estado==="logrado"?"Lo lograste":r.estado==="no_pude"?"No pudiste":r.estado==="salteado"?"Salteado":"Empezado";
+    const col=!r?"var(--ink-3)":r.estado==="logrado"?"var(--green)":r.estado==="no_pude"?"var(--red-ink)":"var(--amber)";
+    return `<div class="row"><div class="ri" style="background:var(--soft);color:var(--ink-2);font-weight:800;font-size:13px">${i+1}</div>
+      <div class="rt"><b>${esc(e.titulo)}</b><span>${r&&r.ms?fmtDuracion(r.ms):"&nbsp;"}</span></div>
+      <span style="font-size:13px;font-weight:800;color:${col};flex:none">${est}</span></div>`; }).join('<div class="sep"></div>');
+  const faltan=EJERCICIOS.some(e=>!hechos[e.id]||hechos[e.id].estado==="en_curso");
+  let pie="";
+  if(faltan) pie=`<button class="btn w" id="pr-continuar" style="margin-top:12px">Seguir con los ejercicios</button>`;
+  else if(!PRUEBA.terminado) pie=encuestaPruebaHTML();
+  else pie=`<div class="regnota" style="--acc:var(--green);--accbg:var(--green-bg);margin-top:12px"><span>¡Gracias! Terminaste las pruebas y la encuesta. Tus respuestas quedaron guardadas.</span></div>`;
+  return `<div class="panel">${filas}</div>${pie}${verRes}`;
+}
+function encuestaPruebaHTML(){
+  const E=ENC_PRUEBA, op=(k,multi)=>E[k].opciones.map(o=>`<label class="pr-op"><input type="${multi?"checkbox":"radio"}" name="pr-${k}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join("");
+  return `<div class="panel pad" style="margin-top:12px" id="pr-encuesta">
+    <div class="lbl-up">Encuesta final</div>
+    <div class="pr-q"><b>1. ${esc(E.hoy.pregunta)}</b>${op("hoy")}</div>
+    <div class="pr-q"><b>2. ${esc(E.sirvio.pregunta)}</b>${op("sirvio",true)}</div>
+    <div class="pr-q"><b>3. ${esc(E.costo.pregunta)}</b>${op("costo",true)}</div>
+    <div class="pr-q"><b>4. ${esc(E.falto.pregunta)}</b>${op("falto",true)}</div>
+    <div class="pr-q"><b>5. ${esc(E.recomendaria.pregunta)}</b><div class="pr-nps">${[...Array(11).keys()].map(n=>`<label><input type="radio" name="pr-recomendaria" value="${n}"><span>${n}</span></label>`).join("")}</div></div>
+    <div class="pr-q"><b>6. ${esc(E.comentario.pregunta)}</b><textarea id="pr-comentario" rows="3" maxlength="2000"></textarea></div>
+    <div class="inline-err" id="pr-err"></div>
+    <button class="btn w" id="pr-enviar">Enviar la encuesta</button></div>`;
+}
+function bindPruebas(){
+  if($("pr-empezar")) $("pr-empezar").onclick=async()=>{ botonOcupado($("pr-empezar"),true); await crearPrueba($("pr-nombre").value); };
+  if($("pr-continuar")) $("pr-continuar").onclick=()=>continuarPruebas();
+  if($("pr-resultados")) $("pr-resultados").onclick=()=>openSub("resultados");
+  const lim=document.querySelectorAll('[name="pr-sirvio"]');
+  lim.forEach(c=>c.onchange=()=>{ const n=[...lim].filter(x=>x.checked).length; lim.forEach(x=>{ if(!x.checked) x.disabled=n>=ENC_PRUEBA.sirvio.maximo; }); });
+  if($("pr-enviar")) $("pr-enviar").onclick=async()=>{
+    const uno=k=>{ const x=document.querySelector(`[name="pr-${k}"]:checked`); return x?x.value:undefined; };
+    const varios=k=>[...document.querySelectorAll(`[name="pr-${k}"]:checked`)].map(x=>x.value);
+    const enc={hoy:uno("hoy"),sirvio:varios("sirvio"),costo:varios("costo"),falto:varios("falto"),
+      recomendaria:uno("recomendaria")!=null?Number(uno("recomendaria")):undefined, comentario:($("pr-comentario").value||"").trim()||undefined};
+    if(enc.recomendaria==null){ $("pr-err").textContent="Falta la pregunta 5: elegí un número del 0 al 10."; return; }
+    botonOcupado($("pr-enviar"),true);
+    const {error}=await sb.from("pruebas").update({encuesta:enc,terminado:true}).eq("id",PRUEBA.id);
+    botonOcupado($("pr-enviar"),false);
+    if(error){ avisarError(error,"No se pudo guardar la encuesta"); return; }
+    PRUEBA.encuesta=enc; PRUEBA.terminado=true; renderSub(); avisarOK("¡Gracias!","Tus respuestas quedaron guardadas.");
+  };
+}
+
+/* ---- análisis (para el tablero) ---- */
+function mediana(v){ if(!v.length) return null; const s=[...v].sort((a,b)=>a-b), m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+/* 0 (sin problemas) a 100: 50 % por no lograrlo, 30 % por dificultad, 20 % por tardar más de lo esperado (tope: el triple) */
+function puntajeProblema(tasa,dif,medMs,esperadoS){
+  const fracaso=1-tasa, d=dif==null?0:(dif-1)/4, demora=medMs==null?0:Math.min(Math.max(medMs/1000/esperadoS-1,0),2)/2;
+  return Math.round(fracaso*50+d*30+demora*20);
+}
+function resumirEjercicio(ej,filas){
+  const rs=filas.map(f=>(f.ejercicios||{})[ej.id]).filter(Boolean);
+  const term=rs.filter(r=>r.estado==="logrado"||r.estado==="no_pude"), logr=term.filter(r=>r.estado==="logrado").length;
+  const difs=term.map(r=>r.dificultad).filter(d=>typeof d==="number"), tiempos=term.map(r=>r.ms).filter(ms=>ms>0);
+  const tot={}; term.forEach(r=>Object.entries(r.pantallas||{}).forEach(([k,ms])=>tot[k]=(tot[k]||0)+ms));
+  const pantallas=Object.entries(tot).map(([n,ms])=>({n,ms:ms/Math.max(term.length,1)})).sort((a,b)=>b.ms-a.ms);
+  const tasa=term.length?logr/term.length:null, dif=difs.length?difs.reduce((a,b)=>a+b,0)/difs.length:null, med=mediana(tiempos);
+  return {ej, hechos:term.length, logrados:logr, salteados:rs.filter(r=>r.estado==="salteado").length, tasa, med, dif,
+    toques:mediana(term.map(r=>r.toques).filter(n=>typeof n==="number")), errores:term.reduce((a,r)=>a+(r.errores||0),0),
+    comentarios:term.map(r=>(r.comentario||"").trim()).filter(Boolean), pantallas,
+    puntaje:tasa==null?null:puntajeProblema(tasa,dif,med,ej.esperado)};
+}
+function contarOpciones(filas,clave,opciones){
+  const v=new Map(opciones.map(o=>[o,0]));
+  filas.forEach(f=>{ const r=(f.encuesta||{})[clave]; (Array.isArray(r)?r:r!=null?[r]:[]).forEach(x=>{ if(v.has(x)) v.set(x,v.get(x)+1); }); });
+  return [...v].map(([o,n])=>({o,n})).sort((a,b)=>b.n-a.n);
+}
+function npsPruebas(filas){
+  const ns=filas.map(f=>(f.encuesta||{}).recomendaria).filter(n=>typeof n==="number"); if(!ns.length) return null;
+  return {valor:Math.round((ns.filter(n=>n>=9).length-ns.filter(n=>n<=6).length)/ns.length*100), n:ns.length};
+}
+
+/* ---- pantalla: resultados (solo admin) ---- */
+let RESULTADOS=null;
+function subResultados(){ return `<div id="res-body"><div class="panel pad"><p class="hint">Cargando resultados…</p></div></div>`; }
+async function cargarResultados(){
+  const box=$("res-body"); if(!box) return;
+  const {data,error}=await sb.rpc("resultados_pruebas");
+  if(error){ box.innerHTML=`<div class="panel pad"><div class="warn">${esc(/administrador/i.test(error.message||"")?"Esta pantalla es solo para quien hace la app.":"No pude traer los resultados: "+(error.message||""))}</div></div>`; return; }
+  RESULTADOS=data||[];
+  const filas=RESULTADOS, pct=x=>x==null?"—":Math.round(x*100)+" %";
+  if(!filas.length){ box.innerHTML=`<div class="panel pad"><p class="hint">Todavía nadie hizo las pruebas. Pasale la app a alguien y pedile que entre a Más → Probar la app.</p></div>`; return; }
+  const ranking=EJERCICIOS.map(e=>resumirEjercicio(e,filas)).sort((a,b)=>(b.puntaje??-1)-(a.puntaje??-1));
+  const tarjetas=ranking.map(r=>{ const p=r.puntaje, col=p==null?"var(--ink-3)":p>=50?"var(--red-ink)":p>=25?"var(--amber)":"var(--green)";
+    return `<div class="panel pad res-ej">
+      <div class="res-top"><b>${esc(r.ej.titulo)}</b><span class="res-pts" style="color:${col}">${p==null?"sin datos":p+" / 100"}</span></div>
+      <div class="res-bar"><i style="width:${p||0}%;background:${col}"></i></div>
+      <div class="res-datos">
+        <span><small>Lo lograron</small><b>${pct(r.tasa)}</b>${r.hechos?` (${r.logrados} de ${r.hechos})`:""}</span>
+        <span><small>Tiempo (mediana)</small><b>${fmtDuracion(r.med)}</b> · esperado ${fmtDuracion(r.ej.esperado*1000)}</span>
+        <span><small>Dificultad</small><b>${r.dif==null?"—":r.dif.toFixed(1)}</b> de 5</span>
+        <span><small>Toques (mediana)</small><b>${r.toques==null?"—":Math.round(r.toques)}</b></span>
+        <span><small>Errores vistos</small><b>${r.errores}</b>${r.salteados?` · ${r.salteados} lo saltearon`:""}</span>
+      </div>
+      ${r.pantallas.length?`<div class="res-sub">Pantallas: ${r.pantallas.slice(0,4).map(x=>`${esc(x.n)} ${fmtDuracion(x.ms)}`).join(" · ")}</div>`:""}
+      ${r.comentarios.length?`<ul class="res-com">${r.comentarios.map(c=>`<li>${esc(c)}</li>`).join("")}</ul>`:""}
+    </div>`; }).join("");
+  const barras=(k)=>{ const t=contarOpciones(filas,k,ENC_PRUEBA[k].opciones), max=Math.max(1,...t.map(x=>x.n));
+    return `<div class="pr-q"><b>${esc(ENC_PRUEBA[k].pregunta)}</b>${t.map(x=>`<div class="res-op"><span>${esc(x.o)}</span><i style="width:${x.n/max*100}%"></i><b>${x.n}</b></div>`).join("")}</div>`; };
+  const nps=npsPruebas(filas), coms=filas.map(f=>(f.encuesta||{}).comentario).filter(Boolean);
+  const terminaron=filas.filter(f=>f.terminado).length;
+  box.innerHTML=`<div class="panel pad"><div class="res-datos">
+      <span><small>Participaron</small><b>${filas.length}</b></span><span><small>Terminaron todo</small><b>${terminaron}</b></span>
+      <span><small>NPS</small><b>${nps?nps.valor:"—"}</b>${nps?` (${nps.n} respuestas)`:""}</span></div>
+      <button class="btn ghost w" id="res-csv" style="margin-top:12px">Descargar resultados (CSV)</button></div>
+    <div class="sec" style="margin-top:6px"><b>Qué arreglar primero</b><span>de más a menos problemático</span></div>
+    ${tarjetas}
+    <div class="sec"><b>Encuesta</b><span>${filas.filter(f=>f.encuesta).length} respuestas</span></div>
+    <div class="panel pad">${["hoy","sirvio","costo","falto"].map(barras).join("")}
+      ${coms.length?`<div class="pr-q"><b>Comentarios</b><ul class="res-com">${coms.map(c=>`<li>${esc(c)}</li>`).join("")}</ul></div>`:""}</div>
+    <div class="sec"><b>Quiénes participaron</b></div>
+    <div class="panel">${filas.map(f=>{ const n=Object.values(f.ejercicios||{}).filter(r=>r.estado!=="en_curso").length;
+      return `<div class="row"><div class="rt"><b>${esc(f.nombre||"Sin nombre")}</b><span>${esc(String(f.dispositivo||"").split(" · ")[0])} · ${new Date(f.created_at).toLocaleDateString("es-AR")} · ${n} de ${EJERCICIOS.length} ejercicios${f.terminado?" · encuesta ✓":""}</span></div></div>`; }).join('<div class="sep"></div>')}</div>`;
+  $("res-csv").onclick=descargarResultadosCSV;
+}
+function descargarResultadosCSV(){
+  const rows=[["Persona","Dispositivo","Ejercicio","Estado","Segundos","Esperado (s)","Dificultad (1-5)","Toques","Errores","Pantallas","Comentario"]];
+  (RESULTADOS||[]).forEach(f=>EJERCICIOS.forEach(e=>{ const r=(f.ejercicios||{})[e.id]; if(!r) return;
+    rows.push([f.nombre||"Sin nombre",String(f.dispositivo||"").split(" · ")[0],e.titulo,r.estado,Math.round((r.ms||0)/1000),e.esperado,r.dificultad||"",r.toques??"",r.errores??"",
+      Object.entries(r.pantallas||{}).map(([k,v])=>`${k} ${Math.round(v/1000)}s`).join(" | "),r.comentario||""]); }));
+  const celda=c=>{ let s=String(c==null?"":c); if(/^[=+\-@\t\r]/.test(s)) s="'"+s; return `"${s.replace(/"/g,'""')}"`; };
+  const csv=rows.map(r=>r.map(celda).join(";")).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([String.fromCharCode(0xFEFF)+csv],{type:"text/csv;charset=utf-8"}));
+  a.download=`pruebas-mis-cuentas-${todayISO()}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  avisarOK("Resultados descargados","Abrilo con Excel o Google Sheets.");
 }
 
 </script>
