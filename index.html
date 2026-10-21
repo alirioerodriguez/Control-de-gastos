@@ -2273,7 +2273,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.20-v5.4-portada";
+const APP_VERSION = "2026.10.21-v5.5-ia-voz-tickets";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -5643,20 +5643,21 @@ function subAsistente(){
   <div class="panel pad">
     <div class="lbl-up">Cómo funciona</div>
     <p class="hint">Tocá el micrófono en el + y contale el gasto como se lo contarías a alguien:
-      <b>"42.300 en Coto con Visa en 3 cuotas"</b>. La app sola entiende monto, comercio, cuenta,
-      tarjeta, cuotas y fecha. Eso no gasta nada ni necesita internet.</p>
+      <b>"42.300 en Coto con Visa en 3 cuotas"</b>. Mientras hablás ves una lectura rápida; cuando terminás,
+      la IA lee la frase entera y completa monto, categoría, descripción, comercio, cuenta, tarjeta, cuotas y fecha.
+      Para elegir la categoría mira cómo categorizaste tus movimientos anteriores.</p>
     <button class="btn w" id="as-probar">Probar ahora</button>
   </div>
   <div class="panel pad" style="margin-top:12px">
-    <div class="lbl-up">Refuerzo con IA (opcional)</div>
-    ${IA_SERVIDOR===true ? `<p class="hint">Sólo si la frase es rara, o si querés que lea la <b>foto de un ticket</b>, se manda a Gemini.</p>
+    <div class="lbl-up">IA (Gemini)</div>
+    ${IA_SERVIDOR===true ? `<p class="hint">Cada frase dictada y cada <b>foto de ticket</b> la lee Gemini. Lo que corregís a mano no lo vuelve a tocar.</p>
     <div class="regnota" style="margin-top:8px"><span><b>Activo desde tu servidor.</b> La API key está guardada en Supabase como secreto: este dispositivo no guarda ninguna.</span></div>
     <div class="fld" style="margin-top:10px"><label>Modelo</label><select id="as-model">${
       VOZ_MODELOS.map(m=>`<option value="${esc(m)}"${m===geminiModelo()?" selected":""}>${esc(m)}</option>`).join("")}</select></div>
     <button class="btn w" id="as-guardar">Guardar modelo</button>
     <div class="hint" id="as-estado" style="text-align:center"></div>
   </div>` : `
-    <p class="hint">Sólo si la frase es rara, o si querés que lea la <b>foto de un ticket</b>, se manda a Gemini.</p>
+    <p class="hint">Sin IA, la app entiende la frase con reglas fijas (se equivoca más con la descripción y la categoría) y no puede leer fotos de tickets.</p>
     <div class="warn" style="margin-top:8px"><b>Lo seguro es ponerla en el servidor.</b> Guardada acá, cualquier extensión o script que corra en la página puede leerla y usarla.
       Publicá la función <code>gemini-proxy</code> en Supabase y cargá el secreto <code>GEMINI_API_KEY</code>: la app lo detecta sola y borra la key de este dispositivo.</div>
     <p class="hint" style="margin-top:10px">Mientras tanto, podés pegar una key de Google AI Studio (aistudio.google.com/apikey). Queda sólo en este dispositivo.</p>
@@ -5666,7 +5667,7 @@ function subAsistente(){
       VOZ_MODELOS.map(m=>`<option value="${esc(m)}"${m===geminiModelo()?" selected":""}>${esc(m)}</option>`).join("")}</select></div>
     <div class="r2"><button class="btn ghost" style="flex:1" id="as-borrar">Borrar key</button>
       <button class="btn" style="flex:1" id="as-guardar">Guardar</button></div>
-    <div class="hint" id="as-estado" style="text-align:center">${k?"Key cargada en este dispositivo. La IA entra sólo cuando hace falta.":"Sin key: anda igual, con el intérprete local."}</div>
+    <div class="hint" id="as-estado" style="text-align:center">${k?"Key cargada en este dispositivo. La IA lee cada frase y cada ticket.":"Sin key: anda igual, con el intérprete local."}</div>
   </div>`}`;
 }
 /* --- diagnóstico: los avisos de error no se pierden (v3.6) --- */
@@ -6760,6 +6761,7 @@ async function guardarCampo(valor){
     else if(campo==="cuenta"){ V.cuenta=valor; V.card=null; if(V.tipo==="tarjeta") V.tipo="gasto"; }
     else if(campo==="card"){ V.card=valor; V.tipo="tarjeta"; }
     else if(campo==="categoria"){ V.categoria=valor; V.catAuto=false; }
+    vozMarcarManual(campo);
     $("campo-ov").classList.add("hidden"); campoEdit=null; renderVoz(); return;
   }
   const tabla=DET_TABLA[r._k];
@@ -6858,7 +6860,23 @@ $("det-mas").onclick=()=>{
    2) Gemini (opcional): si cargás una API key en Configuración → Asistente,
       se usa sólo cuando el local no llega, y para leer fotos de tickets.      */
 
-const VOZ_MODELOS=["gemini-3.5-flash-lite","gemini-2.5-flash-lite","gemini-3.5-flash","gemini-2.5-flash"];
+/* v5.5 · una sola IA, la misma para todo: Gemini 3.5 Flash. Flash-Lite queda como opción
+   barata, pero lee peor los tickets. Los 2.5 se van: "piensan" por defecto y con el tope
+   de 300 tokens de antes la respuesta llegaba cortada, el JSON no se podía leer y la app
+   se quedaba callada con lo que había adivinado el intérprete local. */
+const VOZ_MODELOS=["gemini-3.5-flash","gemini-3.5-flash-lite"];
+/* lo que se le pide al modelo: JSON, con poco "pensamiento" (rápido) y lugar de sobra */
+function iaConfig(esquema){
+  const m=geminiModelo();
+  const c={responseMimeType:"application/json", responseSchema:esquema, maxOutputTokens:2048};
+  if(/^gemini-[3-9]/.test(m)) c.thinkingConfig={thinkingLevel:"low"};   // Gemini 3: la temperatura se deja en su valor
+  else { c.temperature=0; c.thinkingConfig={thinkingBudget:0}; }
+  return c;
+}
+function iaTexto(j){
+  const parts=(((j&&j.candidates||[])[0]||{}).content||{}).parts||[];
+  return parts.filter(p=>!p.thought && p.text).map(p=>p.text).join("").replace(/^\s*```(?:json)?|```\s*$/g,"").trim();
+}
 function geminiKey(){ try{ return localStorage.getItem("miscuentas_gemini_key")||""; }catch(e){ return ""; } }
 /* v3.9 · LA KEY DE GEMINI PASA AL SERVIDOR
    Antes la key vivía en localStorage: cualquier script que corriera en la página
@@ -6889,17 +6907,25 @@ async function llamarGemini(body){
   if(!r.ok) throw new Error("http "+r.status);
   return r.json();
 }
-function geminiModelo(){ try{ return localStorage.getItem("miscuentas_gemini_model")||VOZ_MODELOS[0]; }catch(e){ return VOZ_MODELOS[0]; } }
+function geminiModelo(){ let m=null; try{ m=localStorage.getItem("miscuentas_gemini_model"); }catch(e){}
+  return VOZ_MODELOS.includes(m) ? m : VOZ_MODELOS[0]; }
 
 let V = null;   // {texto, monto, categoria, cuenta, card, cuotas, fecha, comercio, tipo, pair, split, auto:{}}
 let vozFoto = null;
+let vozIA = null;   // {texto, p}: la lectura de la IA que está en camino
 
 function vozNuevo(){
   V={texto:"",monto:0,categoria:null,cuenta:(ACCOUNTS[0]||{}).key||null,card:null,cuotas:1,
      fecha:todayISO(),comercio:null,descripcion:null,tipo:"gasto",pair:(PAIRS[0]||{}).id||null,split:null,
-     pagador:(user||{}).id||null,conQuien:null,corregido:false,auto:{}};
-  vozFoto=null;
+     pagador:(user||{}).id||null,conQuien:null,corregido:false,auto:{},
+     manual:{}, iaHecho:null};   /* manual: lo que tocaste a mano · iaHecho: frase que ya leyó la IA */
+  vozFoto=null; vozIA=null;
 }
+/* v5.5 · lo que corregís a mano en la ficha no lo vuelve a pisar ni el intérprete ni la IA */
+const VOZ_MANUAL={monto:["monto"],cuotas:["cuotas","tipo"],fecha:["fecha"],comercio:["comercio"],descripcion:["descripcion"],
+  pair:["pair","tipo","conQuien","pagador"],split:["split"],cuenta:["cuenta","card","tipo"],card:["card","tipo"],categoria:["categoria","catAuto"]};
+function vozMarcarManual(campo){ (VOZ_MANUAL[campo]||[campo]).forEach(k=>{ V.manual[k]=V[k]; }); }
+function vozRespetarManual(){ Object.keys(V.manual||{}).forEach(k=>{ V[k]=V.manual[k]; }); }
 function vozHoy(){
   const d=new Date();
   const t=d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
@@ -6915,7 +6941,7 @@ function openVoz(pre){
   if($("voz-hoy")) $("voz-hoy").textContent=vozHoy();
   /* v3 · la hoja hereda el tipo que esté eligiendo la calculadora */
   if(typeof R==="object" && R && R.tipo) V.tipo=R.tipo;
-  if(pre){ V.texto=pre; interpretarLocal(); }
+  if(pre){ V.texto=pre; interpretarLocal(); setTimeout(()=>reforzarIA(),0); }
   $("voz-ov").classList.remove("hidden");
   renderVoz(); pintarBotonMic();
   setTimeout(()=>{ const t=$("voz-texto"); if(t){ t.focus();
@@ -6998,6 +7024,8 @@ function fichas(str){
   return out.filter(x=>x.w);
 }
 function valorFicha(w){
+  /* el dictado a veces escribe los miles con coma, a la inglesa: "15,000" */
+  if(/^\d{1,3}(?:,\d{3})+$/.test(w)) return parseInt(w.replace(/,/g,""),10);
   if(/^\d[\d.]*(?:,\d{1,2})?$/.test(w)){ const v=parseMonto(w); return (isNaN(v)||v<0)?null:v; }
   if(NUM_PAL[w]!==undefined) return NUM_PAL[w];
   if(/^medi[oa]$/.test(w)) return 0.5;
@@ -7022,29 +7050,54 @@ function leerCentavos(L, desde){
   if(c===null) return null;
   return {cent:c, len:m[0].length};
 }
+/* v5.5 · arma el número entero aunque venga en palabras: "ciento cincuenta" = 150,
+   "mil quinientos" = 1500, "trescientos cincuenta mil" = 350.000, "treinta y cinco" = 35.
+   Antes cortaba en la primera palabra y quedaba 100, 500 o 300. */
+function leerNumeroDesde(tk,i){
+  let total=0, grupo=0, ultimo=-1, previo=Infinity, hubo=false, j=i;
+  while(j<tk.length){
+    const w=tk[j].w, v=valorFicha(w), mult=MULT_PAL[w];
+    if(v!==null){
+      const esDigito=/^\d/.test(w);
+      if(hubo && grupo>0 && (esDigito || !(v<previo))) break;   // "2 3000" son dos números
+      if(hubo && grupo===0 && esDigito && total>0 && v>=1000) break;
+      grupo+=v; previo=esDigito?0:v; ultimo=j; hubo=true; j++;
+    } else if(mult && (hubo || w==="mil")){
+      total+=(grupo||1)*mult; grupo=0; previo=mult; ultimo=j; hubo=true; j++;
+    } else if(w==="y" && grupo>=20 && grupo<100 && grupo%10===0 && NUM_PAL[(tk[j+1]||{}).w]<10){
+      j++;                                                       // "treinta y cinco"
+    } else break;
+  }
+  if(!hubo) return null;
+  return {valor:total+grupo, ultimo};
+}
 function leerMonto(L){
   const tk=fichas(L.libre);
-  let mejor=null, hasta=-1;
+  const cands=[]; let hasta=-1;
   for(let i=0;i<tk.length;i++){
     if(tk[i].i < hasta) continue;
-    if(valorFicha(tk[i].w)===null) continue;
-    let total=0, j=i, ultimo=i, hubo=false;
-    while(j<tk.length){
-      const v=valorFicha(tk[j].w); if(v===null) break;
-      const mult=MULT_PAL[(tk[j+1]||{}).w];
-      if(mult){ total+=v*mult; ultimo=j+1; j+=2; hubo=true; }
-      else { total+=v; ultimo=j; hubo=true; break; }
-    }
-    if(!hubo || !(total>0)) continue;
-    let fin=tk[ultimo].i+tk[ultimo].len;
+    if(valorFicha(tk[i].w)===null && tk[i].w!=="mil") continue;
+    const n=leerNumeroDesde(tk,i);
+    if(!n || !(n.valor>0)) continue;
+    let total=n.valor, fin=tk[n.ultimo].i+tk[n.ultimo].len;
     if(Number.isInteger(total)){
       const cv=leerCentavos(L,fin);
       if(cv){ total=round2(total+cv.cent/100); fin+=cv.len; }
     }
-    mejor={valor:round2(total), ini:tk[i].i, fin};          // el último gana
+    const ini=tk[i].i;
+    /* ¿tiene pinta de plata? "$", "pesos", "lucas", "mil", o un "pagué/gasté/salió" delante */
+    const antes=L.libre.slice(Math.max(0,ini-14),ini), despues=L.libre.slice(fin,fin+12);
+    const plata=/\$\s*$/.test(antes) || /^\s*(pesos?|mangos?|dolares?|usd|ars)\b/.test(despues)
+      || tk.slice(i,n.ultimo+1).some(t=>MULT_PAL[t.w])
+      || (total>=10 && /\b(pague|gaste|salio|sale|cuesta|costo|cobre|por|son|total|no|digo)\s*$/.test(antes));
+    cands.push({valor:round2(total), ini, fin, plata});
     hasta=fin;
   }
-  if(!mejor) return null;
+  if(!cands.length) return null;
+  /* gana el último que tenga pinta de plata; si ninguno la tiene, el último que no sea
+     un numerito suelto ("2 medialunas 3500" → 3500, "3500 por 2 medialunas" → 3500) */
+  const conPlata=cands.filter(c=>c.plata), grandes=cands.filter(c=>c.valor>=10);
+  const mejor=(conPlata.length?conPlata:grandes.length?grandes:cands).slice(-1)[0];
   const texto=L.libre.slice(mejor.ini,mejor.fin).trim();
   tachar(L,mejor.ini,mejor.fin-mejor.ini);
   return {valor:mejor.valor, texto};
@@ -7351,6 +7404,9 @@ function leerDescripcion(L){
 
 /* ================= EL DIRECTOR DE ORQUESTA ================= */
 function interpretarLocal(){
+  /* v5.5 · si la IA (o la foto) ya leyó ESTA misma frase, su lectura manda: antes un simple
+     toque fuera del texto volvía a correr el intérprete y borraba lo que había puesto la IA */
+  if(V.iaHecho!==null && V.iaHecho===V.texto) return V;
   const txt=V.texto||"";
   const L=nuevoLienzo(txt);
   V.auto={};
@@ -7379,89 +7435,205 @@ function interpretarLocal(){
 
   const ca=leerCategoria(L, V.comercio, util);
   if(ca){ V.categoria=ca.valor; V.auto.categoria=ca.texto; V.catAuto=!ca.explicita; }
-  else if(V.tipo!=="ahorro"){ V.categoria=catsRecientes(V.tipo==="ingreso"?"ingreso":"gasto",1)[0]||null; V.catAuto=true; }
-  else V.categoria=null;
+  /* v5.5 · antes, si no reconocía nada, ponía la última categoría que usaste: así salían
+     categorías equivocadas sin aviso. Mejor "Sin categoría", que se ve y se toca. */
+  else { V.categoria=null; V.catAuto=false; }
 
   V.descripcion=leerDescripcion(L);
+  vozRespetarManual();
   return V;
 }
 
 function vozCompleto(){ return !!(V && V.monto>0); }
 
-/* ---------------- Gemini (opcional) ---------------- */
-async function interpretarIA(){
+/* ---------------- Gemini ----------------
+   v5.5 · LA IA PASA A SER LA QUE DECIDE
+   Antes la IA entraba sólo si el intérprete local no encontraba NINGÚN monto. Como casi
+   siempre encuentra alguno (aunque sea el "2" de "2 medialunas"), en la práctica la IA no
+   se usaba nunca y monto, descripción y categoría salían de reglas fijas. Ahora:
+   · el intérprete local sigue dando la vista previa instantánea mientras hablás;
+   · al terminar de dictar (o de escribir) la IA lee la frase entera y su lectura manda;
+   · lo que corregiste a mano no se toca.
+   Para acertar la categoría, la IA ve cómo categorizaste tus últimos movimientos. */
+function iaHistorial(n){
+  const vistos=new Set(), out=[];
+  TX.concat(PURCH).slice().sort(_porReciente).forEach(x=>{
+    if(out.length>=n || !x.categoria) return;
+    const que=(x.comercio||x.descripcion||"").toString().trim(); if(!que) return;
+    const k=normV(que); if(vistos.has(k)) return; vistos.add(k);
+    out.push(que.slice(0,40)+" → "+x.categoria);
+  });
+  return out;
+}
+function iaContexto(){
+  return {
+    cats: catsAlfa().map(c=>c.nombre),
+    ctas: ACCOUNTS.map(a=>({key:a.key, nombre:a.nombre, moneda:CTA_MON[a.key]||CUR})),
+    tars: CARDS.map(c=>({id:c.id, nombre:cardTitulo(c), marca:c.marca||null, banco:c.banco||null})),
+    gente: PAIRS.map(p=>({pair:p.id, nombre:otherProf(otherId(p)).apodo})).filter(g=>g.nombre),
+    hist: iaHistorial(60)
+  };
+}
+/* esquema de respuesta: el modelo no puede inventar categorías, cuentas ni tarjetas */
+function iaEnum(lista){ return lista.length ? {enum:lista} : {}; }
+function esquemaFrase(cx){
+  return {type:"OBJECT", properties:{
+    tipo:{type:"STRING", enum:["gasto","ingreso","tarjeta","ahorro","compartido"]},
+    monto:{type:"NUMBER"},
+    categoria:{type:"STRING", nullable:true, ...iaEnum(cx.cats)},
+    cuenta:{type:"STRING", nullable:true, ...iaEnum(cx.ctas.map(a=>a.key))},
+    card:{type:"STRING", nullable:true, ...iaEnum(cx.tars.map(t=>t.id))},
+    cuotas:{type:"INTEGER"},
+    fecha:{type:"STRING"},
+    comercio:{type:"STRING", nullable:true},
+    descripcion:{type:"STRING", nullable:true},
+    pair:{type:"STRING", nullable:true, ...iaEnum(cx.gente.map(g=>g.pair))},
+    split:{type:"STRING", nullable:true, enum:["ambos","solo_otro"]}
+  }, required:["tipo","monto","categoria","cuotas","fecha","comercio","descripcion"]};
+}
+const IA_REGLAS_CAT=`CATEGORÍA (lo más importante):
+- Elegí SIEMPRE un nombre EXACTO de la lista de categorías, o null si ninguna encaja de verdad. Nunca inventes una.
+- Primero mirá el HISTORIAL: si el comercio o algo parecido ya está ahí, usá esa misma categoría.
+- Si no, pensá qué es lo que se pagó (nafta → auto/transporte, farmacia → salud, Rappi → comida/salidas, Netflix → suscripciones/ocio).
+- No pongas una categoría "por las dudas": null es mejor que una equivocada.`;
+async function interpretarIA(texto){
   if(!iaActiva()) return {ok:false,motivo:"sin-key"};
-  const cats=catsAlfa().map(c=>c.nombre);
-  const ctas=ACCOUNTS.map(a=>({key:a.key,nombre:a.nombre}));
-  const tars=CARDS.map(c=>({id:c.id,nombre:cardTitulo(c)}));
-  const gente=PAIRS.map(p=>({pair:p.id, nombre:otherProf(otherId(p)).apodo}));
+  const cx=iaContexto();
   const hoy=new Date();
-  const prompt=`Sos un extractor de datos para una app de finanzas argentina. Devolvé SÓLO un JSON, sin explicar nada.
+  const prompt=`Sos el asistente de carga de una app de finanzas personales de Argentina. La persona dictó (o escribió) un movimiento de plata y vos tenés que pasarlo a datos.
+El texto viene de un reconocimiento de voz: puede tener errores ("cotó" = Coto, "y pe efe" = YPF, "mercado pago" bien escrito, números pegados). Corregilos con sentido común.
 
-HOY es ${todayISO()} (${hoy.toLocaleDateString('es-AR',{weekday:'long'})}). Usá esto para resolver fechas habladas:
-"ayer", "anteayer", "hace 3 días", "la semana pasada", "el miércoles de la semana pasada"
-(= el miércoles de la semana calendario anterior, no el miércoles más cercano), "el 12 de agosto".
+HOY es ${todayISO()} (${hoy.toLocaleDateString('es-AR',{weekday:'long'})}). Moneda principal: ${CUR}.
+Fechas: "ayer", "anteayer", "hace 3 días", "el viernes" (= el viernes más reciente que ya pasó), "el miércoles de la semana pasada" (= el de la semana calendario anterior), "el 12" (= día 12 de este mes, o del mes pasado si todavía no llegó). Sin fecha → hoy. Nunca una fecha futura.
 
-REGLAS IMPORTANTES:
-1. Si la persona se corrige ("no, me equivoqué", "mejor dicho", "en realidad", "perdón"),
-   vale SÓLO lo que dijo DESPUÉS de la corrección.
-2. Si un dato se dice dos veces, vale el ÚLTIMO.
-3. Centavos: el número de 1 a 99 que va antes de "centavos", "céntimos", "decimales",
-   o detrás de "con"/"y", son los decimales. "500 pesos con 22" = 500.22.
-4. Números compuestos: "12 millones 533 mil 422 con 21" = 12533422.21. "5 lucas" = 5000. "2 palos" = 2000000.
-5. "en tres cuotas" son cuotas de tarjeta, nunca parte del monto ni de la descripción.
-6. Los comercios son nombres propios (Coto, YPF, Farmacity). Nunca un número, ni una palabra suelta.
-7. Si nombra a una de estas personas, es un gasto compartido: ${JSON.stringify(gente)}
+MONTO:
+- Es el total que se pagó o cobró. Formato argentino: "12.500" = doce mil quinientos, "12.500,50" con centavos.
+- Números hablados: "ciento cincuenta" = 150, "mil quinientos" = 1500, "5 lucas" = 5000, "2 palos" = 2000000, "15k" = 15000, "500 con 22" = 500.22.
+- Los números que describen cosas NO son el monto: "2 kilos", "3 medialunas", "línea 60", "calle 25", "el 12" (fecha), "en 3 cuotas" (cuotas).
+- Si se corrige ("no, me equivoqué", "mejor dicho", "en realidad", "no, 800"), vale lo último que dijo.
 
-Categorías posibles (elegí SIEMPRE una de esta lista): ${JSON.stringify(cats)}
-Cuentas: ${JSON.stringify(ctas)}
-Tarjetas: ${JSON.stringify(tars)}
+TIPO: "ingreso" si cobró / le pagaron / le transfirieron / sueldo / vendió; "ahorro" si guardó o ahorró; "tarjeta" si pagó con una tarjeta de crédito o en cuotas; "compartido" si lo pagó a medias o nombra a una de estas personas: ${JSON.stringify(cx.gente)}; si no, "gasto".
 
-Frase: "${(V.texto||"").replace(/"/g,"'")}"
+${IA_REGLAS_CAT}
 
-Devolvé:
-{"tipo":"gasto|ingreso|tarjeta|ahorro|compartido","monto":number,"categoria":string,
- "cuenta":string(key de cuenta),"card":string(id de tarjeta o null),"cuotas":number,
- "fecha":"YYYY-MM-DD","comercio":string|null,"descripcion":string|null,"pair":string|null}`;
-  const body={contents:[{parts:[{text:prompt}]}],
-    generationConfig:{temperature:0, responseMimeType:"application/json", maxOutputTokens:300}};
+COMERCIO: el nombre propio del lugar o la marca, bien escrito (Coto, YPF, Mercado Libre, Farmacity, Rappi). null si no se nombra ninguno. Una palabra genérica ("el súper", "el chino", "la farmacia", "el kiosco") NO es un comercio: eso va en la descripción.
+DESCRIPCIÓN: 2 a 6 palabras, en español, que digan QUÉ se pagó ("Compra del súper", "Nafta", "Pago de la luz", "Cena con amigos", "Corte de pelo"). Sin monto, fecha, cuenta, tarjeta, cuotas ni persona. Primera letra en mayúscula.
+CUENTA: la "key" de la cuenta sólo si la nombra (o dice "efectivo" y hay una cuenta de efectivo). Si no, null.
+TARJETA: el "id" si nombra una tarjeta (por alias, banco o marca). Si dice "con tarjeta" o "en cuotas" sin decir cuál, null.
+CUOTAS: 1 salvo que diga otra cosa.
+SPLIT: "ambos" si es a medias / mitad y mitad; "solo_otro" si la otra persona lo debe entero; null si no aplica.
+
+Categorías: ${JSON.stringify(cx.cats)}
+Cuentas: ${JSON.stringify(cx.ctas)}
+Tarjetas: ${JSON.stringify(cx.tars)}
+HISTORIAL (cómo categorizó esta persona sus últimos movimientos): ${JSON.stringify(cx.hist)}
+
+Ejemplos (con otras listas):
+"gasté 12.300 en el chino ayer" → {"tipo":"gasto","monto":12300,"categoria":"Supermercado","comercio":null,"descripcion":"Compras en el almacén","fecha":"<ayer>","cuotas":1}
+"cargué nafta en la ypf, 40 lucas con la visa" → {"tipo":"tarjeta","monto":40000,"categoria":"Auto","comercio":"YPF","descripcion":"Nafta","card":"<id de la Visa>","cuotas":1}
+"3 medialunas y un café 4500" → {"tipo":"gasto","monto":4500,"categoria":"Salidas","comercio":null,"descripcion":"Café con medialunas","cuotas":1}
+"me pagaron el sueldo, un millón doscientos mil" → {"tipo":"ingreso","monto":1200000,"categoria":"Sueldo","comercio":null,"descripcion":"Sueldo","cuotas":1}
+
+Frase: ${JSON.stringify(texto)}`;
+  const body={contents:[{role:"user",parts:[{text:prompt}]}], generationConfig:iaConfig(esquemaFrase(cx))};
+  let d;
   try{
-    /* v3.9 · por el servidor si está; la key ya no viaja en la URL (?key=), va en un header */
     const j=await llamarGemini(body);
-    const txt=(((j.candidates||[])[0]||{}).content||{}).parts?.[0]?.text||"";
-    const d=JSON.parse(txt.replace(/^```json|```$/g,"").trim());
-    if(d.monto>0) V.monto=round2(d.monto);
-    if(d.tipo) V.tipo=d.tipo;
-    if(d.categoria && cats.includes(d.categoria)) V.categoria=d.categoria;
-    if(d.cuenta && ACCOUNTS.some(a=>a.key===d.cuenta)) V.cuenta=d.cuenta;
-    if(d.card && CARDS.some(c=>c.id===d.card)) V.card=d.card;
-    if(d.cuotas>=1) V.cuotas=Math.round(d.cuotas);
-    if(/^\d{4}-\d{2}-\d{2}$/.test(d.fecha||"")) V.fecha=d.fecha;
-    if(d.comercio) V.comercio=d.comercio;
-    if(d.descripcion) V.descripcion=d.descripcion;
-    if(d.pair && PAIRS.some(p=>p.id===d.pair)){ V.pair=d.pair; V.tipo="compartido";
-      V.conQuien=otherProf(otherId(PAIRS.find(p=>p.id===d.pair))).apodo; }
-    return {ok:true};
+    d=JSON.parse(iaTexto(j));
   }catch(e){ return {ok:false,motivo:e.message}; }
+  if(V.texto!==texto) return {ok:false,motivo:"viejo"};     // mientras tanto seguiste escribiendo
+  iaAplicar(d, cx);
+  V.iaHecho=texto;
+  return {ok:true};
+}
+/* vuelca la lectura de la IA en el borrador, validando todo */
+function iaAplicar(d, cx){
+  if(!d || typeof d!=="object") return;
+  const m=typeof d.monto==="number" ? d.monto : parseMonto(d.monto);
+  if(m>0) V.monto=round2(m);
+  if(["gasto","ingreso","tarjeta","ahorro","compartido"].includes(d.tipo)) V.tipo=d.tipo;
+  if(d.categoria && cx.cats.includes(d.categoria)){ V.categoria=d.categoria; V.catAuto=true; }
+  if(d.cuenta && ACCOUNTS.some(a=>a.key===d.cuenta)) V.cuenta=d.cuenta;
+  if(d.card && CARDS.some(c=>c.id===d.card)){ V.card=d.card; if(V.tipo==="gasto") V.tipo="tarjeta"; }
+  if(Number.isFinite(Number(d.cuotas)) && d.cuotas>=1) V.cuotas=Math.min(60,Math.round(d.cuotas));
+  if(V.cuotas>1 && V.tipo==="gasto") V.tipo="tarjeta";
+  if(/^\d{4}-\d{2}-\d{2}$/.test(d.fecha||"") && d.fecha<=todayISO()) V.fecha=d.fecha;
+  if("comercio" in d) V.comercio=(d.comercio||"").toString().trim().slice(0,60)||null;
+  if(d.descripcion) V.descripcion=d.descripcion.toString().trim().slice(0,80);
+  if(V.tipo==="tarjeta" && !V.card){ if(CARDS.length) V.card=CARDS[0].id; else V.tipo="gasto"; }
+  if(d.pair && PAIRS.some(p=>p.id===d.pair)){ V.pair=d.pair; if(V.tipo!=="ingreso" && V.tipo!=="ahorro") V.tipo="compartido"; }
+  if(V.tipo==="compartido"){
+    if(!PAIRS.length) V.tipo="gasto";
+    else { if(!PAIRS.some(p=>p.id===V.pair)) V.pair=PAIRS[0].id;
+      V.conQuien=otherProf(otherId(PAIRS.find(p=>p.id===V.pair))).apodo;
+      V.split=(d.split==="solo_otro")?"solo_otro":(V.split||"ambos"); }
+  }
+  vozRespetarManual();
+}
+
+/* las fotos del celu pesan 3-8 MB: achicadas a 1600 px se leen igual de bien y viajan rápido */
+async function achicarFoto(file){
+  try{
+    const bmp=await createImageBitmap(file);
+    const k=Math.min(1, 1600/Math.max(bmp.width,bmp.height));
+    const cv=document.createElement("canvas");
+    cv.width=Math.round(bmp.width*k); cv.height=Math.round(bmp.height*k);
+    cv.getContext("2d").drawImage(bmp,0,0,cv.width,cv.height);
+    const url=cv.toDataURL("image/jpeg",0.85);
+    return {mime:"image/jpeg", data:url.split(",")[1]};
+  }catch(e){
+    const url=await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result)); fr.onerror=rej; fr.readAsDataURL(file); });
+    return {mime:file.type||"image/jpeg", data:url.split(",")[1]};
+  }
+}
+function esquemaTicket(cx){
+  return {type:"OBJECT", properties:{
+    legible:{type:"BOOLEAN"},
+    monto:{type:"NUMBER"},
+    comercio:{type:"STRING", nullable:true},
+    fecha:{type:"STRING", nullable:true},
+    descripcion:{type:"STRING", nullable:true},
+    categoria:{type:"STRING", nullable:true, ...iaEnum(cx.cats)},
+    card:{type:"STRING", nullable:true, ...iaEnum(cx.tars.map(t=>t.id))},
+    cuotas:{type:"INTEGER"}
+  }, required:["legible","monto","comercio","fecha","descripcion","categoria","cuotas"]};
 }
 async function leerTicket(file){
+  if(IA_SERVIDOR===null) await detectarIAServidor();
   if(!iaActiva()){ toast("La foto del ticket todavía no está activa",{sub:"Escribí o dictá el gasto: lo interpreto igual, sin configurar nada.",ms:5200}); return; }
   $("voz-estado").textContent="Leyendo el ticket…";
-  const b64=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(",")[1]); fr.readAsDataURL(file); });
-  const cats=catsAlfa().map(c=>c.nombre);
-  const body={contents:[{parts:[
-    {text:`Leé este ticket de compra argentino y devolvé SÓLO un JSON con {"monto":number(total final),"comercio":string,"fecha":"YYYY-MM-DD","categoria":string de esta lista ${JSON.stringify(cats)}}. Hoy es ${todayISO()}.`},
-    {inline_data:{mime_type:file.type||"image/jpeg", data:b64}}]}],
-    generationConfig:{temperature:0, responseMimeType:"application/json", maxOutputTokens:300}};
+  const foto=await achicarFoto(file);
+  const cx=iaContexto();
+  const prompt=`Leé esta foto. Puede ser un ticket de compra, una factura, un comprobante de pago o transferencia (Mercado Pago, banco), o una factura de un servicio (luz, gas, agua, internet, celular, expensas). Es de Argentina.
+HOY es ${todayISO()}.
+
+Números en formato argentino: el punto separa miles y la coma los decimales ("$ 12.345,67" = 12345.67). Fechas en formato DD/MM/AAAA.
+
+- monto: el TOTAL FINAL que se paga o se pagó, con descuentos e impuestos ya aplicados. Buscá "TOTAL", "TOTAL A PAGAR", "IMPORTE TOTAL", "Total $". NO uses el subtotal, el IVA, el "vuelto", el "efectivo entregado" ni el precio de un solo producto.
+- comercio: el nombre comercial que conoce la gente (Coto, YPF, Farmacity, Edenor), no la razón social ("INC S.A.", "DIA ARGENTINA S.A.") salvo que sea lo único que haya. null si no se ve.
+- fecha: la de la compra o el pago (YYYY-MM-DD). Si es una factura de servicio todavía sin pagar (tiene vencimiento y no dice que esté paga), poné la de HOY. Nunca una fecha futura. null si no se ve.
+- descripcion: 2 a 6 palabras de qué se pagó ("Compra del súper", "Nafta", "Factura de luz", "Medicamentos").
+- card: el "id" de una de estas tarjetas sólo si el ticket muestra claramente esa marca o ese banco como medio de pago; si no, null. Tarjetas: ${JSON.stringify(cx.tars)}
+- cuotas: si dice que se pagó en cuotas, cuántas; si no, 1.
+- legible: false si no es un comprobante o no se puede leer el total.
+
+${IA_REGLAS_CAT}
+
+Categorías: ${JSON.stringify(cx.cats)}
+HISTORIAL (cómo categorizó esta persona sus últimos movimientos): ${JSON.stringify(cx.hist)}`;
+  const body={contents:[{role:"user",parts:[{inline_data:{mime_type:foto.mime, data:foto.data}},{text:prompt}]}],
+    generationConfig:iaConfig(esquemaTicket(cx))};
   try{
     const j=await llamarGemini(body);
-    const txt=(((j.candidates||[])[0]||{}).content||{}).parts?.[0]?.text||"";
-    const d=JSON.parse(txt.replace(/^```json|```$/g,"").trim());
-    if(d.monto>0) V.monto=round2(d.monto);
-    if(d.comercio) V.comercio=d.comercio;
-    if(d.categoria && cats.includes(d.categoria)) V.categoria=d.categoria;
-    if(/^\d{4}-\d{2}-\d{2}$/.test(d.fecha||"")) V.fecha=d.fecha;
-    V.texto=[fmt(V.monto,CUR), V.comercio?("en "+V.comercio):""].filter(Boolean).join(" ");
+    const d=JSON.parse(iaTexto(j));
+    if(!d.legible || !(Number(d.monto)>0)){
+      $("voz-estado").textContent="No pude leer el total del ticket. Probá con otra foto, más de cerca y con luz, o decime el monto.";
+      renderVoz(); return;
+    }
+    iaAplicar({tipo: d.card ? "tarjeta" : (V.tipo||"gasto"), monto:d.monto, categoria:d.categoria, card:d.card, cuotas:d.cuotas,
+      fecha:d.fecha, comercio:d.comercio, descripcion:d.descripcion}, cx);
+    V.texto=[fmt(V.monto,CUR), V.comercio?("en "+V.comercio):"", V.descripcion?("· "+V.descripcion):""].filter(Boolean).join(" ");
+    V.iaHecho=V.texto; V.auto={};
     $("voz-estado").textContent="Leí el ticket. Revisá que esté bien.";
   }catch(e){ $("voz-estado").textContent="No pude leer el ticket: "+e.message; }
   renderVoz();
@@ -7518,7 +7690,7 @@ function arrancarDictado(){
     }
     pintarBotonMic();
     interpretarLocal(); pintarDictado();
-    if(iaActiva() && !vozCompleto()) reforzarIA();
+    reforzarIA();
   };
   try{ rec.start(); }
   catch(e){ pararDictado(); $("voz-estado").textContent="No pude prender el micrófono."; }
@@ -7533,7 +7705,7 @@ function pararDictado(){
 function toggleDictado(){
   if(!hayDictado()){ toast("Este navegador no deja dictar",{sub:"Escribilo como hablás y lo interpreto igual.",ms:5000}); return; }
   if(quiereEscuchar){ pararDictado(); interpretarLocal(); pintarDictado();
-    if(iaActiva() && !vozCompleto()) reforzarIA(); return; }
+    reforzarIA(); return; }
   quiereEscuchar=true;
   dictBase = V.texto ? V.texto+" " : "";
   dictFirme = "";
@@ -7554,12 +7726,24 @@ function pintarDictado(){
   $("voz-guardar").textContent=TIT[V.tipo]||"Guardar gasto";
   $("voz").setAttribute("data-t",V.tipo);
 }
-async function reforzarIA(){
-  if(!iaActiva() || !(V.texto||"").trim()) return;
-  $("voz-estado").textContent="Pensando…";
-  const r=await interpretarIA();
-  $("voz-estado").textContent = r.ok ? "Lo entendí con ayuda de la IA." : "";
-  renderVoz();
+/* v5.5 · la IA lee SIEMPRE la frase al terminar, no sólo cuando faltaba el monto.
+   No repite el pedido si ya leyó esa misma frase o si ya hay uno en camino. */
+function reforzarIA(forzar){
+  if(!iaActiva() || !(V.texto||"").trim()) return null;
+  if(forzar!==true && V.iaHecho===V.texto) return null;
+  if(vozIA && vozIA.texto===V.texto) return vozIA.p;
+  const texto=V.texto;
+  $("voz-estado").textContent="Revisando con IA…";
+  const p=interpretarIA(texto).then(r=>{
+    if(vozIA && vozIA.p===p) vozIA=null;
+    if(r.motivo==="viejo") return r;
+    $("voz-estado").textContent = r.ok ? "Revisado con IA. Fijate que esté bien."
+      : "La IA no respondió: quedó lo que entendí yo. Revisalo antes de guardar.";
+    renderVoz();
+    return r;
+  });
+  vozIA={texto, p};
+  return p;
 }
 
 /* ---------------- pantalla ---------------- */
@@ -7722,7 +7906,7 @@ function vozEditar(campo){
         <div class="ri" style="background:${esc(c.color||"#eee")}22;color:${esc(c.color||"#888")}">${catGlifo(c.nombre,17)}</div>
         <div class="rt"><b>${esc(c.nombre)}</b></div></div>`).join('<div class="sep"></div>');
       $("campo-cats").querySelectorAll("[data-pc]").forEach(el=>el.onclick=()=>{
-        V.categoria=el.dataset.pc; V.catAuto=false; $("campo-ov").classList.add("hidden"); campoEdit=null; renderVoz(); }); };
+        V.categoria=el.dataset.pc; V.catAuto=false; vozMarcarManual("categoria"); $("campo-ov").classList.add("hidden"); campoEdit=null; renderVoz(); }); };
     setTimeout(()=>{ $("campo-buscar").addEventListener("input",pinta); pinta(); },0);
   }
   $("campo-save").classList.toggle("hidden", campo==="categoria");
@@ -7732,6 +7916,17 @@ function vozEditar(campo){
 /* ---------------- guardar ---------------- */
 async function vozGuardar(){
   if(guardandoVoz) return;
+  /* v5.5 · si la IA todavía está leyendo la frase, se la espera (hasta 8 s). Si cambió
+     algo, no se guarda a ciegas: se muestra para que lo revises y vuelvas a tocar Guardar. */
+  if(vozIA && vozIA.texto===V.texto){
+    const antes=JSON.stringify([V.monto,V.tipo,V.categoria,V.cuenta,V.card,V.cuotas,V.fecha,V.comercio,V.descripcion,V.pair]);
+    guardandoVoz=true; botonOcupado($("voz-guardar"),true);
+    try{ await Promise.race([vozIA.p, new Promise(r=>setTimeout(r,8000))]); }
+    finally{ guardandoVoz=false; botonOcupado($("voz-guardar"),false); }
+    if(JSON.stringify([V.monto,V.tipo,V.categoria,V.cuenta,V.card,V.cuotas,V.fecha,V.comercio,V.descripcion,V.pair])!==antes){
+      renderVoz(); $("voz-estado").textContent="La IA ajustó algunos datos. Revisalos y tocá Guardar."; return;
+    }
+  }
   if(!vozCompleto()){ marcarMal(null,"Todavía no sé cuánto fue. Escribilo o decilo, por ejemplo: 12.300 en el super.","voz-err"); try{ $("voz-texto").focus(); }catch(e){} return; }
   guardandoVoz=true;
   botonOcupado($("voz-guardar"),true);
@@ -7799,7 +7994,7 @@ document.addEventListener("keydown",e=>{
 $("voz-mic").onmousedown=e=>e.preventDefault();
 $("voz-mic").onclick=toggleDictado;
 
-$("voz-ia").onclick=reforzarIA;
+$("voz-ia").onclick=()=>reforzarIA(true);
 $("voz-guardar").onmousedown=e=>e.preventDefault();
 $("voz-guardar").onclick=vozGuardar;
 /* v3 · el atajo "escribirlo a mano" ya no hace falta: la hoja se abre encima de la calculadora */
@@ -7817,7 +8012,7 @@ $("voz-texto").addEventListener("input",()=>{
   clearTimeout(vozTimer); vozTimer=setTimeout(()=>renderVozFilas(),260);
 });
 let vozTimer=null;
-$("voz-texto").addEventListener("blur",()=>{ interpretarLocal(); renderVoz(); if(iaActiva() && V.texto && !vozCompleto()) reforzarIA(); });
+$("voz-texto").addEventListener("blur",()=>{ interpretarLocal(); renderVoz(); reforzarIA(); });
 $("voz-texto").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("voz-texto").blur(); } });
 /* v3.2 · dos entradas para la misma lectura: la cámara y la galería */
 ["foto-camara","foto-galeria"].forEach(id=>{
