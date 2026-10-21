@@ -2274,7 +2274,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.21-v5.8-qa-voz";
+const APP_VERSION = "2026.10.21-v5.9-cuotas-previas";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -3416,6 +3416,30 @@ function primeraCuotaMes(fechaCompra, card){
   if(cierre){ const [y,mm]=mes.split("-").map(Number); cierre=Math.min(cierre, new Date(y,mm,0).getDate()); }
   return mesSuma(mes, (cierre && dia>cierre) ? 2 : 1);
 }
+/* v5.9 · COMPRAS QUE YA VENÍAS PAGANDO
+   Quien empieza a usar la app ya tiene cuotas corriendo: "el celular, voy por la 7 de 12".
+   Si pagaste 6, la 7 es la que viene y cae en el próximo resumen (el mismo mes en que
+   caería una compra hecha hoy). Las 6 anteriores quedan en sus meses, marcadas como
+   pagadas, y la fecha de compra se estima un mes antes de la primera cuota.
+   Antes, con "Ya pagué 6", la compra quedaba con fecha de hoy: las 6 pagadas aparecían
+   en los meses que vienen y las que faltaban se corrían medio año. */
+function planCuotas(n, pagadas, card, fechaCompra){
+  n=Math.min(60,Math.max(1,Math.round(n)||1));
+  pagadas=Math.min(n,Math.max(0,Math.round(pagadas)||0));
+  if(!pagadas) return {n, pagadas:0, primera:primeraCuotaMes(fechaCompra,card), fecha:fechaCompra};
+  const proxima=primeraCuotaMes(todayISO(),card);
+  const primera=mesSuma(proxima,-pagadas);
+  const dia=Math.min(28,Number(todayISO().slice(8,10)));
+  return {n, pagadas, proxima, primera, fecha:`${mesSuma(primera,-1)}-${p2(dia)}`};
+}
+function textoPlanCuotas(plan,total,cur){
+  if(!plan || !plan.pagadas) return "";
+  const quedan=plan.n-plan.pagadas;
+  if(quedan<=0) return `Ya pagaste las ${plan.n} cuotas: no queda ninguna por pagar.`;
+  return `Ya pagaste ${plan.pagadas} de ${plan.n}. Te quedan <b>${quedan} de ${fmt(round2(total/plan.n),cur)}</b>: `
+    + `la ${plan.pagadas+1} entra en el resumen de <b>${mesLargo(plan.proxima)}</b>`
+    + (quedan>1?` y la última en ${mesLargo(mesSuma(plan.primera,plan.n-1))}.`:".");
+}
 function cuotasDeTarjetaMes(cardId,mes){
   const pM=Object.fromEntries(PURCH.map(p=>[p.id,p]));
   return INST.filter(x=>{ const p=pM[x.purchase_id]; return p && p.card_id===cardId && x.mes.slice(0,7)===mes; });
@@ -3429,9 +3453,11 @@ function saldoFinanciado(cardId){
   return ss.length?round2(Number(ss[ss.length-1].saldo)||0):0;
 }
 function resumenMes(cardId,mes){
-  const cuotas=round2(cuotasDeTarjetaMes(cardId,mes).reduce((a,x)=>a+Number(x.monto),0));
-  const arr=arrastreDe(cardId,mes);
   const st=stmtDe(cardId,mes);
+  /* v5.9 · sin un pago registrado, una cuota ya marcada como pagada es de una compra que
+     venías pagando antes de usar la app: no se vuelve a pedir en el resumen del mes */
+  const cuotas=round2(cuotasDeTarjetaMes(cardId,mes).filter(x=>st||!x.pagada).reduce((a,x)=>a+Number(x.monto),0));
+  const arr=arrastreDe(cardId,mes);
   const total=round2(cuotas+arr);
   const pagado=st?round2(Number(st.pagado)||0):0;
   const card=cardById(cardId);
@@ -5998,11 +6024,28 @@ const REG_TIPOS=[
 const CUOTAS_RAPIDAS=[1,3,6,12];
 let R={tipo:"gasto",buf:"0",acum:null,op:null,listo:false,expr:"",cat:null,cuenta:null,card:null,goal:null,pair:null,
        sentido:"guardar",split:"ambos",pct:50,pagador:null,fecha:todayISO(),repite:false,
-       cuotas:1,primera:null,pagadas:0,avanzado:false};
+       cuotas:1,primera:null,pagadas:0,avanzado:false,previa:false,porCuota:false};
 
 function bufNum(){ return parseFloat((R.buf||"0").replace(",",".")) || 0; }
 function aplicar(a,b,op){ const r=op==="+"?a+b:op==="-"?a-b:op==="*"?a*b:(b===0?a:a/b); return round2(r); }
 function regTotal(){ return R.acum!==null&&R.op ? aplicar(R.acum,bufNum(),R.op) : bufNum(); }
+/* v5.9 · en cuotas, el número escrito puede ser el total o lo que pagás cada mes */
+function regTotalCompra(){ const t=regTotal(); return (R.tipo==="tarjeta" && R.porCuota && R.cuotas>1) ? round2(t*R.cuotas) : t; }
+function regPlan(){ return planCuotas(R.cuotas, R.previa?R.pagadas:0, cardById(R.card), R.fecha); }
+function regTextosTarjeta(cur){
+  const card=cardById(R.card), tot=regTotalCompra(), plan=regPlan();
+  const primera=R.primera||plan.primera;
+  const cuota=fmt(round2(tot/R.cuotas),cur);
+  const nota = plan.pagadas ? textoPlanCuotas(plan,tot,cur)
+    : card&&card.cierre_dia
+      ? `Cierra el ${card.cierre_dia}: comprando el ${Number(R.fecha.slice(8,10))}, la primera cuota cae en <b>${mesLargo(primera)}</b>.`
+      : `La primera cuota cae en <b>${mesLargo(primera)}</b>. Cargá el día de cierre de la tarjeta y lo calculo exacto.`;
+  const quedan=R.cuotas-plan.pagadas;
+  const sub = R.cuotas>1 ? `${R.cuotas} × ${cuota}${R.porCuota?` · total ${fmt(tot,cur)}`:""}` : fmt(tot,cur);
+  const boton = R.cuotas<=1 ? `Guardar ${fmt(tot,cur)}`
+    : plan.pagadas ? `Guardar · quedan ${Math.max(0,quedan)}` : `Guardar ${R.cuotas} cuotas de ${cuota}`;
+  return {nota, sub, boton};
+}
 function regMoneda(){
   if(R.tipo==="tarjeta") return monedaTarjeta(cardById(R.card))||CUR;
   /* v3.4 · si el aporte va a una meta, manda la moneda de la meta: la cuenta
@@ -6075,7 +6118,7 @@ function openReg(fecha,tipo,goalId,montoPre){
      goal:goalId||null, pair:(PAIRS[0]||{}).id||null, sentido:"guardar", split:"ambos", pct:50, pagador:(user||{}).id||null,
      /* la cuenta de arranque se corrige más abajo si la meta es de otra moneda */
      fecha: fecha || (VMONTH===curMonth()?todayISO():VMONTH+"-01"),
-     repite:false, cuotas:1, primera:null, pagadas:0, avanzado:false, expr:"",
+     repite:false, cuotas:1, primera:null, pagadas:0, avanzado:false, previa:false, porCuota:false, expr:"",
      ids:{} /* v4.9 · ids fijos de este movimiento: si se reintenta, no se duplica */};
   if(t==="ahorro" && goalId){
     const g=GOALS.find(x=>x.id===goalId);
@@ -6102,7 +6145,7 @@ function renderReg(){
 
   /* subtítulo contextual */
   let sub="";
-  if(esT && R.cuotas>1) sub=`${R.cuotas} × ${fmt(round2(tot/R.cuotas),cur)}`;
+  if(esT && R.cuotas>1) sub=regTextosTarjeta(cur).sub;
   else if(esA){ const g=GOALS.find(x=>x.id===R.goal);
     sub = g ? `Llevás ${fmt(ahorroDeMeta(g.id),cur)} de ${fmt(Number(g.objetivo)||0,cur)}` : `Sin meta · ya tenés ${fmt(ahorroTotal(cur),cur)} reservados`; }
   else if(esC){ const d=splitDelta(tot); sub = d.mio>0?`Te toca ${fmt(d.mio,cur)}`:""; }
@@ -6209,14 +6252,20 @@ function renderReg(){
       +`<button class="chip ${R.avanzado?'on':''}" id="reg-avz">•••</button></div>`;
     if(R.avanzado) h+=`<div class="g2" style="margin-top:10px">
         <div class="fld" style="margin:0"><label>Cuotas</label><input id="reg-cuotas" type="number" inputmode="numeric" min="1" max="60" value="${R.cuotas}"></div>
-        <div class="fld" style="margin:0"><label>Ya pagué</label><input id="reg-pagadas" type="number" inputmode="numeric" min="0" value="${R.pagadas}"></div>
-        <div class="fld" style="margin:0;grid-column:1 / -1"><label>Primera cuota</label><input id="reg-primera" type="month" value="${primera}"></div>
+        <div class="fld" style="margin:0"><label>Primera cuota</label><input id="reg-primera" type="month" value="${R.primera||regPlan().primera}"></div>
       </div>`;
-    h+=`<div class="regnota"><span data-ic="calendario" data-ic-size="15"></span><span>${
-      card&&card.cierre_dia
-        ? `Cierra el ${card.cierre_dia}: comprando el ${Number(R.fecha.slice(8,10))}, la primera cuota cae en <b>${mesLargo(primera)}</b>.`
-        : `La primera cuota cae en <b>${mesLargo(primera)}</b>. Cargá el día de cierre de la tarjeta y lo calculo exacto.`}${
-      R.pagadas>0?`<br>Marco ${R.pagadas} cuota(s) como pagadas: te quedan ${Math.max(0,R.cuotas-R.pagadas)}.`:""}</span></div>`;
+    if(R.cuotas>1){
+      /* v5.9 · lo que la gente sabe de memoria suele ser la cuota, no el total */
+      h+=`<div class="chipsrow" style="margin-top:10px"><span class="hint" style="align-self:center;margin:0 4px 0 0">El monto es</span>
+          <button class="chip ${!R.porCuota?'on':''}" data-mm="total">El total</button>
+          <button class="chip ${R.porCuota?'on':''}" data-mm="cuota">Cada cuota</button></div>
+        <div class="switchrow" style="padding:10px 0 0"><div class="st"><b>Ya la venía pagando</b>
+          <span>Para compras de antes de usar la app: decís cuántas cuotas pagaste y sigue desde ahí.</span></div>
+          <button class="switch" id="reg-previa" role="switch" aria-checked="${!!R.previa}" aria-label="Ya la venía pagando"></button></div>`;
+      if(R.previa) h+=`<div class="fld" style="margin:8px 0 0"><label>¿Cuántas cuotas ya pagaste?</label>
+          <input id="reg-pagadas" type="number" inputmode="numeric" min="0" max="${R.cuotas}" value="${R.pagadas||""}" placeholder="Si vas por la 7, pagaste 6"></div>`;
+    }
+    h+=`<div class="regnota"><span data-ic="calendario" data-ic-size="15"></span><span>${regTextosTarjeta(cur).nota}</span></div>`;
   }
   if(esA){
     ct=`<div class="chipsrow">`+[["guardar","Reservar"],["sacar","Liberar"]].map(([k,n])=>`<button class="chip ${R.sentido===k?'on':''}" data-se="${k}">${n}</button>`).join("")+`</div>`;
@@ -6273,11 +6322,15 @@ function renderReg(){
   $("reg-varios-row").classList.toggle("hidden", !(T==="gasto"||T==="ingreso"||esT));
   $("reg-varios").setAttribute("aria-checked", String(seguirCargando));
   ex.innerHTML=h; pintarIconos(ex);
-  top.querySelectorAll("[data-cu]").forEach(b=>b.onclick=()=>{ R.cuotas=Number(b.dataset.cu); R.avanzado=false; R.pagadas=0; renderReg(); });
+  top.querySelectorAll("[data-cu]").forEach(b=>b.onclick=()=>{ R.cuotas=Number(b.dataset.cu); R.avanzado=false;
+    R.pagadas=Math.min(R.pagadas,R.cuotas); if(R.cuotas<=1){ R.previa=false; R.porCuota=false; } renderReg(); });
+  ex.querySelectorAll("[data-mm]").forEach(b=>b.onclick=()=>{ R.porCuota=(b.dataset.mm==="cuota"); renderReg(); });
+  if($("reg-previa")) $("reg-previa").onclick=()=>{ R.previa=!R.previa; if(!R.previa) R.pagadas=0; R.primera=null; renderReg();
+    if(R.previa) setTimeout(()=>{ try{ $("reg-pagadas").focus(); }catch(e){} },60); };
   if($("reg-avz")) $("reg-avz").onclick=()=>{ R.avanzado=!R.avanzado; renderReg(); };
   /* v5.0 · tope de 60 cuotas (la base también lo exige) */
   if($("reg-cuotas")) $("reg-cuotas").oninput=()=>{ R.cuotas=Math.min(60,Math.max(1,parseInt($("reg-cuotas").value)||1)); renderRegSoft(); };
-  if($("reg-pagadas")) $("reg-pagadas").oninput=()=>{ R.pagadas=Math.min(R.cuotas,Math.max(0,parseInt($("reg-pagadas").value)||0)); renderRegSoft(); };
+  if($("reg-pagadas")) $("reg-pagadas").oninput=()=>{ R.pagadas=Math.min(R.cuotas,Math.max(0,parseInt($("reg-pagadas").value)||0)); R.primera=null; renderRegSoft(); };
   if($("reg-primera")) $("reg-primera").onchange=()=>{ if($("reg-primera").value){ R.primera=$("reg-primera").value; renderReg(); } };
   if($("reg-pct")) $("reg-pct").oninput=()=>{ R.pct=Math.max(0,Math.min(100,parseInt($("reg-pct").value)||0)); renderReg(); };
   top.querySelectorAll("[data-se]").forEach(b=>b.onclick=()=>{ R.sentido=b.dataset.se; renderReg(); });
@@ -6289,23 +6342,17 @@ function renderReg(){
   $("reg-listo").textContent =
     esA ? (R.sentido==="guardar"?`Reservar ${fmt(tot,cur)}`:`Liberar ${fmt(tot,cur)}`)
     : esC ? "Guardar compartido"
-    : esT ? (R.cuotas>1?`Guardar ${R.cuotas} cuotas de ${fmt(round2(tot/R.cuotas),cur)}`:`Guardar ${fmt(tot,cur)}`)
+    : esT ? regTextosTarjeta(cur).boton
     : T==="ingreso" ? "Guardar ingreso" : "Guardar gasto";
 }
 /* refresco liviano: no re-crea los inputs que estás tipeando */
 function renderRegSoft(){
   const cur=regMoneda(), tot=regTotal();
   const nota=$("reg-extra").querySelector(".regnota");
-  if(nota && R.tipo==="tarjeta"){
-    const card=cardById(R.card), primera=R.primera||primeraCuotaMes(R.fecha,card);
-    nota.querySelector("span:last-child").innerHTML = (card&&card.cierre_dia
-      ? `Cierra el ${card.cierre_dia}: comprando el ${Number(R.fecha.slice(8,10))}, la primera cuota cae en <b>${mesLargo(primera)}</b>.`
-      : `La primera cuota cae en <b>${mesLargo(primera)}</b>. Cargá el día de cierre de la tarjeta y lo calculo exacto.`)
-      + (R.pagadas>0?`<br>Marco ${R.pagadas} cuota(s) como pagadas: te quedan ${Math.max(0,R.cuotas-R.pagadas)}.`:"");
-  }
   if(R.tipo==="tarjeta"){
-    $("reg-sub").textContent = R.cuotas>1?`${R.cuotas} × ${fmt(round2(tot/R.cuotas),cur)}`:fmt(tot,cur);
-    $("reg-listo").textContent = R.cuotas>1?`Guardar ${R.cuotas} cuotas de ${fmt(round2(tot/R.cuotas),cur)}`:`Guardar ${fmt(tot,cur)}`;
+    const tx=regTextosTarjeta(cur);
+    if(nota) nota.querySelector("span:last-child").innerHTML=tx.nota;
+    $("reg-sub").textContent=tx.sub; $("reg-listo").textContent=tx.boton;
   }
 }
 function splitDelta(total){
@@ -6452,9 +6499,10 @@ $("reg-listo").onclick=async()=>{
   try{
     if(R.tipo==="tarjeta"){
       const card=cardById(R.card);
-      const n=Math.min(60,Math.max(1,R.cuotas)), pagadas=Math.min(n,Math.max(0,R.pagadas));
-      const primera=(R.primera||primeraCuotaMes(R.fecha,card))+"-01";
-      const compra={id:idPara("compra"),fecha_compra:R.fecha,tarjeta:R.card?cardLabel(card):"Otra",card_id:R.card||null,
+      const n=Math.min(60,Math.max(1,R.cuotas)), plan=regPlan(), pagadas=plan.pagadas;
+      const primera=(R.primera||plan.primera)+"-01";
+      const total=regTotalCompra();              /* v5.9 · si escribiste la cuota, el total es cuota × cuotas */
+      const compra={id:idPara("compra"),fecha_compra:plan.fecha,tarjeta:R.card?cardLabel(card):"Otra",card_id:R.card||null,
         descripcion:desc,comercio,categoria:R.cat,monto_total:total,cuotas:n};
       const base=round2(total/n); const rows=[]; let ac=0;
       for(let i=1;i<=n;i++){ const m=(i===n)?round2(total-ac):base; ac=round2(ac+base);
@@ -6496,7 +6544,7 @@ $("reg-listo").onclick=async()=>{
     if(R.fecha.slice(0,7)!==VMONTH) VMONTH=R.fecha.slice(0,7);
     const desde=(vista==="sub"||vista==="mas")?"app":vista;
     const volver = R.tipo==="ahorro" ? (activeGoalId?"meta":"metas") : (CON_NAV.includes(desde)?desde:"app");
-    const _resumen=`${fmt(total,cur)}${R.cat?" en "+R.cat:""}`;
+    const _resumen=`${fmt(R.tipo==="tarjeta"?regTotalCompra():total,cur)}${R.cat?" en "+R.cat:""}`;
     /* v4.5 · cargar varios seguidos: la pantalla queda abierta con el mismo tipo, cuenta, tarjeta y fecha */
     if(seguirCargando && (R.tipo==="gasto"||R.tipo==="ingreso"||R.tipo==="tarjeta")){
       const k={tipo:R.tipo,fecha:R.fecha,cuenta:R.cuenta,card:R.card};
@@ -6752,7 +6800,9 @@ async function guardarCampo(valor){
   /* si viene de "Contame el gasto", no toca la base: sólo actualiza el borrador */
   if(campoEdit.voz){
     if(campo==="monto"){ const m=round2(parseMonto(valor)); if(!(m>0)){ $("campo-err").textContent="Poné un monto mayor a cero."; return; } V.monto=m; }
-    else if(campo==="cuotas"){ V.cuotas=Math.min(60,Math.max(1,parseInt(valor)||1)); if(V.cuotas>1) V.tipo="tarjeta"; }
+    else if(campo==="cuotas"){ V.cuotas=Math.min(60,Math.max(1,parseInt(valor)||1)); if(V.cuotas>1) V.tipo="tarjeta";
+      V.pagadas=Math.min(V.pagadas||0, V.cuotas>1?V.cuotas:0); }
+    else if(campo==="pagadas") V.pagadas=Math.min(V.cuotas,Math.max(0,parseInt(valor)||0));
     else if(campo==="fecha") V.fecha=valor;
     else if(campo==="comercio") V.comercio=valor.trim()||null;
     else if(campo==="descripcion") V.descripcion=valor.trim()||null;
@@ -6924,7 +6974,7 @@ function vozNuevo(){
   vozFoto=null; vozIA=null; VS=[V]; vozSel=0; VOZ_TIPO_BASE="gasto";
 }
 /* v5.5 · lo que corregís a mano en la ficha no lo vuelve a pisar ni el intérprete ni la IA */
-const VOZ_MANUAL={monto:["monto"],cuotas:["cuotas","tipo"],fecha:["fecha"],comercio:["comercio"],descripcion:["descripcion"],
+const VOZ_MANUAL={monto:["monto"],cuotas:["cuotas","tipo","pagadas"],pagadas:["pagadas"],fecha:["fecha"],comercio:["comercio"],descripcion:["descripcion"],
   pair:["pair","tipo","conQuien","pagador"],split:["split"],cuenta:["cuenta","card","tipo"],card:["card","tipo"],categoria:["categoria","catAuto"]};
 function vozMarcarManual(campo){ (VOZ_MANUAL[campo]||[campo]).forEach(k=>{ V.manual[k]=V[k]; }); }
 function vozRespetarManual(){ Object.keys(V.manual||{}).forEach(k=>{ V[k]=V.manual[k]; }); }
@@ -6985,7 +7035,7 @@ const VACIAS=new Set(("el la los las un una unos unas de del al a en con por par
  +"ultimo ultima proximo proxima pasado pasada equivoque perdon corrijo digo realidad mejor dicho "
  +"categoria rubro monto importe comercio descripcion detalle concepto cuenta fecha "
  +"fueron eran tambien ademas aparte despues luego otro otra otros otras comprando mentira error confundi "
- +"bueno sea che mira eeh ehh emm mmm espera bien esta devolvieron saque retire pagaron transfirieron depositaron mandaron pasaron recibi cargue debe pago").split(" "));
+ +"bueno sea che mira eeh ehh emm mmm espera bien esta devolvieron saque retire mes cada mensual mensuales pagaron transfirieron depositaron mandaron pasaron recibi cargue debe pago").split(" "));
 
 function normV(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); }
 function esVacia(w){ const n=normV(w).replace(/[^a-z0-9ñ]/g,"");
@@ -7127,6 +7177,39 @@ function leerMonto(L){
   const texto=L.libre.slice(mejor.ini,mejor.fin).trim();
   tachar(L,mejor.ini,mejor.fin-mejor.ini);
   return {valor:mejor.valor, texto, ini:mejor.ini};
+}
+
+/* ================= CUOTAS QUE YA VENÍAS PAGANDO =================
+   v5.9 · "voy por la 7 de 12", "estoy en la séptima cuota", "ya pagué 6 cuotas de 12",
+   "me quedan 5 cuotas". Se lee ANTES que el monto y las cuotas, así el 7 o el 12 no se
+   confunden con la plata. "Voy por la 7" quiere decir que la 7 es la que sigue: pagaste 6. */
+const ORDINAL={primera:1,primer:1,primero:1,segunda:2,segundo:2,tercera:3,tercer:3,tercero:3,cuarta:4,cuarto:4,quinta:5,quinto:5,
+  sexta:6,sexto:6,septima:7,septimo:7,setima:7,octava:8,octavo:8,novena:9,noveno:9,decima:10,decimo:10,
+  undecima:11,onceava:11,duodecima:12,doceava:12};
+function numCuota(w){ if(!w) return null; if(/^\d{1,2}$/.test(w)) return parseInt(w,10);
+  if(ORDINAL[w]!==undefined) return ORDINAL[w]; if(NUM_PAL[w]!==undefined && NUM_PAL[w]<=60) return NUM_PAL[w]; return null; }
+function leerPrevias(L){
+  const N="(\\d{1,2}|[a-zñ]+)", out={};
+  const usar=(m,datos)=>{ tachar(L,m.index,m[0].length); Object.assign(out,datos); out.texto=m[0]; };
+  let m;
+  /* "voy por la (cuota) 7 (de 12)", "estoy en la séptima", "vamos por la 3" */
+  m=buscar(L,new RegExp("\\b(?:voy|vamos|estoy|ando|va|van)\\s+(?:por|en)\\s+(?:la\\s+)?(?:cuota\\s+)?(?:numero\\s+)?"+N+"(?:\\s+cuota)?(?:\\s+de\\s+(?:las?\\s+)?"+N+"(?:\\s+cuotas)?)?\\b"));
+  if(m && numCuota(m[1])){ usar(m,{actual:numCuota(m[1]), de:numCuota(m[2])}); return out; }
+  /* "cuota 7 de 12", "la séptima cuota de 12", "la séptima de 12" */
+  m=buscar(L,new RegExp("\\b(?:la\\s+)?cuota\\s+(?:numero\\s+)?"+N+"\\s+de\\s+(?:las?\\s+)?"+N+"\\b"));
+  if(m && numCuota(m[1]) && numCuota(m[2])){ usar(m,{actual:numCuota(m[1]), de:numCuota(m[2])}); return out; }
+  m=buscar(L,/\b(?:la\s+)?([a-zñ]+)\s+(?:cuota\s+)?de\s+(?:las?\s+)?(\d{1,2}|[a-zñ]+)(?:\s+cuotas)?\b/);
+  if(m && ORDINAL[m[1]]!==undefined && numCuota(m[2])){ usar(m,{actual:ORDINAL[m[1]], de:numCuota(m[2])}); return out; }
+  /* "ya pagué 6 cuotas (de 12)", "llevo 6 pagadas", "pagué 6 de 12" */
+  m=buscar(L,new RegExp("\\b(?:ya\\s+)?(?:pague|pagamos|llevo|llevamos|tengo)\\s+"+N+"\\s+(?:cuotas?(?:\\s+pagadas|\\s+pagas)?|pagadas|pagas|de\\s+(?:las\\s+)?(?=\\d|[a-zñ]+\\s+cuotas))(?:\\s*(?:de\\s+(?:las\\s+)?)?"+N+"(?:\\s+cuotas)?)?\\b"));
+  if(m && numCuota(m[1])){ const de=numCuota(m[2]); usar(m,{pagadas:numCuota(m[1]), de:de&&de>numCuota(m[1])?de:null}); return out; }
+  /* "ya pagué 2" a secas (no "ya pagué 2 mil") */
+  m=buscar(L,new RegExp("\\bya\\s+(?:pague|pagamos|pagaste)\\s+"+N+"\\b(?!\\s*(?:mil|lucas|luca|palos?|pesos|dolares|\\$|[.,]\\d))"));
+  if(m && numCuota(m[1])){ usar(m,{pagadas:numCuota(m[1])}); return out; }
+  /* "me quedan 5 (cuotas)", "faltan 3" */
+  m=buscar(L,new RegExp("\\b(?:me\\s+|nos\\s+)?(?:quedan|faltan|restan)\\s+"+N+"(?:\\s+cuotas?)?\\b"));
+  if(m && numCuota(m[1])){ usar(m,{quedan:numCuota(m[1])}); return out; }
+  return out;
 }
 
 /* ================= CUOTAS ================= */
@@ -7516,12 +7599,25 @@ function leerFrase(txt){
   const util=L.libre;
   /* "50 y 50", "50/50", "mitad y mitad" no son montos */
   { const mm=buscar(L,/\b50\s*(?:y|\/|a)\s*50\b|\bmitad y mitad\b/); if(mm) tachar(L,mm.index,mm[0].length); }
+  const pv=leerPrevias(L);                            // v5.9 · "voy por la 7 de 12"
+  /* "125 mil por mes", "cada cuota", "la cuota es de…": el monto dicho es una cuota */
+  const porCuota=/\b(por mes|cada mes|cada cuota|por cuota|mensual(?:es)?|la cuota es de|pago de cuota)\b/.test(util);
   r.tipo=leerTipo(util);
   const cu=leerCuotas(L);   if(cu){ r.cuotas=cu.valor; r.auto.cuotas=cu.texto; }
+  if(pv.de && pv.de>1) r.cuotas=pv.de;
+  /* "1,5 millones en 12, voy por la 7": hablando de cuotas, "en 12" son 12 cuotas */
+  if(!r.cuotas && (pv.actual||pv.pagadas!==undefined||pv.quedan)){
+    const me=buscar(L,/\ben\s+(\d{1,2}|[a-zñ]+)\b(?!\s*(?:mil|lucas|luca|palos?|pesos|dolares|de\s+[a-zñ]+|[.,]\d))/);
+    if(me && numCuota(me[1])>1){ r.cuotas=numCuota(me[1]); r.auto.cuotas=me[0]; tachar(L,me.index,me[0].length); }
+  }
+  { const n=r.cuotas||0;
+    const pag = pv.pagadas!==undefined ? pv.pagadas : pv.actual ? pv.actual-1 : (pv.quedan && n) ? n-pv.quedan : undefined;
+    if(pag!==undefined && n>1) r.pagadas=Math.min(n,Math.max(0,pag));
+    if(pv.texto) r.auto.previas=pv.texto; }
   const fe=leerFecha(L);    if(fe){ r.fecha=fe.valor; r.auto.fecha=fe.texto; }
   const mo=leerMonto(L);    if(mo){ r.monto=mo.valor; r.auto.monto=mo.texto;
-    if(cu && cu.valor>1 && new RegExp("cuotas?\\s+(?:fijas\\s+|sin\\s+interes\\s+)?de\\s*\\$?\\s*$").test(util.slice(0,mo.ini)))
-      r.monto=round2(mo.valor*cu.valor); }                  // "12 cuotas de 10.000" = 120.000
+    if(r.cuotas>1 && (porCuota || new RegExp("cuotas?\\s+(?:fijas\\s+|sin\\s+interes\\s+)?de\\s*\\$?\\s*$").test(util.slice(0,mo.ini))))
+      r.monto=round2(mo.valor*r.cuotas); }                  // "12 cuotas de 10.000" = 120.000 · "125 mil por mes"
   const ta=leerTarjeta(L);  if(ta){ r.card=ta.valor; r.auto.card=ta.texto; }
   const cc=leerCuenta(L);   if(cc && !ta){ r.cuenta=cc.valor; r.auto.cuenta=cc.texto; }
   const pe=leerPersona(L);  if(pe){ r.pair=pe.pair; r.auto.persona=normV(pe.nombre); r.conQuien=pe.nombre;
@@ -7564,7 +7660,7 @@ function leerConCorrecciones(txt){
    "15.000 en el kiosco con Mercado Pago, también otros 12.000 en el chino" son dos
    movimientos. Se corta donde dice "también", "además", "aparte", "después", "y otros",
    "y 12.000"…; un pedazo sin monto propio no es otro gasto: vuelve a pegarse al anterior. */
-const SEPARA_MOV=/\b(?:y\s+)?(?:tambien|ademas|aparte|despues|luego)\b|\by\s+otr[oa]s?\b|\botr[oa]s?\s+(?=\$?\s?\d)|\by\s+(?=\$\s?\d|\d)|,\s+(?=\$\s?\d|\d)|\b(?:y|[.;])\s*(?=(?:gaste|pague|compre|cobre|cargue|puse|saque|me\s+pagaron|me\s+cobraron)\b)|[.;]\s*(?=tambien\b)/g;
+const SEPARA_MOV=/\b(?:y\s+)?(?:tambien|ademas|aparte|despues|luego)\b|\by\s+otr[oa]s?\b|\botr[oa]s?\s+(?=\$?\s?\d)|\by\s+(?=\$\s?\d|\d)|,\s+(?=\$\s?\d|\d)|\b(?:y|[.;])\s*(?=(?:gaste|pague|compre|cobre|cargue|puse|saque|me\s+pagaron|me\s+cobraron)\b)|[.;]\s*(?=tambien\b)|,\s*y\s+(?=(?:el|la|los|las|un|una)\s)/g;
 function quitarSeparador(t){
   let prev; do{ prev=t;
     t=t.replace(/^\s*,?\s*(?:y\s+)?(?:tambi[eé]n|adem[aá]s|aparte|despu[eé]s|luego)\b\s*,?|^\s*(?:y\s+)?otr[oa]s?\b\s*|^\s*y\s+/i,"");
@@ -7605,13 +7701,14 @@ function partirMovimientos(txt){
 let VS=[], vozSel=0, VOZ_TIPO_BASE="gasto";
 function vozItem(prev, n){
   return {texto:V?V.texto:"", monto:0, categoria:null, catAuto:false, cuenta:(ACCOUNTS[0]||{}).key||null, card:null, cuotas:1,
-    fecha:todayISO(), comercio:null, descripcion:null, tipo:VOZ_TIPO_BASE, pair:(PAIRS[0]||{}).id||null, split:null,
+    fecha:todayISO(), comercio:null, descripcion:null, tipo:VOZ_TIPO_BASE, pagadas:0, pair:(PAIRS[0]||{}).id||null, split:null,
     pagador:(user||{}).id||null, conQuien:null, corregido:false, auto:{},
     manual:(prev&&prev.manual)||{}, iaHecho:null, _n:n};
 }
 /* las reglas que valen para cualquier lectura, local o de la IA */
 function vozDerivar(it){
   if(it.tipo==="gasto" && (it.card || it.cuotas>1)) it.tipo="tarjeta";
+  it.pagadas = it.cuotas>1 ? Math.min(it.cuotas, Math.max(0, it.pagadas||0)) : 0;
   if(it.tipo==="tarjeta" && !it.card){ if(CARDS.length) it.card=CARDS[0].id; else it.tipo="gasto"; }
   if(it.tipo!=="ingreso" && it.tipo!=="ahorro" && (it.split || it.conQuien)) it.tipo="compartido";
   if(it.tipo==="compartido"){
@@ -7693,6 +7790,7 @@ function esquemaMov(cx){
     cuenta:{type:"STRING", nullable:true, ...iaEnum(cx.ctas.map(a=>a.key))},
     card:{type:"STRING", nullable:true, ...iaEnum(cx.tars.map(t=>t.id))},
     cuotas:{type:"INTEGER"},
+    pagadas:{type:"INTEGER"},
     fecha:{type:"STRING"},
     comercio:{type:"STRING", nullable:true},
     descripcion:{type:"STRING", nullable:true},
@@ -7733,7 +7831,8 @@ CUENTA: la "key" de la cuenta sólo si la nombra (o dice "efectivo" y hay una cu
 TARJETA: el "id" si nombra una tarjeta (por alias, banco o marca). Si dice "con tarjeta" o "en cuotas" sin decir cuál, null.
 CUOTAS: 1 salvo que diga otra cosa.
 VARIOS MOVIMIENTOS: si en la misma frase cuenta más de un gasto o ingreso distinto ("15.000 en el kiosco, también otros 12.000 en el chino"), devolvé uno por cada uno, cada uno con su monto, su categoría, su comercio y su descripción. Lo que dice una sola vez y vale para todos (la fecha, "con Mercado Pago" dicho al principio) sólo se repite si queda claro que es para todos; si no, va en el que corresponde. Un mismo gasto contado con detalle ("pan y leche, 3000") es UNO solo.
-CUOTAS CON VALOR: "12 cuotas de 10.000" → monto 120000 (el total) y cuotas 12.
+CUOTAS CON VALOR: "12 cuotas de 10.000" o "10.000 por mes en 12 cuotas" → monto 120000 (el total) y cuotas 12.
+CUOTAS QUE YA VENÍA PAGANDO (pagadas): muchas compras son de antes de usar la app. "voy por la 7 de 12" o "estoy en la séptima" → pagadas 6 (la 7 es la que sigue); "ya pagué 6 cuotas" → 6; "me quedan 5 de 12" → 7. Si es una compra nueva, 0. El monto sigue siendo el TOTAL de la compra: "un celular de 1,5 millones en 12, voy por la 7" → monto 1500000, cuotas 12, pagadas 6.
 NO ES UN GASTO (especial): "pagué la tarjeta / el resumen" → "resumen_tarjeta"; "saqué del cajero", "pasé plata a mi otra cuenta" → "transferencia_propia". Si no, null. Pagarle a otra persona SÍ es un gasto.
 CORRECCIONES: "ah no, eso no, fueron 16.500" cambia sólo lo que vuelve a decir (acá el monto); el resto (comercio, fecha, cuenta) queda como lo dijo antes.
 SPLIT: "ambos" si es a medias / mitad y mitad; "solo_otro" si la otra persona lo debe entero; null si no aplica.
@@ -7747,6 +7846,7 @@ Respondé {"movimientos":[ ... ]}. Ejemplos (con otras listas; cada flecha muest
 "gasté 12.300 en el chino ayer" → {"tipo":"gasto","monto":12300,"categoria":"Supermercado","comercio":null,"descripcion":"Compras en el almacén","fecha":"<ayer>","cuotas":1}
 "cargué nafta en la ypf, 40 lucas con la visa" → {"tipo":"tarjeta","monto":40000,"categoria":"Auto","comercio":"YPF","descripcion":"Nafta","card":"<id de la Visa>","cuotas":1}
 "3 medialunas y un café 4500" → {"tipo":"gasto","monto":4500,"categoria":"Salidas","comercio":null,"descripcion":"Café con medialunas","cuotas":1}
+"un celular de 1,5 millones en 12 cuotas con la visa, voy por la 7" → {"tipo":"tarjeta","monto":1500000,"cuotas":12,"pagadas":6,"card":"<id de la Visa>","categoria":"Tecnología","comercio":null,"descripcion":"Celular"}
 "categoría salidas, 22 mil, cena en La Parolaccia" → {"tipo":"gasto","monto":22000,"categoria":"Salidas","comercio":"La Parolaccia","descripcion":"Cena","cuotas":1}
 "gasté 15.000 en el coto, ah no eso no, fueron 16.500" → {"tipo":"gasto","monto":16500,"categoria":"Supermercado","comercio":"Coto","descripcion":"Compra del súper","cuotas":1}
 "15.000 con mercado pago en el kiosco comprando cigarros, también otros 12.000 en el chino comprando pasta y arroz" → [{"tipo":"gasto","monto":15000,"categoria":"Cigarrillos","cuenta":"<key de Mercado Pago>","comercio":null,"descripcion":"Cigarrillos","cuotas":1}, {"tipo":"gasto","monto":12000,"categoria":"Supermercado","comercio":null,"descripcion":"Pasta y arroz","cuotas":1}]
@@ -7783,6 +7883,7 @@ function iaAplicar(d, cx){
   if(d.card && CARDS.some(c=>c.id===d.card)){ V.card=d.card; if(V.tipo==="gasto") V.tipo="tarjeta"; }
   if(Number.isFinite(Number(d.cuotas)) && d.cuotas>=1) V.cuotas=Math.min(60,Math.round(d.cuotas));
   if(V.cuotas>1 && V.tipo==="gasto") V.tipo="tarjeta";
+  if(Number.isFinite(Number(d.pagadas))) V.pagadas=Math.min(V.cuotas, Math.max(0, Math.round(d.pagadas)));
   if(/^\d{4}-\d{2}-\d{2}$/.test(d.fecha||"") && d.fecha<=todayISO()) V.fecha=d.fecha;
   if("comercio" in d) V.comercio=(d.comercio||"").toString().trim().slice(0,60)||null;
   if(d.descripcion) V.descripcion=d.descripcion.toString().trim().slice(0,80);
@@ -8083,9 +8184,18 @@ function renderVozFilas(){
     V.catAuto?`<span class="vz-auto">auto</span>`:null);
   if(V.tipo==="tarjeta"){
     h+=fila("Tarjeta",esc(cardTitulo(cardById(V.card))),"card");
-    if(V.cuotas>1) h+=fila("Cuotas",`${V.cuotas} × ${fmt(round2(V.monto/V.cuotas),cur)}`,"cuotas");
+    if(V.cuotas>1){
+      h+=fila("Cuotas",`${V.cuotas} × ${fmt(round2(V.monto/V.cuotas),cur)}`,"cuotas");
+      /* v5.9 · compras que ya venías pagando */
+      const plan=planCuotas(V.cuotas,V.pagadas||0,cardById(V.card),V.fecha);
+      h+=fila("Ya pagadas", plan.pagadas
+        ? `${plan.pagadas} de ${plan.n} · sigue la ${Math.min(plan.n,plan.pagadas+1)} en ${esc(mesLargo(plan.proxima))}`
+        : `<span style="color:var(--ink-3)">Ninguna (compra nueva)</span>`, "pagadas");
+    }
   } else h+=fila("Cuenta",esc(CTA_NOMBRE[V.cuenta]||V.cuenta||"—"),"cuenta");
-  h+=fila("Cuándo",esc(fechaLarga(V.fecha)),"fecha");
+  if(V.tipo==="tarjeta" && V.pagadas>0)
+    h+=fila("Compra",`aprox. ${esc(mesLargo(planCuotas(V.cuotas,V.pagadas,cardById(V.card),V.fecha).fecha))}`,"pagadas");
+  else h+=fila("Cuándo",esc(fechaLarga(V.fecha)),"fecha");
   if(V.tipo==="compartido"){
     const p=PAIRS.find(x=>x.id===V.pair); const o=p?otherProf(otherId(p)):{apodo:"la otra persona"};
     h+=fila("Con",esc(V.conQuien||o.apodo),"pair");
@@ -8126,13 +8236,16 @@ function vozEditar(campo){
   const falso={_k:"voz", fecha:V.fecha, monto:V.monto, categoria:V.categoria, cuenta:V.cuenta,
     comercio:V.comercio, card_id:V.card, cuotas:V.cuotas, descripcion:""};
   campoEdit={campo, r:falso, voz:true};
-  const tit={monto:"Monto",categoria:"Categoría",cuenta:"¿De qué cuenta?",card:"Tarjeta",fecha:"¿Cuándo fue?",comercio:"Comercio",cuotas:"Cuotas",descripcion:"Descripción",pair:"¿Con quién?",split:"¿Cómo se reparte?"}[campo]||"Editar";
+  const tit={pagadas:"Cuotas ya pagadas",monto:"Monto",categoria:"Categoría",cuenta:"¿De qué cuenta?",card:"Tarjeta",fecha:"¿Cuándo fue?",comercio:"Comercio",cuotas:"Cuotas",descripcion:"Descripción",pair:"¿Con quién?",split:"¿Cómo se reparte?"}[campo]||"Editar";
   $("campo-tit").textContent=tit; $("campo-err").textContent="";
   const bd=$("campo-body");
   if(campo==="monto") bd.innerHTML=`<div class="fld" style="margin:0"><label>Monto en ${esc(cur)}</label>
     <input id="campo-in" type="text" inputmode="decimal" value="${V.monto?String(V.monto).replace(".",","):""}"></div>`;
   else if(campo==="cuotas") bd.innerHTML=`<div class="fld" style="margin:0"><label>Cuotas</label>
     <input id="campo-in" type="number" inputmode="numeric" min="1" value="${V.cuotas}"></div>`;
+  else if(campo==="pagadas") bd.innerHTML=`<div class="fld" style="margin:0"><label>¿Cuántas cuotas ya pagaste? (de ${V.cuotas})</label>
+    <input id="campo-in" type="number" inputmode="numeric" min="0" max="${V.cuotas}" value="${V.pagadas||0}"></div>
+    <p class="hint" style="margin-top:8px">Si vas por la 7, pagaste 6. Las pagadas quedan en sus meses; la que sigue entra en el próximo resumen.</p>`;
   else if(campo==="comercio") bd.innerHTML=`<div class="fld" style="margin:0"><label>Comercio</label>
     <input id="campo-in" type="text" value="${esc(V.comercio||"")}" placeholder="Ej: Coto"></div>`;
   else if(campo==="pair") bd.innerHTML=`<div class="fld" style="margin:0"><label>Con quién</label><select id="campo-in">${
@@ -8206,12 +8319,13 @@ async function vozGuardar(){
     if(V.tipo==="tarjeta"){
       const card=cardById(V.card);
       const n=Math.min(60,Math.max(1,V.cuotas));
-      const primera=primeraCuotaMes(V.fecha,card)+"-01";
-      const compra={id:idVoz("compra"),fecha_compra:V.fecha,tarjeta:card?cardLabel(card):"Otra",
+      const plan=planCuotas(n,V.pagadas||0,card,V.fecha);   /* v5.9 · cuotas que ya venías pagando */
+      const primera=plan.primera+"-01";
+      const compra={id:idVoz("compra"),fecha_compra:plan.fecha,tarjeta:card?cardLabel(card):"Otra",
         card_id:V.card||null,descripcion:desc,comercio:V.comercio,categoria:V.categoria,monto_total:V.monto,cuotas:n};
       const base=round2(V.monto/n); const rows=[]; let ac=0;
       for(let i=1;i<=n;i++){ const m=(i===n)?round2(V.monto-ac):base; ac=round2(ac+base);
-        rows.push({id:idVoz(`cuota-${n}-${i}`),nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:false}); }
+        rows.push({id:idVoz(`cuota-${n}-${i}`),nro_cuota:i,monto:m,mes:addMonths(primera,i-1),pagada:i<=plan.pagadas}); }
       /* v5.0 · compra y cuotas en un solo paso en la base: entran las dos o ninguna */
       const {error}=await sb.rpc("crear_compra_cuotas",{p_compra:compra,p_cuotas:rows});
       if(error) throw error;

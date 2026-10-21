@@ -10,6 +10,8 @@ const codigo = [
   html.match(/function diasAtras\(.*?\n/)[0],
   tramo('const round2 =', '/* ---------- fechas locales'),
   tramo('const p2 =', 'function mesSuma'),
+  html.match(/function mesSuma\(.*?\n/)[0],
+  tramo('function primeraCuotaMes', 'function cuotasDeTarjetaMes'),
   tramo('const NUM_PAL=', '/* ---------------- Gemini'),
 ].join('\n')
 
@@ -22,7 +24,7 @@ global.PAIRS = [{ id: 'p1' }]; global.TX = []; global.PURCH = []; global.STXN = 
 global.catsAlfa = () => CATS
 global.cardTitulo = (c) => c.marca + ' ' + c.banco
 global.otherProf = () => ({ apodo: 'Sofi' }); global.otherId = () => 'u2'
-eval(codigo + ';global.interpretarLocal=interpretarLocal;global.movimientos=()=>VS;global.resetVoz=()=>{VS=[];vozSel=0;};')
+eval(codigo + ';global.planCuotas=planCuotas;global.mesSuma=mesSuma;global.interpretarLocal=interpretarLocal;global.movimientos=()=>VS;global.resetVoz=()=>{VS=[];vozSel=0;};')
 
 const hoy = diasAtras(0), ayer = diasAtras(1), anteayer = diasAtras(2)
 // frase → lo que tiene que salir (uno por movimiento; sólo se comparan los campos que se ponen)
@@ -180,6 +182,22 @@ const CASOS = [
   ['15.000 en el kiosco, también 12.000 en el chino, ah no, 13.000', [{ monto: 15000 }, { monto: 13000 }]],
   ['compré pan y también leche 3000', [{ monto: 3000 }]],   // un solo gasto contado con detalle
   ['40 mil de nafta con la visa en 3 cuotas', [{ monto: 40000, tipo: 'tarjeta', cuotas: 3 }]],
+  'Cuotas que ya venías pagando',
+  ['pagué un celular de 1,5 millones en 12 cuotas, voy por la cuota 7', [{ monto: 1500000, cuotas: 12, pagadas: 6, tipo: 'tarjeta' }]],
+  ['celular 1.500.000 con la visa en 12 cuotas, voy por la 7', [{ monto: 1500000, cuotas: 12, pagadas: 6, card: 'v1' }]],
+  ['un celular de un millón y medio, voy por la séptima de doce', [{ monto: 1500000, cuotas: 12, pagadas: 6 }]],
+  ['el celular de 1,5 millones en 12, voy por la 7', [{ monto: 1500000, cuotas: 12, pagadas: 6 }]],
+  ['la heladera, 900 mil en 6 cuotas, ya pagué 2', [{ monto: 900000, cuotas: 6, pagadas: 2 }]],
+  ['la tele en 18 cuotas de 50 mil, me quedan 10', [{ monto: 900000, cuotas: 18, pagadas: 8 }]],
+  ['pago 125 mil por mes del celular, voy por la 7 de 12', [{ monto: 1500000, cuotas: 12, pagadas: 6 }]],   // dijo la cuota, no el total
+  ['cuota 7 de 12 del celular, 125 mil cada cuota', [{ monto: 1500000, cuotas: 12, pagadas: 6 }]],
+  ['estoy en la tercera cuota de 6 de las zapatillas, 300 mil en total con la master', [{ monto: 300000, cuotas: 6, pagadas: 2, card: 'm1' }]],
+  ['ya pagué 6 cuotas de 12 del celular, 1,5 millones', [{ monto: 1500000, cuotas: 12, pagadas: 6 }]],
+  ['llevo 3 pagadas de 12 del aire acondicionado 1.200.000', [{ monto: 1200000, cuotas: 12, pagadas: 3 }]],
+  ['zapatillas 120 mil en 6 cuotas', [{ cuotas: 6, pagadas: 0 }]],                    // compra nueva
+  ['ya pagué 2 mil de pan', [{ monto: 2000, pagadas: 0, tipo: 'gasto' }]],            // "ya pagué 2 mil" es plata, no cuotas
+  ['el celular de 1,5 millones en 12, voy por la 7, y las zapatillas de 300 mil en 6, voy por la 2',
+    [{ monto: 1500000, cuotas: 12, pagadas: 6 }, { monto: 300000, cuotas: 6, pagadas: 1 }]],
 ]
 
 let fallas = 0
@@ -198,6 +216,13 @@ for (const caso of CASOS) {
   }))
   if (errores.length) { fallas++; console.log('✗', frase, '\n   ' + errores.join('\n   ')) }
   else console.log('✓', frase)
+}
+// el calendario de una compra que venías pagando: la que sigue cae en el próximo resumen
+{
+  const prox = primeraCuotaMes(hoy, null), plan = planCuotas(12, 6, null, hoy)
+  const ok = plan.primera === mesSuma(prox, -6) && plan.proxima === prox && plan.fecha.slice(0, 7) === mesSuma(prox, -7)
+    && planCuotas(6, 0, null, hoy).primera === prox && planCuotas(12, 40, null, hoy).pagadas === 12
+  total++; if (!ok) { fallas++; console.log('✗ calendario de cuotas', JSON.stringify(plan)) } else console.log('\n✓ calendario: pagadas en sus meses, la 7 en ' + prox)
 }
 console.log(`\n${total - fallas}/${total} bien`)
 process.exit(fallas ? 1 : 0)

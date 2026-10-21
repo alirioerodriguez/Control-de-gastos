@@ -51,6 +51,9 @@ revisá la ficha **después** de "Revisado con IA".
 | B18 | 15.000 en el coto, ah no eso no, fueron 16.500 | 16.500 en Coto |
 | B19 | Tres cosas: 10 mil de nafta, 5 mil de peaje y 8 mil de estacionamiento | 3 movimientos, los 3 en auto/transporte |
 | B20 | gasté 15 mil en el coto con débito | Cuenta del banco (no tarjeta de crédito) |
+| B21 | el celular, un palo y medio en doce con la visa, ya voy por la séptima | 1.500.000 · 12 cuotas · 6 pagadas · Visa |
+| B22 | la play la pago 80 mil por mes, me faltan 4 de 10 | 800.000 · 10 cuotas · 6 pagadas |
+| B23 | tengo el aire en 12 cuotas, pagué la mitad, eran 1.200.000 | 1.200.000 · 12 cuotas · 6 pagadas |
 
 Si la IA falla en uno, anotá la frase exacta y qué salió: con eso se ajusta el prompt.
 
@@ -97,6 +100,18 @@ Marcá cada una en **Chrome Android**, **Safari iPhone** y **la app instalada (P
 - [ ] Compra en cuotas: en Tarjetas aparecen las N cuotas con el monto total dividido.
 - [ ] Compartido: la otra persona lo ve, con el que pagó y el reparto correctos.
 - [ ] "Pagué la tarjeta 300 mil": el primer toque en Guardar avisa y no guarda; el segundo guarda.
+
+### C5b. Compras que ya venías pagando (cuotas viejas)
+- [ ] Carga manual, tarjeta, 12 cuotas: aparecen "El monto es: El total / Cada cuota" y el interruptor "Ya la venía pagando".
+- [ ] Prender el interruptor, poner 6: la nota dice "la 7 entra en el resumen de <mes que viene> y la última en <mes>".
+- [ ] Con "Cada cuota" y 125.000: arriba dice "12 × $125.000 · total $1.500.000"; se guarda una compra de 1.500.000.
+- [ ] Después de guardar, en Tarjetas: la compra muestra 6 de 12 pagadas y 6 que faltan.
+- [ ] El resumen del mes que viene incluye la cuota 7; el de este mes NO pide de nuevo la cuota ya pagada.
+- [ ] Inicio y "Lo que viene" no avisan "falta registrar el resumen" por los meses viejos.
+- [ ] El saldo de las cuentas no cambia al cargar una compra que ya venías pagando.
+- [ ] Por voz: "celular de 1,5 millones en 12 cuotas, voy por la 7" → en la ficha, "Ya pagadas: 6 de 12 · sigue la 7 en …".
+- [ ] Tocar "Ya pagadas" y cambiar a 8: la ficha se actualiza y se guarda con 8.
+- [ ] "Ya pagué 2 mil de pan" es un gasto de 2.000, no cuotas.
 
 ### C6. IA caída o lenta
 - [ ] Sin la clave cargada: todo anda con el intérprete local; la ficha muestra lo que entendió.
