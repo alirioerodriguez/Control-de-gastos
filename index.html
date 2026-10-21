@@ -1743,7 +1743,8 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
       <div class="vozestado" id="voz-estado"></div>
       <div class="inline-err" id="voz-err"></div>
 
-      <div class="lbl-up" style="margin-top:16px">Así lo entendí</div>
+      <div class="lbl-up" style="margin-top:16px" id="voz-lbl">Así lo entendí</div>
+      <div class="chipsrow hidden" id="voz-items" style="margin-top:8px"></div>
       <div class="panel" id="voz-filas" style="margin-top:8px"></div>
       <div class="chipsrow vozatajos" id="voz-atajos" style="margin-top:12px"></div>
     </div>
@@ -2273,7 +2274,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.21-v5.6-orden-libre";
+const APP_VERSION = "2026.10.21-v5.7-varios-y-correcciones";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -6919,8 +6920,8 @@ function vozNuevo(){
   V={texto:"",monto:0,categoria:null,cuenta:(ACCOUNTS[0]||{}).key||null,card:null,cuotas:1,
      fecha:todayISO(),comercio:null,descripcion:null,tipo:"gasto",pair:(PAIRS[0]||{}).id||null,split:null,
      pagador:(user||{}).id||null,conQuien:null,corregido:false,auto:{},
-     manual:{}, iaHecho:null};   /* manual: lo que tocaste a mano · iaHecho: frase que ya leyó la IA */
-  vozFoto=null; vozIA=null;
+     manual:{}, iaHecho:null, _n:0};   /* manual: lo que tocaste a mano · iaHecho: frase que ya leyó la IA */
+  vozFoto=null; vozIA=null; VS=[V]; vozSel=0; VOZ_TIPO_BASE="gasto";
 }
 /* v5.5 · lo que corregís a mano en la ficha no lo vuelve a pisar ni el intérprete ni la IA */
 const VOZ_MANUAL={monto:["monto"],cuotas:["cuotas","tipo"],fecha:["fecha"],comercio:["comercio"],descripcion:["descripcion"],
@@ -6935,13 +6936,13 @@ function vozHoy(){
 const CAP_GUARDADO={gasto:"Gasto guardado", ingreso:"Ingreso guardado", tarjeta:"Compra guardada", ahorro:"Ahorro guardado", compartido:"Gasto compartido guardado"};
 /* v4.9 · ids fijos de lo dictado mientras la hoja esté abierta, y traba de doble toque */
 let vozIds={}, guardandoVoz=false;
-function idVoz(clave){ return (vozIds[clave] ||= nuevoId()); }
+function idVoz(clave){ return (vozIds[(V._n||0)+":"+clave] ||= nuevoId()); }   /* v5.7 · uno por movimiento */
 function openVoz(pre){
   vozNuevo(); vozIds={};
   const ce=$("voz-err"); if(ce) ce.textContent="";
   if($("voz-hoy")) $("voz-hoy").textContent=vozHoy();
   /* v3 · la hoja hereda el tipo que esté eligiendo la calculadora */
-  if(typeof R==="object" && R && R.tipo) V.tipo=R.tipo;
+  if(typeof R==="object" && R && R.tipo){ V.tipo=R.tipo; VOZ_TIPO_BASE=R.tipo; }
   if(pre){ V.texto=pre; interpretarLocal(); setTimeout(()=>reforzarIA(),0); }
   $("voz-ov").classList.remove("hidden");
   renderVoz(); pintarBotonMic();
@@ -6982,7 +6983,8 @@ const VACIAS=new Set(("el la los las un una unos unas de del al a en con por par
  +"tarjeta credito debito efectivo cash cuota cuotas pagos hoy ayer anteayer manana semana mes ano dia dias "
  +"centavos centavo centimos centimo decimal decimales coma punto "
  +"ultimo ultima proximo proxima pasado pasada equivoque perdon corrijo digo realidad mejor dicho "
- +"categoria rubro monto importe comercio descripcion detalle concepto cuenta fecha").split(" "));
+ +"categoria rubro monto importe comercio descripcion detalle concepto cuenta fecha "
+ +"fueron eran tambien ademas aparte despues luego otro otra otros otras comprando mentira error confundi").split(" "));
 
 function normV(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); }
 function esVacia(w){ const n=normV(w).replace(/[^a-z0-9ñ]/g,"");
@@ -7012,17 +7014,22 @@ function buscar(L,re){
 
 /* ================= "no, me equivoqué" =================
    Corta todo lo dicho antes de la corrección.                            */
-const CORRECCION=/\b(no,?\s*(?:me\s+)?equivoqu[ei]|no\s+era\s+asi|mejor\s+dicho|en\s+realidad|perdon|corrijo|correccion|no,?\s*digo|no,?\s*(?:son|fue|fueron|era|es|eran)\b|borra\s+eso|olvidat?e?\s+de\s+eso|empiezo\s+de\s+nuevo|a\s+ver\s+no)\b/g;
+const CORRECCION=/\b(no,?\s*(?:me\s+)?equivoqu[ei]|me\s+confundi|me\s+confundo|no\s+era\s+asi|mejor\s+dicho|en\s+realidad|perdon|corrijo|correccion|mentira|error|no,?\s*digo|no,?\s*(?:son|fue|fueron|era|es|eran)\b|(?:ah|uy|ay|eh)\s*,?\s*no\b(?:\s*,?\s*eso\s+no)?|eso\s+no|no\s*,?\s*no\b|borra\s+eso|olvidat?e?\s+de\s+eso|empiezo\s+de\s+nuevo|a\s+ver\s+no|no\s*,\s*(?=\$?\d)|no\s*,\s*(?=(?:en|con|el|la|de|del|al|fue|fueron|era)\b))/g;
 function hayNumero(s){ return /\d/.test(s) || s.split(/[^a-zñ]+/).some(w=>NUM_PAL[w]!==undefined); }
-function recortarCorreccion(L){
+/* v5.7 · "15.000 en el Coto, ah no, eso no, fueron 16.500": parte la frase en lo de ANTES
+   y lo de DESPUÉS de la última corrección. Lo de después pisa sólo lo que vuelve a decir;
+   el resto (el Coto, la fecha, la tarjeta) se queda con lo de antes. */
+function cortarCorreccion(txt){
+  const L=nuevoLienzo(txt);
   CORRECCION.lastIndex=0;
-  let m, corte=-1;
-  while((m=CORRECCION.exec(L.libre))) corte=m.index+m[0].length;
-  if(corte<0) return null;
-  const cola=L.libre.slice(corte);
-  if(!hayNumero(cola)) return null;          // "no, no me equivoqué" → no era una corrección
-  tachar(L,0,corte);
-  return corte;
+  let m, corte=null;
+  while((m=CORRECCION.exec(L.libre))){ corte={ini:m.index, fin:m.index+m[0].length}; if(!m[0].length) CORRECCION.lastIndex++; }
+  if(!corte) return null;
+  const cola=L.libre.slice(corte.fin);
+  if(!cola.trim()) return null;
+  /* "no, no me equivoqué" no es una corrección: tiene que venir algo nuevo detrás */
+  if(!hayNumero(cola) && !/[a-zñ]{3,}/.test(cola.replace(/\b(eso|no|si|bueno|este|digo)\b/g,""))) return null;
+  return {antes:txt.slice(0,corte.ini), despues:txt.slice(corte.fin)};
 }
 
 /* ================= NÚMEROS HABLADOS =================
@@ -7314,6 +7321,8 @@ function leerComercio(L){
 
 /* ================= CATEGORÍA ================= */
 const CAT_PISTAS=[
+  /* lo más específico primero: "cigarros en el kiosco" es Cigarrillos, no Supermercado */
+  {re:/\b(cigarrillos?|cigarros?|puchos?|atados?|tabaco|marlboro|philip morris|vapeador)\b/, cats:["Cigarrillos","Tabaco","Kiosco","Vicios","Gustos"]},
   {re:/\b(luz|electricidad|electrico|electrica|energia|edenor|edesur|edelap|epec|epe|edea)\b/,
    cats:["Luz","Electricidad","Energía","Servicios","Casa","Hogar"]},
   {re:/\b(gas|metrogas|camuzzi|naturgy|garrafa)\b/, cats:["Gas","Servicios","Casa","Hogar"]},
@@ -7408,8 +7417,8 @@ function leerDescripcion(L){
     return ws.join(" ");
   }).filter(s=>s && s.split(/\s+/).some(w=>!esVacia(w)));
   if(!limpios.length) return null;
-  const mejor=limpios.sort((a,b)=>b.length-a.length)[0];
-  return mejor.charAt(0).toUpperCase()+mejor.slice(1);
+  const mejor=limpios.sort((a,b)=>b.length-a.length)[0].replace(/[\s,.;:]+$/,"");
+  return mejor ? mejor.charAt(0).toUpperCase()+mejor.slice(1) : null;
 }
 
 /* ================= ETIQUETAS =================
@@ -7448,50 +7457,117 @@ function textoLibre(L,ini,fin,esNombre){
 }
 
 /* ================= EL DIRECTOR DE ORQUESTA ================= */
+/* lee UN movimiento y devuelve lo que encontró, sin tocar el borrador */
+function leerFrase(txt){
+  const L=nuevoLienzo(txt), r={auto:{}};
+  const util=L.libre;
+  r.tipo=leerTipo(util);
+  const cu=leerCuotas(L);   if(cu){ r.cuotas=cu.valor; r.auto.cuotas=cu.texto; }
+  const fe=leerFecha(L);    if(fe){ r.fecha=fe.valor; r.auto.fecha=fe.texto; }
+  const mo=leerMonto(L);    if(mo){ r.monto=mo.valor; r.auto.monto=mo.texto; }
+  const ta=leerTarjeta(L);  if(ta){ r.card=ta.valor; r.auto.card=ta.texto; }
+  const cc=leerCuenta(L);   if(cc && !ta){ r.cuenta=cc.valor; r.auto.cuenta=cc.texto; }
+  const pe=leerPersona(L);  if(pe){ r.pair=pe.pair; r.auto.persona=normV(pe.nombre); r.conQuien=pe.nombre; }
+  const et=leerEtiquetas(L);                          // v5.6 · "descripción: …", "comercio: …", en cualquier orden
+  const co=et.comercio ? {valor:et.comercio, texto:null} : leerComercio(L);
+  if(co){ r.comercio=co.valor; r.auto.comercio=co.texto; }
+  const sp=leerSplit(util);
+  if(sp){ r.split=sp;
+    const mm=buscar(L,/\b(a medias|mitad y mitad|entre los dos|lo debe entero|me lo debe)(\s+con)?\b/);
+    if(mm) tachar(L,mm.index,mm[0].length); }
+  const ca=leerCategoria(L, r.comercio, util);
+  if(ca){ r.categoria=ca.valor; r.auto.categoria=ca.texto; r.catAuto=!ca.explicita; }
+  r.descripcion=(et.descRango && textoLibre(L,et.descRango[0],et.descRango[1])) || leerDescripcion(L) || undefined;
+  if(r.tipo==="gasto") delete r.tipo;                 // "gasto" es lo que queda si no dijo otra cosa
+  return r;
+}
+/* con correcciones: lo de después pisa SÓLO lo que se volvió a decir */
+function leerConCorrecciones(txt){
+  const c=cortarCorreccion(txt);
+  if(!c) return leerFrase(txt);
+  const antes=leerConCorrecciones(c.antes), desp=leerFrase(c.despues);
+  const r={...antes, auto:{...antes.auto}};
+  Object.keys(desp).forEach(k=>{ if(k!=="auto") r[k]=desp[k]; });
+  Object.assign(r.auto, desp.auto);
+  if(desp.categoria===undefined && desp.comercio!==undefined && antes.comercio!==desp.comercio && r.catAuto){
+    const ca=leerCategoria(nuevoLienzo(c.despues), desp.comercio, normV(c.despues)); // cambió el comercio: su categoría
+    if(ca){ r.categoria=ca.valor; r.catAuto=!ca.explicita; }
+  }
+  r.corregido=true;
+  return r;
+}
+
+/* v5.7 · VARIOS GASTOS EN UNA FRASE
+   "15.000 en el kiosco con Mercado Pago, también otros 12.000 en el chino" son dos
+   movimientos. Se corta donde dice "también", "además", "aparte", "después", "y otros",
+   "y 12.000"…; un pedazo sin monto propio no es otro gasto: vuelve a pegarse al anterior. */
+const SEPARA_MOV=/\b(?:y\s+)?(?:tambien|ademas|aparte|despues|luego)\b|\by\s+otr[oa]s?\b|\botr[oa]s?\s+(?=\$?\s?\d)|\by\s+(?=\$\s?\d|\d)/g;
+function quitarSeparador(t){
+  let prev; do{ prev=t;
+    t=t.replace(/^\s*,?\s*(?:y\s+)?(?:tambi[eé]n|adem[aá]s|aparte|despu[eé]s|luego)\b\s*,?|^\s*(?:y\s+)?otr[oa]s?\b\s*|^\s*y\s+/i,"");
+  } while(t!==prev);
+  return t;
+}
+function partirMovimientos(txt){
+  const L=nuevoLienzo(txt);
+  const cortes=[]; let m;
+  SEPARA_MOV.lastIndex=0;
+  while((m=SEPARA_MOV.exec(L.libre))){ if(m.index>0) cortes.push(m.index); if(!m[0].length) SEPARA_MOV.lastIndex++; }
+  const trozos=[]; let desde=0;
+  cortes.concat([txt.length]).forEach(c=>{ trozos.push(txt.slice(desde,c)); desde=c; });
+  const out=[];
+  const montoDe=t=>leerConCorrecciones(t).monto||0;
+  trozos.forEach(t=>{
+    const nuevo=quitarSeparador(t);
+    if(out.length && montoDe(nuevo)>=10 && montoDe(out[out.length-1])>0) out.push(nuevo);
+    else if(out.length) out[out.length-1]+=t;           // sin monto propio: es parte del anterior
+    else out.push(t);
+  });
+  return out.map(t=>t.trim()).filter(Boolean);
+}
+
+/* un borrador vacío, que hereda lo que ya tenía el de la misma posición */
+let VS=[], vozSel=0, VOZ_TIPO_BASE="gasto";
+function vozItem(prev, n){
+  return {texto:V?V.texto:"", monto:0, categoria:null, catAuto:false, cuenta:(ACCOUNTS[0]||{}).key||null, card:null, cuotas:1,
+    fecha:todayISO(), comercio:null, descripcion:null, tipo:VOZ_TIPO_BASE, pair:(PAIRS[0]||{}).id||null, split:null,
+    pagador:(prev&&prev.pagador)||(user||{}).id||null, conQuien:null, corregido:false, auto:{},
+    manual:(prev&&prev.manual)||{}, iaHecho:null, _n:n};
+}
+/* las reglas que valen para cualquier lectura, local o de la IA */
+function vozDerivar(it){
+  if(it.tipo==="gasto" && (it.card || it.cuotas>1)) it.tipo="tarjeta";
+  if(it.tipo==="tarjeta" && !it.card){ if(CARDS.length) it.card=CARDS[0].id; else it.tipo="gasto"; }
+  if(it.tipo!=="ingreso" && it.tipo!=="ahorro" && (it.split || it.conQuien)) it.tipo="compartido";
+  if(it.tipo==="compartido"){
+    if(!PAIRS.length) it.tipo="gasto";
+    else { if(!PAIRS.some(p=>p.id===it.pair)) it.pair=PAIRS[0].id;
+      it.conQuien=it.conQuien||otherProf(otherId(PAIRS.find(p=>p.id===it.pair))).apodo; it.split=it.split||"ambos"; }
+  }
+}
 function interpretarLocal(){
   /* v5.5 · si la IA (o la foto) ya leyó ESTA misma frase, su lectura manda: antes un simple
      toque fuera del texto volvía a correr el intérprete y borraba lo que había puesto la IA */
   if(V.iaHecho!==null && V.iaHecho===V.texto) return V;
   const txt=V.texto||"";
-  const L=nuevoLienzo(txt);
-  V.auto={};
-  V.corregido = recortarCorreccion(L) !== null;       // ¿dijo "me equivoqué"?
-  const util = L.libre;                               // sólo lo que vale
-  V.tipo=leerTipo(util);
-
-  const cu=leerCuotas(L);   if(cu){ V.cuotas=cu.valor; V.auto.cuotas=cu.texto; } else V.cuotas=1;
-  const fe=leerFecha(L);    if(fe){ V.fecha=fe.valor; V.auto.fecha=fe.texto; } else V.fecha=todayISO();
-  const mo=leerMonto(L);    if(mo){ V.monto=mo.valor; V.auto.monto=mo.texto; } else V.monto=0;
-  const ta=leerTarjeta(L);  if(ta){ V.card=ta.valor; V.auto.card=ta.texto; }
-  const cc=leerCuenta(L);   if(cc && !ta){ V.cuenta=cc.valor; V.auto.cuenta=cc.texto; }
-  const pe=leerPersona(L);  if(pe){ V.pair=pe.pair; V.auto.persona=normV(pe.nombre); V.conQuien=pe.nombre; }
-                            else V.conQuien=null;
-  const et=leerEtiquetas(L);                          // v5.6 · "descripción: …", "comercio: …", en cualquier orden
-  const co=et.comercio ? {valor:et.comercio, texto:null} : leerComercio(L);
-  if(co){ V.comercio=co.valor; V.auto.comercio=co.texto; } else V.comercio=null;
-
-  if(ta || (cu && cu.valor>1)){ if(V.tipo==="gasto") V.tipo="tarjeta"; }
-  if(V.tipo==="tarjeta" && !V.card && CARDS.length) V.card=CARDS[0].id;
-  if(pe && V.tipo!=="ingreso" && V.tipo!=="ahorro") V.tipo="compartido";
-  const sp=leerSplit(util);
-  if(sp || V.tipo==="compartido"){
-    V.split=sp||V.split||"ambos"; if(sp) V.tipo="compartido";
-    const mm=buscar(L,/\b(a medias|mitad y mitad|entre los dos|lo debe entero|me lo debe)(\s+con)?\b/);
-    if(mm) tachar(L,mm.index,mm[0].length);
-  }
-
-  const ca=leerCategoria(L, V.comercio, util);
-  if(ca){ V.categoria=ca.valor; V.auto.categoria=ca.texto; V.catAuto=!ca.explicita; }
-  /* v5.5 · antes, si no reconocía nada, ponía la última categoría que usaste: así salían
-     categorías equivocadas sin aviso. Mejor "Sin categoría", que se ve y se toca. */
-  else { V.categoria=null; V.catAuto=false; }
-
-  V.descripcion=(et.descRango && textoLibre(L,et.descRango[0],et.descRango[1])) || leerDescripcion(L);
-  vozRespetarManual();
+  const prev=VS.length?VS:[V];
+  const segs=partirMovimientos(txt);
+  VS=(segs.length?segs:[""]).map((seg,n)=>{
+    const it=vozItem(prev[n], n);
+    const r=seg ? leerConCorrecciones(seg) : {auto:{}};
+    Object.keys(r).forEach(k=>{ if(r[k]!==undefined) it[k]=r[k]; });
+    vozDerivar(it);
+    /* v5.5 · antes, si no reconocía la categoría, ponía la última que usaste: así salían
+       categorías equivocadas sin aviso. Mejor "Sin categoría", que se ve y se toca. */
+    Object.keys(it.manual).forEach(k=>{ it[k]=it.manual[k]; });
+    return it;
+  });
+  vozSel=Math.min(vozSel, VS.length-1);
+  V=VS[vozSel];
   return V;
 }
 
-function vozCompleto(){ return !!(V && V.monto>0); }
+function vozCompleto(){ return !!(VS.length ? VS.every(x=>x.monto>0) : (V && V.monto>0)); }
 
 /* ---------------- Gemini ----------------
    v5.5 · LA IA PASA A SER LA QUE DECIDE
@@ -7524,6 +7600,9 @@ function iaContexto(){
 /* esquema de respuesta: el modelo no puede inventar categorías, cuentas ni tarjetas */
 function iaEnum(lista){ return lista.length ? {enum:lista} : {}; }
 function esquemaFrase(cx){
+  return {type:"OBJECT", properties:{movimientos:{type:"ARRAY", items:esquemaMov(cx)}}, required:["movimientos"]};
+}
+function esquemaMov(cx){
   return {type:"OBJECT", properties:{
     tipo:{type:"STRING", enum:["gasto","ingreso","tarjeta","ahorro","compartido"]},
     monto:{type:"NUMBER"},
@@ -7569,6 +7648,8 @@ DESCRIPCIÓN: 2 a 6 palabras, en español, que digan QUÉ se pagó ("Compra del 
 CUENTA: la "key" de la cuenta sólo si la nombra (o dice "efectivo" y hay una cuenta de efectivo). Si no, null.
 TARJETA: el "id" si nombra una tarjeta (por alias, banco o marca). Si dice "con tarjeta" o "en cuotas" sin decir cuál, null.
 CUOTAS: 1 salvo que diga otra cosa.
+VARIOS MOVIMIENTOS: si en la misma frase cuenta más de un gasto o ingreso distinto ("15.000 en el kiosco, también otros 12.000 en el chino"), devolvé uno por cada uno, cada uno con su monto, su categoría, su comercio y su descripción. Lo que dice una sola vez y vale para todos (la fecha, "con Mercado Pago" dicho al principio) sólo se repite si queda claro que es para todos; si no, va en el que corresponde. Un mismo gasto contado con detalle ("pan y leche, 3000") es UNO solo.
+CORRECCIONES: "ah no, eso no, fueron 16.500" cambia sólo lo que vuelve a decir (acá el monto); el resto (comercio, fecha, cuenta) queda como lo dijo antes.
 SPLIT: "ambos" si es a medias / mitad y mitad; "solo_otro" si la otra persona lo debe entero; null si no aplica.
 
 Categorías: ${JSON.stringify(cx.cats)}
@@ -7576,11 +7657,13 @@ Cuentas: ${JSON.stringify(cx.ctas)}
 Tarjetas: ${JSON.stringify(cx.tars)}
 HISTORIAL (cómo categorizó esta persona sus últimos movimientos): ${JSON.stringify(cx.hist)}
 
-Ejemplos (con otras listas):
+Respondé {"movimientos":[ ... ]}. Ejemplos (con otras listas; cada flecha muestra los movimientos):
 "gasté 12.300 en el chino ayer" → {"tipo":"gasto","monto":12300,"categoria":"Supermercado","comercio":null,"descripcion":"Compras en el almacén","fecha":"<ayer>","cuotas":1}
 "cargué nafta en la ypf, 40 lucas con la visa" → {"tipo":"tarjeta","monto":40000,"categoria":"Auto","comercio":"YPF","descripcion":"Nafta","card":"<id de la Visa>","cuotas":1}
 "3 medialunas y un café 4500" → {"tipo":"gasto","monto":4500,"categoria":"Salidas","comercio":null,"descripcion":"Café con medialunas","cuotas":1}
 "categoría salidas, 22 mil, cena en La Parolaccia" → {"tipo":"gasto","monto":22000,"categoria":"Salidas","comercio":"La Parolaccia","descripcion":"Cena","cuotas":1}
+"gasté 15.000 en el coto, ah no eso no, fueron 16.500" → {"tipo":"gasto","monto":16500,"categoria":"Supermercado","comercio":"Coto","descripcion":"Compra del súper","cuotas":1}
+"15.000 con mercado pago en el kiosco comprando cigarros, también otros 12.000 en el chino comprando pasta y arroz" → [{"tipo":"gasto","monto":15000,"categoria":"Cigarrillos","cuenta":"<key de Mercado Pago>","comercio":null,"descripcion":"Cigarrillos","cuotas":1}, {"tipo":"gasto","monto":12000,"categoria":"Supermercado","comercio":null,"descripcion":"Pasta y arroz","cuotas":1}]
 "me pagaron el sueldo, un millón doscientos mil" → {"tipo":"ingreso","monto":1200000,"categoria":"Sueldo","comercio":null,"descripcion":"Sueldo","cuotas":1}
 
 Frase: ${JSON.stringify(texto)}`;
@@ -7591,8 +7674,16 @@ Frase: ${JSON.stringify(texto)}`;
     d=JSON.parse(iaTexto(j));
   }catch(e){ return {ok:false,motivo:e.message}; }
   if(V.texto!==texto) return {ok:false,motivo:"viejo"};     // mientras tanto seguiste escribiendo
-  iaAplicar(d, cx);
-  V.iaHecho=texto;
+  const lista=(d && Array.isArray(d.movimientos) ? d.movimientos : [d]).filter(x=>x && Number(x.monto)>0).slice(0,10);
+  if(!lista.length) return {ok:false,motivo:"no encontré ningún monto"};
+  const prev=VS.length?VS:[V];
+  VS=lista.map((x,n)=>{
+    V=vozItem(prev[n], n); V.texto=texto;
+    iaAplicar(x, cx);
+    V.auto=(prev[n]&&prev[n].auto)||{}; V.iaHecho=texto;
+    return V;
+  });
+  vozSel=Math.min(vozSel, VS.length-1); V=VS[vozSel];
   return {ok:true};
 }
 /* vuelca la lectura de la IA en el borrador, validando todo */
@@ -7682,7 +7773,7 @@ HISTORIAL (cómo categorizó esta persona sus últimos movimientos): ${JSON.stri
     iaAplicar({tipo: d.card ? "tarjeta" : (V.tipo||"gasto"), monto:d.monto, categoria:d.categoria, card:d.card, cuotas:d.cuotas,
       fecha:d.fecha, comercio:d.comercio, descripcion:d.descripcion}, cx);
     V.texto=[fmt(V.monto,CUR), V.comercio?("en "+V.comercio):"", V.descripcion?("· "+V.descripcion):""].filter(Boolean).join(" ");
-    V.iaHecho=V.texto; V.auto={};
+    V.iaHecho=V.texto; V.auto={}; V._n=0; VS=[V]; vozSel=0;
     $("voz-estado").textContent="Leí el ticket. Revisá que esté bien.";
   }catch(e){ $("voz-estado").textContent="No pude leer el ticket: "+e.message; }
   renderVoz();
@@ -7771,8 +7862,7 @@ function pintarDictado(){
   if(t){ t.innerHTML = V.texto ? vozResaltado() : ""; ponerCaretAlFinal(t); }
   $("voz-vacio").classList.toggle("hidden", !!(V.texto||"").trim());
   renderVozFilas();
-  const TIT={gasto:"Guardar gasto",ingreso:"Guardar ingreso",tarjeta:"Guardar compra",ahorro:"Guardar ahorro",compartido:"Guardar compartido"};
-  $("voz-guardar").textContent=TIT[V.tipo]||"Guardar gasto";
+  $("voz-guardar").textContent=vozTituloGuardar();
   $("voz").setAttribute("data-t",V.tipo);
 }
 /* v5.5 · la IA lee SIEMPRE la frase al terminar, no sólo cuando faltaba el monto.
@@ -7840,9 +7930,25 @@ function ponerCaret(el,pos){
   rec(el);
   if(!listo) ponerCaretAlFinal(el);
 }
+function vozTituloGuardar(){
+  if(VS.length>1) return `Guardar ${VS.length} movimientos`;
+  return {gasto:"Guardar gasto",ingreso:"Guardar ingreso",tarjeta:"Guardar compra",ahorro:"Guardar ahorro",compartido:"Guardar compartido"}[V.tipo]||"Guardar gasto";
+}
+/* v5.7 · con varios movimientos, una fila de botones para ver y corregir cada uno */
+function renderVozItems(){
+  const box=$("voz-items"); if(!box) return;
+  const lbl=$("voz-lbl"); if(lbl) lbl.textContent = VS.length>1 ? `Así lo entendí · ${VS.length} movimientos` : "Así lo entendí";
+  if(VS.length<2){ box.innerHTML=""; box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  box.innerHTML=VS.map((x,i)=>`<button class="chip ${i===vozSel?"on":""}" data-vi="${i}">${i+1}. ${
+    x.monto>0?esc(fmt(x.monto,CUR)):"sin monto"}${(x.comercio||x.categoria||x.descripcion)?" · "+esc(x.comercio||x.categoria||x.descripcion):""}</button>`).join("");
+  box.querySelectorAll("[data-vi]").forEach(b=>{ b.onmousedown=e=>e.preventDefault();
+    b.onclick=()=>{ vozSel=Number(b.dataset.vi); V=VS[vozSel]; renderVoz(); }; });
+}
 function vozResaltado(){
   let h=esc(V.texto||"");
-  const marcas=[[V.auto.monto,"m"],[V.auto.comercio,"c"],[V.auto.card,"t"],[V.auto.cuenta,"t"],[V.auto.cuotas,"q"],[V.auto.fecha,"f"]];
+  const marcas=[]; (VS.length?VS:[V]).forEach(x=>{ const a=x.auto||{};
+    marcas.push([a.monto,"m"],[a.comercio,"c"],[a.card,"t"],[a.cuenta,"t"],[a.cuotas,"q"],[a.fecha,"f"]); });
   marcas.forEach(([txt,cls])=>{ if(!txt) return;
     const re=new RegExp("("+String(txt).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","i");
     h=h.replace(re,`<em class="vz-${cls}">$1</em>`); });
@@ -7860,8 +7966,7 @@ function renderVoz(){
   $("voz-vacio").classList.toggle("hidden", !!(V.texto||"").trim());
 
   const cur = V.tipo==="tarjeta" ? (monedaTarjeta(cardById(V.card))||CUR) : (CTA_MON[V.cuenta]||CUR);
-  const TIT={gasto:"Guardar gasto",ingreso:"Guardar ingreso",tarjeta:"Guardar compra",ahorro:"Guardar ahorro",compartido:"Guardar compartido"};
-  $("voz-guardar").textContent=TIT[V.tipo]||"Guardar gasto";
+  $("voz-guardar").textContent=vozTituloGuardar();
   $("voz").setAttribute("data-t",V.tipo);
 
   renderVozFilas();
@@ -7893,6 +7998,7 @@ function renderVozFilas(){
   h+=fila("Comercio",V.comercio?esc(V.comercio):`<span style="color:var(--ink-3)">—</span>`,"comercio");
   h+=fila("Descripción",V.descripcion?esc(V.descripcion):`<span style="color:var(--ink-3)">—</span>`,"descripcion");
   $("voz-filas").innerHTML=h;
+  renderVozItems();
   $("voz-filas").querySelectorAll("[data-vf]").forEach(b=>{
     b.onmousedown=e=>e.preventDefault();          // que el clic no se pierda al desenfocar el texto
     b.onclick=()=>vozEditar(b.dataset.vf); });
@@ -7906,8 +8012,7 @@ function renderVozFilas(){
   $("voz-atajos").innerHTML=AT.map((a,i)=>`<button class="chip" data-va="${i}">${esc(a.t)}</button>`).join("");
   $("voz-atajos").querySelectorAll("[data-va]").forEach(b=>b.onmousedown=e=>e.preventDefault());
   $("voz-atajos").querySelectorAll("[data-va]").forEach(b=>b.onclick=()=>vozAgregar(AT[Number(b.dataset.va)].add));
-  const TIT2={gasto:"Guardar gasto",ingreso:"Guardar ingreso",tarjeta:"Guardar compra",ahorro:"Guardar ahorro",compartido:"Guardar compartido"};
-  $("voz-guardar").textContent=TIT2[V.tipo]||"Guardar gasto";
+  $("voz-guardar").textContent=vozTituloGuardar();
   $("voz").setAttribute("data-t",V.tipo);
   $("voz-guardar").disabled=!vozCompleto();
   $("voz-ia").classList.toggle("hidden", !iaActiva());
@@ -7968,20 +8073,29 @@ async function vozGuardar(){
   /* v5.5 · si la IA todavía está leyendo la frase, se la espera (hasta 8 s). Si cambió
      algo, no se guarda a ciegas: se muestra para que lo revises y vuelvas a tocar Guardar. */
   if(vozIA && vozIA.texto===V.texto){
-    const antes=JSON.stringify([V.monto,V.tipo,V.categoria,V.cuenta,V.card,V.cuotas,V.fecha,V.comercio,V.descripcion,V.pair]);
+    const foto=()=>JSON.stringify(VS.map(x=>[x.monto,x.tipo,x.categoria,x.cuenta,x.card,x.cuotas,x.fecha,x.comercio,x.descripcion,x.pair]));
+    const antes=foto();
     guardandoVoz=true; botonOcupado($("voz-guardar"),true);
     try{ await Promise.race([vozIA.p, new Promise(r=>setTimeout(r,8000))]); }
     finally{ guardandoVoz=false; botonOcupado($("voz-guardar"),false); }
-    if(JSON.stringify([V.monto,V.tipo,V.categoria,V.cuenta,V.card,V.cuotas,V.fecha,V.comercio,V.descripcion,V.pair])!==antes){
+    if(foto()!==antes){
       renderVoz(); $("voz-estado").textContent="La IA ajustó algunos datos. Revisalos y tocá Guardar."; return;
     }
   }
-  if(!vozCompleto()){ marcarMal(null,"Todavía no sé cuánto fue. Escribilo o decilo, por ejemplo: 12.300 en el super.","voz-err"); try{ $("voz-texto").focus(); }catch(e){} return; }
+  if(!vozCompleto()){
+    const falta=VS.findIndex(x=>!(x.monto>0));
+    if(VS.length>1 && falta>=0){ vozSel=falta; V=VS[falta]; renderVoz(); }
+    marcarMal(null, VS.length>1 ? `Al movimiento ${falta+1} le falta el monto. Tocá Monto para ponerlo.`
+      : "Todavía no sé cuánto fue. Escribilo o decilo, por ejemplo: 12.300 en el super.","voz-err"); try{ $("voz-texto").focus(); }catch(e){} return; }
+  if(VS.some(x=>x.tipo==="compartido") && !PAIRS.length){ toast("Todavía no compartís con nadie",{sub:"Andá a Más → Compartido y vinculá a alguien primero.",tipo:"err"}); return; }
   guardandoVoz=true;
   botonOcupado($("voz-guardar"),true);
-  const desc=(V.descripcion||V.comercio||V.categoria||"").toString();
   const _creados=[];   /* v3.9 · Deshacer también para lo dictado */
+  const _todos=VS.slice();
   try{
+    /* v5.7 · se guardan todos los movimientos de la frase; si uno falla, se deshacen todos */
+    for(const _it of _todos){ V=_it;
+    const desc=(V.descripcion||V.comercio||V.categoria||"").toString();
     if(V.tipo==="tarjeta"){
       const card=cardById(V.card);
       const n=Math.min(60,Math.max(1,V.cuotas));
@@ -8001,7 +8115,6 @@ async function vozGuardar(){
       if(error) throw error;
       if(_se) _creados.push({t:"savings_entries",id:_se.id});
     } else if(V.tipo==="compartido"){
-      if(!PAIRS.length){ toast("Todavía no compartís con nadie",{sub:"Andá a Más → Compartido y vinculá a alguien primero.",tipo:"err"}); return; }
       const {data:_sh,error}=await insertarUna("shared_txns",{id:idVoz("compartido"),pair_id:V.pair,fecha:V.fecha,titulo:desc||"Gasto compartido",
         monto:V.monto,pagado_por:V.pagador||user.id,dividido:V.split||"ambos",categoria:V.categoria,created_by:user.id},"id");
       if(error) throw error;
@@ -8012,8 +8125,12 @@ async function vozGuardar(){
       if(error) throw error;
       if(_tx){ _creados.push({t:"transactions",id:_tx.id}); marcarReciente(_tx.id); }
     }
+    }
+    V=_todos[0];
     if(V.fecha.slice(0,7)!==VMONTH) VMONTH=V.fecha.slice(0,7);
-    const _resumen=`${fmt(V.monto, V.moneda||CUR)}${V.categoria?" en "+V.categoria:""}`;
+    const _resumen = _todos.length>1
+      ? _todos.map(x=>`${fmt(x.monto,CUR)}${x.categoria?" en "+x.categoria:""}`).join(" · ")
+      : `${fmt(V.monto, V.moneda||CUR)}${V.categoria?" en "+V.categoria:""}`;
     /* v3 · un solo paso: se cierra la hoja y también la calculadora que quedó debajo */
     cerrarVoz();
     const _volver = (V.tipo==="ahorro") ? (activeGoalId?"meta":"metas")
@@ -8022,9 +8139,10 @@ async function vozGuardar(){
     if(_volver==="metas") renderMetas();
     if(_volver==="meta") renderMeta();
     if(_volver==="movs") renderMovs();
-    avisarGuardadoConDeshacer(CAP_GUARDADO[V.tipo]||"Gasto guardado", _resumen, _creados);
+    avisarGuardadoConDeshacer(_todos.length>1 ? `${_todos.length} movimientos guardados` : (CAP_GUARDADO[V.tipo]||"Gasto guardado"), _resumen, _creados);
   }catch(e){
     if(_creados.length) await deshacerCreados(_creados).catch(()=>{});
+    vozSel=Math.max(0,_todos.indexOf(V)); renderVoz();   /* queda a la vista el que falló */
     avisarError(e,"No se pudo guardar");
   }
   finally{ guardandoVoz=false; botonOcupado($("voz-guardar"),false); }

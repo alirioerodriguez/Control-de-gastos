@@ -1,6 +1,9 @@
 // Función de Supabase (proyecto de Mis Cuentas): la IA de "Contame el gasto" y de la foto del ticket.
 // La key de Gemini vive acá como secreto (GEMINI_API_KEY) y nunca llega al navegador.
-// Se publica con verificación de JWT (la de siempre): sólo la puede usar alguien con sesión iniciada.
+// Se publica con verificación de JWT y además exige una sesión de usuario real: la anon key está
+// en el HTML, así que sin este control cualquiera podría gastar la cuota de Gemini.
+import { createClient } from 'jsr:@supabase/supabase-js@2'
+
 // Pedidos:  {ping:true}            → {configurado:boolean}
 //           {modelo, body}         → la respuesta de generateContent tal cual
 const CORS = {
@@ -29,6 +32,11 @@ Deno.serve(async (req) => {
   }
   if (cuerpo.ping) return json({ configurado: !!key })
   if (!key) return json({ error: 'Falta el secreto GEMINI_API_KEY.' }, 503)
+
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
+  const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!)
+  const { data: quien } = await db.auth.getUser(token)
+  if (!quien?.user) return json({ error: 'Iniciá sesión para usar la IA.' }, 401)
   if (!cuerpo.modelo || !MODELO_OK.test(cuerpo.modelo) || !cuerpo.body) return json({ error: 'Falta el modelo o el pedido.' }, 400)
 
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cuerpo.modelo}:generateContent`, {
