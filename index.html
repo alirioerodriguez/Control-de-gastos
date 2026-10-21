@@ -2273,7 +2273,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.21-v5.5-ia-voz-tickets";
+const APP_VERSION = "2026.10.21-v5.6-orden-libre";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -5645,6 +5645,7 @@ function subAsistente(){
     <p class="hint">Tocá el micrófono en el + y contale el gasto como se lo contarías a alguien:
       <b>"42.300 en Coto con Visa en 3 cuotas"</b>. Mientras hablás ves una lectura rápida; cuando terminás,
       la IA lee la frase entera y completa monto, categoría, descripción, comercio, cuenta, tarjeta, cuotas y fecha.
+      El orden no importa: <b>"comida, 5000, ayer"</b> o <b>"monto 5000, categoría comida, descripción almuerzo"</b>.
       Para elegir la categoría mira cómo categorizaste tus movimientos anteriores.</p>
     <button class="btn w" id="as-probar">Probar ahora</button>
   </div>
@@ -6980,7 +6981,8 @@ const VACIAS=new Set(("el la los las un una unos unas de del al a en con por par
  +"puse saque guarde ahorre transferi mande pagar comprar gastar total cuesta salio vale sale fue "
  +"tarjeta credito debito efectivo cash cuota cuotas pagos hoy ayer anteayer manana semana mes ano dia dias "
  +"centavos centavo centimos centimo decimal decimales coma punto "
- +"ultimo ultima proximo proxima pasado pasada equivoque perdon corrijo digo realidad mejor dicho").split(" "));
+ +"ultimo ultima proximo proxima pasado pasada equivoque perdon corrijo digo realidad mejor dicho "
+ +"categoria rubro monto importe comercio descripcion detalle concepto cuenta fecha").split(" "));
 
 function normV(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); }
 function esVacia(w){ const n=normV(w).replace(/[^a-z0-9ñ]/g,"");
@@ -6988,7 +6990,14 @@ function esVacia(w){ const n=normV(w).replace(/[^a-z0-9ñ]/g,"");
     || MESES_TXT.includes(n) || MESES_ALT[n]!==undefined || DIAS_SEM[n]!==undefined; }
 
 /* ---- el "tachador" ---- */
-function nuevoLienzo(txt){ return {orig:String(txt||""), libre:normV(txt)}; }
+/* v5.6 · "libre" tiene SIEMPRE el mismo largo que el original, letra por letra. Antes,
+   al sacar los acentos ("categoría" → "categoria") se corría todo lo que venía después
+   y el comercio o la descripción salían recortados o corridos. */
+function nuevoLienzo(txt){
+  const orig=String(txt||"");
+  const libre=Array.from(orig).map(ch=>{ const n=normV(ch); return n.length===ch.length ? n : (n+"  ").slice(0,ch.length); }).join("");
+  return {orig, libre};
+}
 function tachar(L,i,len){
   if(i<0||!len||len<0) return;
   L.libre = L.libre.slice(0,i) + " ".repeat(len) + L.libre.slice(i+len);
@@ -7353,13 +7362,14 @@ function catExistente(nombres){
 function leerCategoria(L, comercio, textoEntero){
   let best=null;
   catsAlfa().forEach(c=>{ const i=buscarNombre(L,c.nombre);
-    if(i>=0 && (!best||c.nombre.length>best.valor.length)) best={valor:c.nombre, texto:normV(c.nombre), explicita:true}; });
-  if(best) return best;
+    if(i>=0 && (!best||c.nombre.length>best.valor.length)) best={valor:c.nombre, texto:normV(c.nombre), explicita:true, i}; });
+  /* v5.6 · la categoría que nombraste se tacha: así no vuelve a aparecer como descripción */
+  if(best){ tachar(L,best.i,best.texto.length); return best; }
   const palabras=L.libre.split(/[^a-z0-9ñ]+/).filter(w=>w.length>=4);
   catsAlfa().forEach(c=>{ const n=normV(c.nombre); if(n.length<4) return;
     palabras.forEach(w=>{ if((n.startsWith(w)||w.startsWith(n)) && (!best||w.length>best.texto.length))
       best={valor:c.nombre, texto:w, explicita:true}; }); });
-  if(best) return best;
+  if(best){ const i=buscarNombre(L,best.texto); if(i>=0) tachar(L,i,best.texto.length); return best; }
   if(comercio){
     const prev=TX.concat(PURCH).reverse().find(x=>normV(x.comercio||"")===normV(comercio) && x.categoria);
     if(prev) return {valor:prev.categoria, texto:null, explicita:false};
@@ -7402,6 +7412,41 @@ function leerDescripcion(L){
   return mejor.charAt(0).toUpperCase()+mejor.slice(1);
 }
 
+/* ================= ETIQUETAS =================
+   v5.6 · Los datos van en el orden que quieras, con o sin etiqueta:
+   "categoría comida, monto 5000, descripción almuerzo con Juan, comercio La Parolaccia".
+   Monto, categoría, cuenta, tarjeta y fecha se encuentran estén donde estén; lo que va
+   detrás de "descripción" o "comercio" se toma tal cual, hasta la próxima etiqueta o coma. */
+const ETIQ_DESC="descripcion|detalle|concepto|nota", ETIQ_COM="comercio|negocio|lugar";
+const ETIQ_TODAS="categoria|rubro|monto|importe|cuenta|fecha|tarjeta|cuotas|"+ETIQ_DESC+"|"+ETIQ_COM;
+function leerEtiquetas(L){
+  const out={};
+  [["descripcion",ETIQ_DESC],["comercio",ETIQ_COM]].forEach(([campo,pal])=>{
+    const re=new RegExp("\\b(?:"+pal+")\\b\\s*(?:es\\s+|:\\s*|fue\\s+)?(.+?)(?=\\s*(?:[,.;]|\\b(?:"+ETIQ_TODAS+")\\b|$))");
+    const m=buscar(L,re); if(!m || !m[1].trim()) return;
+    const ini=m.index+m[0].length-m[1].length, fin=ini+m[1].length;
+    tachar(L,m.index,ini-m.index);                       // la etiqueta en sí
+    if(campo==="comercio"){
+      /* "comercio La Parolaccia salidas 5000": sin coma, la categoría que va detrás no es parte del nombre */
+      let f=fin; const cats=catsAlfa().map(c=>normV(c.nombre));
+      for(;;){ const w=L.libre.slice(ini,f).match(/(\S+)\s*$/); if(!w || !cats.includes(w[1])) break; f-=w[0].length; }
+      const t=textoLibre(L,ini,f,true); if(t){ out.comercio=t; tachar(L,ini,f-ini); }
+    }
+    else out.descRango=[ini,fin];                        // se lee al final, con lo que sobre
+  });
+  /* las etiquetas sueltas ("monto", "categoría") se tachan para que no ensucien nada */
+  const g=new RegExp("\\b(?:"+ETIQ_TODAS.replace("|tarjeta|cuotas","")+")\\b\\s*:?","g"); let m;
+  while((m=g.exec(L.libre))) tachar(L,m.index,m[0].length);
+  return out;
+}
+/* el pedazo del original que todavía no se usó para otra cosa, con su mayúscula y su acento */
+function textoLibre(L,ini,fin,esNombre){
+  let t="";
+  for(let k=ini;k<fin;k++) t += (L.libre[k]===" ") ? " " : L.orig[k];
+  t=t.replace(/\s+/g," ").trim().replace(esNombre?/^(de|del|en)\s+/i:/^(el|la|los|las|de|del|en)\s+/i,"").replace(/\s+(de|del|en|con|y)$/i,"").trim();
+  return t ? t.charAt(0).toUpperCase()+t.slice(1) : null;
+}
+
 /* ================= EL DIRECTOR DE ORQUESTA ================= */
 function interpretarLocal(){
   /* v5.5 · si la IA (o la foto) ya leyó ESTA misma frase, su lectura manda: antes un simple
@@ -7421,7 +7466,9 @@ function interpretarLocal(){
   const cc=leerCuenta(L);   if(cc && !ta){ V.cuenta=cc.valor; V.auto.cuenta=cc.texto; }
   const pe=leerPersona(L);  if(pe){ V.pair=pe.pair; V.auto.persona=normV(pe.nombre); V.conQuien=pe.nombre; }
                             else V.conQuien=null;
-  const co=leerComercio(L); if(co){ V.comercio=co.valor; V.auto.comercio=co.texto; } else V.comercio=null;
+  const et=leerEtiquetas(L);                          // v5.6 · "descripción: …", "comercio: …", en cualquier orden
+  const co=et.comercio ? {valor:et.comercio, texto:null} : leerComercio(L);
+  if(co){ V.comercio=co.valor; V.auto.comercio=co.texto; } else V.comercio=null;
 
   if(ta || (cu && cu.valor>1)){ if(V.tipo==="gasto") V.tipo="tarjeta"; }
   if(V.tipo==="tarjeta" && !V.card && CARDS.length) V.card=CARDS[0].id;
@@ -7439,7 +7486,7 @@ function interpretarLocal(){
      categorías equivocadas sin aviso. Mejor "Sin categoría", que se ve y se toca. */
   else { V.categoria=null; V.catAuto=false; }
 
-  V.descripcion=leerDescripcion(L);
+  V.descripcion=(et.descRango && textoLibre(L,et.descRango[0],et.descRango[1])) || leerDescripcion(L);
   vozRespetarManual();
   return V;
 }
@@ -7501,6 +7548,7 @@ async function interpretarIA(texto){
   const cx=iaContexto();
   const hoy=new Date();
   const prompt=`Sos el asistente de carga de una app de finanzas personales de Argentina. La persona dictó (o escribió) un movimiento de plata y vos tenés que pasarlo a datos.
+ORDEN LIBRE: los datos pueden venir en cualquier orden (primero la categoría y después el monto, o al revés, o la fecha primero), con o sin etiquetas ("categoría: comida, monto: 5000, descripción: almuerzo"). Si dice "categoría X", usá la de la lista que corresponda a X. Lo que va detrás de "descripción" o "comercio" es ese dato, tal cual.
 El texto viene de un reconocimiento de voz: puede tener errores ("cotó" = Coto, "y pe efe" = YPF, "mercado pago" bien escrito, números pegados). Corregilos con sentido común.
 
 HOY es ${todayISO()} (${hoy.toLocaleDateString('es-AR',{weekday:'long'})}). Moneda principal: ${CUR}.
@@ -7532,6 +7580,7 @@ Ejemplos (con otras listas):
 "gasté 12.300 en el chino ayer" → {"tipo":"gasto","monto":12300,"categoria":"Supermercado","comercio":null,"descripcion":"Compras en el almacén","fecha":"<ayer>","cuotas":1}
 "cargué nafta en la ypf, 40 lucas con la visa" → {"tipo":"tarjeta","monto":40000,"categoria":"Auto","comercio":"YPF","descripcion":"Nafta","card":"<id de la Visa>","cuotas":1}
 "3 medialunas y un café 4500" → {"tipo":"gasto","monto":4500,"categoria":"Salidas","comercio":null,"descripcion":"Café con medialunas","cuotas":1}
+"categoría salidas, 22 mil, cena en La Parolaccia" → {"tipo":"gasto","monto":22000,"categoria":"Salidas","comercio":"La Parolaccia","descripcion":"Cena","cuotas":1}
 "me pagaron el sueldo, un millón doscientos mil" → {"tipo":"ingreso","monto":1200000,"categoria":"Sueldo","comercio":null,"descripcion":"Sueldo","cuotas":1}
 
 Frase: ${JSON.stringify(texto)}`;
