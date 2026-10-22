@@ -2274,7 +2274,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.22-v6.0-qr-facturas";
+const APP_VERSION = "2026.10.22-v6.1-tiques-dia-a-dia";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -7933,12 +7933,18 @@ function cargarJsQR(){
 }
 /* busca el QR en la foto: primero el lector del celular (Chrome en Android lo trae),
    después jsQR en varios tamaños y por cuartos (el QR suele estar abajo, y chico) */
+/* los tiques de impresora fiscal (súper, restaurantes, chinos) traen otro QR: el "Data Fiscal"
+   del comercio (F.960). Identifica al local, no al tique, y NO trae el monto. Se reconoce para
+   no confundirlo y para avisar bien. */
+const esQRDelComercio=t=>/(?:afip|arca)\.gob?\.ar\/(?!fe\/qr)|afip\.gov\.ar|qr\.(?:afip|arca)|clavefiscal/i.test(String(t||""));
+let qrComercioVisto=false;
 async function buscarQRFactura(file){
+  qrComercioVisto=false;
   let bmp; try{ bmp=await createImageBitmap(file); }catch(e){ return null; }
   try{
     if("BarcodeDetector" in window){
       const det=new BarcodeDetector({formats:["qr_code"]});
-      for(const c of await det.detect(bmp)){ const d=datosQRFactura(c.rawValue); if(d) return d; }
+      for(const c of await det.detect(bmp)){ const d=datosQRFactura(c.rawValue); if(d) return d; if(esQRDelComercio(c.rawValue)) qrComercioVisto=true; }
     }
   }catch(e){}
   let jsQR; try{ jsQR=await cargarJsQR(); }catch(e){ return null; }
@@ -7956,6 +7962,7 @@ async function buscarQRFactura(file){
     const img=ctx.getImageData(0,0,cv.width,cv.height);
     const r=jsQR(img.data,cv.width,cv.height,{inversionAttempts:"attemptBoth"});
     const d=r && datosQRFactura(r.data); if(d) return d;
+    if(r && esQRDelComercio(r.data)) qrComercioVisto=true;
     await new Promise(z=>setTimeout(z,0));   // que la pantalla no se congele
   }
   return null;
@@ -8015,8 +8022,10 @@ async function leerTicket(file){
 
   if(!iaActiva()){
     if(qr) $("voz-estado").textContent=`Leí el QR: ${qrTxt}. Elegí la categoría y guardá.`;
+    else if(qrComercioVisto){ $("voz-estado").textContent="Este tique tiene el QR del comercio, que no trae el monto. Escribí el total (por ejemplo: 48.732 en Coto) y lo completo.";
+      try{ $("voz-texto").focus(); }catch(e){} }
     else { $("voz-estado").textContent="";
-      toast("No encontré el código QR",{sub:"Sacá la foto más de cerca, que se vea el QR de la factura. O escribí el monto: lo interpreto igual.",ms:6000}); }
+      toast("No encontré el código QR",{sub:"Las facturas electrónicas lo tienen abajo. En un tique del súper o del chino escribí el total: lo interpreto igual.",ms:6000}); }
     renderVoz(); return;
   }
   $("voz-estado").textContent = qr ? `Leí el QR (${qrTxt}). Buscando el comercio…` : "Leyendo el ticket…";
@@ -8026,14 +8035,21 @@ async function leerTicket(file){
 ${qr?`El código QR oficial de ARCA ya dice: ${qr.tipoTxt}, TOTAL ${qr.importe} (${qr.moneda}), fecha ${qr.fecha}, CUIT del emisor ${qr.cuit}. Usá ESE total y ESA fecha; tu trabajo es el comercio, la categoría y la descripción.\n`:""}
 QUÉ PUEDE SER (tipo_doc):
 - "factura": factura A, B, C, E o M (dice "FACTURA" y una letra en un recuadro, CUIT, CAE). En la A el IVA va aparte: "Subtotal/Importe neto" + "IVA 21%" (o 10,5%) + "Percepciones" = "TOTAL". Usá el TOTAL, nunca el neto ni el IVA.
-- "ticket": ticket o tique factura de caja o de controlador fiscal (súper, farmacia, estación de servicio). Puede decir "TOTAL", "SU PAGO", "VUELTO": el monto es el TOTAL, no lo que pagó en efectivo ni el vuelto. Si hay propina aparte, sumala.
+- "ticket": tique o tique factura de caja o de impresora fiscal (súper, almacén, chino, farmacia, estación de servicio, restaurante, café). El monto es el TOTAL final:
+  · NO es "SU PAGO", "EFECTIVO", "PAGA CON" ni "VUELTO" (lo que dio y lo que le devolvieron).
+  · Los descuentos ya están restados en el TOTAL ("Comunidad Coto", "Club Día", "Ahorro", "Desc. 2x1"): no los restes de nuevo. "Usted ahorró" NO es el monto.
+  · Farmacia con obra social o prepaga: el monto es lo que pagó la persona ("A PAGAR", "Importe afiliado", "Total a abonar"), no el precio de lista.
+  · Restaurante o bar: el "cubierto" o "servicio de mesa" ya está dentro del total. La "propina sugerida" NO se suma salvo que figure como cobrada en el total.
+  · "IVA contenido" o "Régimen de transparencia fiscal" es informativo: no es el monto.
+  · Un tique de almacén o chino que dice "no válido como factura" igual es un pago: es "ticket", no "presupuesto".
+  · Estación de servicio: el total de la carga, no el precio por litro.
 - "servicio": factura de luz, gas, agua, internet, celular, cable, prepaga, expensas, ABL o patente. Hay varios importes: "Saldo anterior", "Total a pagar", "1er vencimiento", "2do vencimiento" (con recargo). El monto es el "Total a pagar" del 1er vencimiento. Si no dice que esté paga, la fecha es HOY.
-- "mercado_pago": comprobante de pago con Mercado Pago, MODO o una billetera (dice "Pagaste", "Le pagaste a", "Comprobante de pago"). El monto es lo pagado; el comercio, a quién se le pagó.
+- "mercado_pago": comprobante de pago con Mercado Pago, MODO, Ualá, Naranja X o una billetera (dice "Pagaste", "Le pagaste a", "Comprobante de pago"), o el resumen de un pedido de PedidosYa o Rappi. El monto es lo pagado ("Total pagado", con envío y propina si están incluidos); el comercio, a quién se le pagó o el local del pedido.
 - "transferencia": comprobante de transferencia bancaria. Si va a una cuenta propia de la persona, es "transferencia" y no un gasto.
 - "resumen_tarjeta": resumen de la tarjeta de crédito ("Saldo actual", "Pago mínimo"). NO es un gasto nuevo: las compras ya están cargadas.
 - "recibo": recibo de alquiler, de un profesional o de un oficio.
 - "nota_credito": dice "NOTA DE CRÉDITO", "devolución" o "anulación": es plata que vuelve.
-- "presupuesto": presupuesto, remito, pedido o "documento no válido como factura" sin pago: no es un pago.
+- "presupuesto": dice PRESUPUESTO, COTIZACIÓN, PEDIDO o REMITO y no hay nada pagado. Si hay un total cobrado, no es presupuesto.
 - "otro": cualquier otra cosa.
 
 NÚMEROS: formato argentino, el punto separa miles y la coma los decimales ("$ 12.345,67" = 12345.67). Fechas DD/MM/AAAA. Si dice US$, U$S o USD, la moneda es "USD".
