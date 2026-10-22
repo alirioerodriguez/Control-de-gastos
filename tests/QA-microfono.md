@@ -119,6 +119,20 @@ Marcá cada una en **Chrome Android**, **Safari iPhone** y **la app instalada (P
 - [ ] Si la IA falla: aparece "La IA no respondió: quedó lo que entendí yo". No se pierde nada.
 
 ### C7. Foto del ticket
+Prueba automática de la lectura del QR: `node tests/factura.test.js`.
+
+**Facturas electrónicas (tienen el QR de ARCA abajo a la izquierda):** el monto y la fecha salen del QR, exactos, aunque la IA no esté activa.
+- [ ] Factura A (IVA separado): toma el TOTAL, no el neto ni el IVA.
+- [ ] Factura B de súper o farmacia.
+- [ ] Factura C de un monotributista (plomero, profesional).
+- [ ] Factura de luz/gas/internet: toma el total de la factura (el QR), no el 2do vencimiento.
+- [ ] Nota de crédito (devolución): queda como **ingreso**.
+- [ ] Factura en dólares: si hay una cuenta en dólares, va ahí.
+- [ ] Sin IA: aparece "Leí el QR: Factura B por $… del …. Elegí la categoría y guardá."
+- [ ] Foto de lejos (toda la factura en la foto) y de cerca (sólo el QR): las dos andan.
+- [ ] iPhone (Safari) y Android (Chrome): en Android usa el lector del celular; en iPhone, jsQR (se baja la primera vez).
+
+**Comprobantes sin QR (los lee la IA):**
 - [ ] Ticket de súper nítido: total, comercio, fecha y categoría correctos.
 - [ ] Ticket largo (doblado, con muchos ítems): toma el TOTAL, no un subtotal.
 - [ ] Ticket con descuentos: toma el total después del descuento.
