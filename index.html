@@ -2274,7 +2274,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.22-v6.2-montos-con-centavos";
+const APP_VERSION = "2026.10.22-v6.3-millon-y-resto";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -7035,7 +7035,7 @@ const VACIAS=new Set(("el la los las un una unos unas de del al a en con por par
  +"ultimo ultima proximo proxima pasado pasada equivoque perdon corrijo digo realidad mejor dicho "
  +"categoria rubro monto importe comercio descripcion detalle concepto cuenta fecha "
  +"fueron eran tambien ademas aparte despues luego otro otra otros otras comprando mentira error confundi "
- +"bueno sea che mira eeh ehh emm mmm espera bien esta devolvieron saque retire mes cada mensual mensuales pagaron transfirieron depositaron mandaron pasaron recibi cargue debe pago").split(" "));
+ +"acabo hacer hice recien bueno sea che mira eeh ehh emm mmm espera bien esta devolvieron saque retire mes cada mensual mensuales pagaron transfirieron depositaron mandaron pasaron recibi cargue debe pago").split(" "));
 
 function normV(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); }
 function esVacia(w){ const n=normV(w).replace(/[^a-z0-9ñ]/g,"");
@@ -7150,7 +7150,9 @@ function leerNumeroDesde(tk,i){
          && (/^\d{1,3}$/.test(tk[j-1].w) || unido) && !/[.,]\d{1,2}$/.test(tk[j-1].w)){
         grupo=round2(grupo*1000+v); ultimo=j; j++; unido=true; continue; }      // "1 345 342,25"
       if(hubo && grupo>0 && (esDigito || !(v<previo))) break;   // "2 3000" son dos números
-      if(hubo && grupo===0 && esDigito && total>0 && v>=1000) break;
+      /* "1 millón 345,345": lo que viene después del millón y es menor que un millón es el
+         resto del número (1.345.345). "5 mil 3000", en cambio, son dos números. */
+      if(hubo && grupo===0 && esDigito && total>0 && v>=1000 && !(multPrevio>v)) break;
       grupo+=v; previo=esDigito?0:v; ultimo=j; hubo=true; j++;
     } else if(mult && (hubo || w==="mil")){
       total+=(grupo||1)*mult; grupo=0; previo=mult; multPrevio=mult; ultimo=j; hubo=true; j++;

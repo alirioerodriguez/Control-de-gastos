@@ -75,6 +75,10 @@ const CASOS = [
   ['1 millón 345 mil 342 con 25', [{ monto: 1345342.25 }]],
   ['12.300.50 en el super', [{ monto: 12300.5 }]],
   ['pagué 5.000.000 del auto', [{ monto: 5000000 }]],
+  ['Acabo de hacer una compra de 1 millón 345,345 con 45 pesos', [{ monto: 1345345.45, descripcion: null }]],   // dictado real, mezcla palabras y números
+  ['1 millón 345.345,45', [{ monto: 1345345.45 }]],
+  ['2 millones 500,000', [{ monto: 2500000 }]],
+  ['5 mil 3000', [{ monto: 5000 }]],
   ['2.5 millones', [{ monto: 2500000 }]],
 
   'Orden libre y etiquetas',
