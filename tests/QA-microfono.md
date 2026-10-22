@@ -130,6 +130,8 @@ Prueba automática de la lectura del QR: `node tests/factura.test.js`.
 - [ ] Factura en dólares: si hay una cuenta en dólares, va ahí.
 - [ ] Sin IA: aparece "Leí el QR: Factura B por $… del …. Elegí la categoría y guardá."
 - [ ] Foto de lejos (toda la factura en la foto) y de cerca (sólo el QR): las dos andan.
+- [ ] **Foto sacada con la cámara desde la app**, no una reenviada por WhatsApp: WhatsApp la achica a 1280 px y el QR de una factura A (muy denso) deja de poder leerse. En ese caso la app avisa "La foto es muy chica para leer el QR".
+- [ ] Factura A de un comercio a una empresa (caso real: Marash, vanitory): el comercio es el de arriba con el logo, no la "Razón social" del cliente; la fecha es la de emisión, no el "Vencimiento" ni el "Vencimiento CAE"; el total es el "Importe Total", no el neto.
 - [ ] iPhone (Safari) y Android (Chrome): en Android usa el lector del celular; en iPhone, jsQR (se baja la primera vez).
 
 **Comprobantes sin QR (los lee la IA):**

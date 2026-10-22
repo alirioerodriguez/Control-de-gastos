@@ -2274,7 +2274,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.22-v6.4-palos-y-mangos";
+const APP_VERSION = "2026.10.22-v6.5-factura-a-real";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -7975,10 +7975,11 @@ function cargarJsQR(){
    del comercio (F.960). Identifica al local, no al tique, y NO trae el monto. Se reconoce para
    no confundirlo y para avisar bien. */
 const esQRDelComercio=t=>/(?:afip|arca)\.gob?\.ar\/(?!fe\/qr)|afip\.gov\.ar|qr\.(?:afip|arca)|clavefiscal/i.test(String(t||""));
-let qrComercioVisto=false;
+let qrComercioVisto=false, fotoLado=0;
 async function buscarQRFactura(file){
-  qrComercioVisto=false;
+  qrComercioVisto=false; fotoLado=0;
   let bmp; try{ bmp=await createImageBitmap(file); }catch(e){ return null; }
+  fotoLado=Math.max(bmp.width,bmp.height);
   try{
     if("BarcodeDetector" in window){
       const det=new BarcodeDetector({formats:["qr_code"]});
@@ -8062,6 +8063,8 @@ async function leerTicket(file){
     if(qr) $("voz-estado").textContent=`Leí el QR: ${qrTxt}. Elegí la categoría y guardá.`;
     else if(qrComercioVisto){ $("voz-estado").textContent="Este tique tiene el QR del comercio, que no trae el monto. Escribí el total (por ejemplo: 48.732 en Coto) y lo completo.";
       try{ $("voz-texto").focus(); }catch(e){} }
+    else if(fotoLado && fotoLado<2000){ $("voz-estado").textContent="";
+      toast("La foto es muy chica para leer el QR",{sub:`Mide ${fotoLado} px (las de WhatsApp vienen achicadas). Sacala con la cámara desde la app, o acercate al QR de abajo.`,ms:7000}); }
     else { $("voz-estado").textContent="";
       toast("No encontré el código QR",{sub:"Las facturas electrónicas lo tienen abajo. En un tique del súper o del chino escribí el total: lo interpreto igual.",ms:6000}); }
     renderVoz(); return;
@@ -8072,7 +8075,10 @@ async function leerTicket(file){
   const prompt=`Leé esta foto de un comprobante de Argentina. HOY es ${todayISO()}.
 ${qr?`El código QR oficial de ARCA ya dice: ${qr.tipoTxt}, TOTAL ${qr.importe} (${qr.moneda}), fecha ${qr.fecha}, CUIT del emisor ${qr.cuit}. Usá ESE total y ESA fecha; tu trabajo es el comercio, la categoría y la descripción.\n`:""}
 QUÉ PUEDE SER (tipo_doc):
-- "factura": factura A, B, C, E o M (dice "FACTURA" y una letra en un recuadro, CUIT, CAE). En la A el IVA va aparte: "Subtotal/Importe neto" + "IVA 21%" (o 10,5%) + "Percepciones" = "TOTAL". Usá el TOTAL, nunca el neto ni el IVA.
+- "factura": factura A, B, C, E o M (dice "FACTURA" y una letra en un recuadro, "Cod. 01/06/11", CUIT, CAE). En la A el IVA va aparte: "Importe neto gravado" + "IVA 21%" (o 10,5%) + "Percepciones" = "Importe total". Usá el TOTAL, nunca el neto ni el IVA.
+  · Arriba está el que VENDE (logo, nombre de fantasía, su CUIT). Más abajo, en "Razón social", "Señor/es", "Cliente" o "Condición de IVA", está el que COMPRA: eso NUNCA es el comercio.
+  · Hay varias fechas: la que vale es la de emisión ("Fecha"). "Vencimiento" (para pagar) y "Vencimiento CAE" no son la fecha de la compra.
+  · Si dice el total en letras ("Son pesos doscientos sesenta mil con cero"), usalo para confirmar el número.
 - "ticket": tique o tique factura de caja o de impresora fiscal (súper, almacén, chino, farmacia, estación de servicio, restaurante, café). El monto es el TOTAL final:
   · NO es "SU PAGO", "EFECTIVO", "PAGA CON" ni "VUELTO" (lo que dio y lo que le devolvieron).
   · Los descuentos ya están restados en el TOTAL ("Comunidad Coto", "Club Día", "Ahorro", "Desc. 2x1"): no los restes de nuevo. "Usted ahorró" NO es el monto.
