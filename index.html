@@ -1738,7 +1738,7 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
              aria-multiline="true" aria-label="Contame el gasto con tus palabras"></div>
         <div id="voz-vacio">42.300 en Coto con Visa en 3 cuotas</div>
       </div>
-      <p class="vozhint">Escribí o dictá como hablás. Reconozco el monto, el comercio, la cuenta, la tarjeta, las cuotas y la fecha.<br>
+      <p class="vozhint">Escribí o dictá como hablás: "5 lucas en el chino", "2 palos del auto", "500 mangos de pan". Reconozco el monto, el comercio, la cuenta, la tarjeta, las cuotas y la fecha.<br>
         <span id="voz-hoy"></span></p>
       <div class="vozestado" id="voz-estado"></div>
       <div class="inline-err" id="voz-err"></div>
@@ -2274,7 +2274,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.22-v6.3-millon-y-resto";
+const APP_VERSION = "2026.10.22-v6.4-palos-y-mangos";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -7017,7 +7017,8 @@ const NUM_PAL={cero:0,un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siet
   cien:100,ciento:100,doscientos:200,trescientos:300,cuatrocientos:400,quinientos:500,
   seiscientos:600,setecientos:700,ochocientos:800,novecientos:900};
 
-const MULT_PAL={millones:1e6,millon:1e6,palos:1e6,palo:1e6,lucas:1000,luca:1000,mil:1000,miles:1000};
+/* jerga argentina: palo = millón, luca = mil, gamba = cien; "mangos" son pesos */
+const MULT_PAL={millones:1e6,millon:1e6,palos:1e6,palo:1e6,lucas:1000,luca:1000,mil:1000,miles:1000,gambas:100,gamba:100};
 
 const MESES_TXT=["enero","febrero","marzo","abril","mayo","junio","julio","agosto",
   "septiembre","octubre","noviembre","diciembre"];
@@ -7035,7 +7036,7 @@ const VACIAS=new Set(("el la los las un una unos unas de del al a en con por par
  +"ultimo ultima proximo proxima pasado pasada equivoque perdon corrijo digo realidad mejor dicho "
  +"categoria rubro monto importe comercio descripcion detalle concepto cuenta fecha "
  +"fueron eran tambien ademas aparte despues luego otro otra otros otras comprando mentira error confundi "
- +"acabo hacer hice recien bueno sea che mira eeh ehh emm mmm espera bien esta devolvieron saque retire mes cada mensual mensuales pagaron transfirieron depositaron mandaron pasaron recibi cargue debe pago").split(" "));
+ +"acabo hacer hice recien pico verde verdes gamba gambas bueno sea che mira eeh ehh emm mmm espera bien esta devolvieron saque retire mes cada mensual mensuales pagaron transfirieron depositaron mandaron pasaron recibi cargue debe pago").split(" "));
 
 function normV(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); }
 function esVacia(w){ const n=normV(w).replace(/[^a-z0-9ñ]/g,"");
@@ -7116,6 +7117,20 @@ function valorFicha(w){
   return null;
 }
 /* el número que va pegado a "centavos / céntimos / decimales", o detrás de "con / y" */
+/* v6.4 · "1 palo 345 lucas con 45 mangos" = 1.345.045. Si el número vino en lucas o palos
+   (termina en 000) y después dice "con 45 mangos/pesos" o "con 500", son pesos que faltan.
+   Si los pesos ya estaban dichos ("345.345 con 45"), lo que sigue son centavos. */
+function leerPesosSueltos(L, desde, total){
+  if(!(total>=1000) || total%1000!==0) return null;
+  const resto=L.libre.slice(desde);
+  const m=resto.match(/^[\s.,]*(?:con|y)\s+(\d{1,3}|[a-zñ]+)\s*(pesos?|mangos?)?\b/);
+  if(!m) return null;
+  const n=/^\d+$/.test(m[1]) ? parseInt(m[1],10) : NUM_PAL[m[1]];
+  if(n===undefined || !(n>0) || n>999) return null;
+  if(!m[2] && n<100) return null;                          // "2 lucas con 50" a secas: centavos, como siempre
+  if(/^\s*(cuotas?|pagos|centavos?|centimos?)\b/.test(resto.slice(m[0].length))) return null;
+  return {pesos:n, len:m[0].length};
+}
 function leerCentavos(L, desde){
   const resto=L.libre.slice(desde);
   /* v6.2 · el dictado a veces deja un punto o una coma suelta antes: "1.345.342. 25 centavos" */
@@ -7176,6 +7191,8 @@ function leerMonto(L){
     if(n.ultimo===i && /^(un|una|uno)$/.test(tk[i].w)) continue;   // "de un chicle": es un artículo
     let total=n.valor, fin=tk[n.ultimo].i+tk[n.ultimo].len;
     if(Number.isInteger(total)){
+      const ps=leerPesosSueltos(L,fin,total);
+      if(ps){ total+=ps.pesos; fin+=ps.len; }
       const cv=leerCentavos(L,fin);
       if(cv){ total=round2(total+cv.cent/100); fin+=cv.len; }
     }
@@ -7837,6 +7854,7 @@ Fechas: "ayer", "anteayer", "hace 3 días", "el viernes" (= el viernes más reci
 MONTO:
 - Es el total que se pagó o cobró. Formato argentino: "12.500" = doce mil quinientos, "12.500,50" con centavos.
 - El dictado escribe los centavos de muchas formas; si el último grupo tiene 1 o 2 cifras, son centavos: "1.345.342,25" = "1.345.342.25" = "1,345,342.25" = "1.345.342. 25 centavos" = "1 345 342,25" = 1345342.25. Leé SIEMPRE el número entero, nunca sólo los centavos.
+- Jerga argentina: "mango" = peso ("500 mangos" = 500), "gamba" = 100, "luca" = 1.000, "palo" = 1.000.000 ("un palo y medio" = 1.500.000, "medio palo" = 500.000), "1 palo 345 lucas con 45 mangos" = 1.345.045. "Verdes", "dólares" o "palo verde" = la moneda es dólares (un palo verde = 1.000.000 de dólares). "Y pico" no suma nada.
 - Números hablados: "ciento cincuenta" = 150, "mil quinientos" = 1500, "5 lucas" = 5000, "2 palos" = 2000000, "15k" = 15000, "500 con 22" = 500.22.
 - Los números que describen cosas NO son el monto: "2 kilos", "3 medialunas", "línea 60", "calle 25", "el 12" (fecha), "en 3 cuotas" (cuotas).
 - Si se corrige ("no, me equivoqué", "mejor dicho", "en realidad", "no, 800"), vale lo último que dijo.

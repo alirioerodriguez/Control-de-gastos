@@ -81,6 +81,23 @@ const CASOS = [
   ['5 mil 3000', [{ monto: 5000 }]],
   ['2.5 millones', [{ monto: 2500000 }]],
 
+  'Jerga argentina: palos, lucas, gambas y mangos',
+  ['2 palos del auto', [{ monto: 2000000 }]],
+  ['un palo y medio de la moto', [{ monto: 1500000, descripcion: 'Moto' }]],
+  ['medio palo de la heladera', [{ monto: 500000 }]],
+  ['dos palos y medio', [{ monto: 2500000 }]],
+  ['3 palos 200 lucas', [{ monto: 3200000 }]],
+  ['1 palo 345 lucas con 45 mangos', [{ monto: 1345045 }]],      // los mangos que faltan son pesos
+  ['2 lucas con 500', [{ monto: 2500 }]],
+  ['500 mangos de chicles', [{ monto: 500, descripcion: 'Chicles' }]],
+  ['20 mil mangos en el super', [{ monto: 20000 }]],
+  ['2 palos de mangos', [{ monto: 2000000 }]],
+  ['2 gambas de pan', [{ monto: 200, descripcion: 'Pan' }]],
+  ['una gamba de propina', [{ monto: 100 }]],
+  ['3 lucas y media', [{ monto: 3500 }]],
+  ['me salió 1 palo y pico', [{ monto: 1000000, descripcion: null }]],
+  ['50 verdes de spotify', [{ monto: 50, descripcion: null }]],
+
   'Orden libre y etiquetas',
   ['supermercado 12.300', [{ monto: 12300, categoria: 'Supermercado' }]],
   ['12.300 supermercado', [{ monto: 12300, categoria: 'Supermercado' }]],
