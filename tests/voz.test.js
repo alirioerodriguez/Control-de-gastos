@@ -59,6 +59,24 @@ const CASOS = [
   ['el colectivo línea 60 1200', [{ monto: 1200, categoria: 'Transporte' }]],
   ['compré pan', [{ monto: 0 }]],                                   // sin monto: la app lo pide
 
+  'Montos grandes con centavos (como los escriba el dictado)',
+  ['1.345.342,25', [{ monto: 1345342.25 }]],
+  ['1.345.342.25 centavos', [{ monto: 1345342.25 }]],
+  ['gasté 1.345.342.25 centavos en el coto', [{ monto: 1345342.25, comercio: 'Coto' }]],
+  ['1.345.342. 25 centavos', [{ monto: 1345342.25 }]],
+  ['$1,345,342.25 en el coto', [{ monto: 1345342.25 }]],
+  ['1345342.25 en el coto', [{ monto: 1345342.25 }]],
+  ['1 345 342,25', [{ monto: 1345342.25 }]],
+  ['1345342 25 centavos', [{ monto: 1345342.25 }]],
+  ['1.345.342 y 25 centavos', [{ monto: 1345342.25 }]],     // uno solo, no dos gastos
+  ['1.345.342 coma 25', [{ monto: 1345342.25 }]],
+  ['1.345.342 pesos con 25 centavos', [{ monto: 1345342.25 }]],
+  ['un millón trescientos cuarenta y cinco mil trescientos cuarenta y dos pesos con veinticinco centavos', [{ monto: 1345342.25 }]],
+  ['1 millón 345 mil 342 con 25', [{ monto: 1345342.25 }]],
+  ['12.300.50 en el super', [{ monto: 12300.5 }]],
+  ['pagué 5.000.000 del auto', [{ monto: 5000000 }]],
+  ['2.5 millones', [{ monto: 2500000 }]],
+
   'Orden libre y etiquetas',
   ['supermercado 12.300', [{ monto: 12300, categoria: 'Supermercado' }]],
   ['12.300 supermercado', [{ monto: 12300, categoria: 'Supermercado' }]],
