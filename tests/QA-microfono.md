@@ -54,6 +54,10 @@ revisá la ficha **después** de "Revisado con IA".
 | B21 | el celular, un palo y medio en doce con la visa, ya voy por la séptima | 1.500.000 · 12 cuotas · 6 pagadas · Visa |
 | B22 | la play la pago 80 mil por mes, me faltan 4 de 10 | 800.000 · 10 cuotas · 6 pagadas |
 | B23 | tengo el aire en 12 cuotas, pagué la mitad, eran 1.200.000 | 1.200.000 · 12 cuotas · 6 pagadas |
+| B24 | le transferí a Sofi 15 lucas por la cena de ayer | Es saldar una deuda con Sofi, no un gasto compartido nuevo |
+| B25 | ayer y antes de ayer gasté en el súper 20 mil cada día | 2 movimientos de 20.000, ayer y anteayer |
+| B26 | gasté 15.000, no 18.000 en la ferretería | Ambiguo: sin coma después del "no" la app toma 18.000 (como corrección); la IA debería preguntar o tomar 15.000 |
+| B27 | pagué el aguinaldo de la empleada, 1.200.000 | Gasto (no ingreso), categoría hogar/servicio doméstico |
 
 Si la IA falla en uno, anotá la frase exacta y qué salió: con eso se ajusta el prompt.
 

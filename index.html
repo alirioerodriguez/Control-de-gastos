@@ -2274,7 +2274,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.22-v6.5-factura-a-real";
+const APP_VERSION = "2026.10.23-v6.6-casos-nuevos";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -7036,7 +7036,7 @@ const VACIAS=new Set(("el la los las un una unos unas de del al a en con por par
  +"ultimo ultima proximo proxima pasado pasada equivoque perdon corrijo digo realidad mejor dicho "
  +"categoria rubro monto importe comercio descripcion detalle concepto cuenta fecha "
  +"fueron eran tambien ademas aparte despues luego otro otra otros otras comprando mentira error confundi "
- +"acabo hacer hice recien pico verde verdes gamba gambas bueno sea che mira eeh ehh emm mmm espera bien esta devolvieron saque retire mes cada mensual mensuales pagaron transfirieron depositaron mandaron pasaron recibi cargue debe pago").split(" "));
+ +"acabo hacer hice recien transferencia debito pico verde verdes gamba gambas mitad prestaron preste salieron salio pedi fui fuimos bueno sea che mira eeh ehh emm mmm espera bien esta devolvieron saque retire mes cada mensual mensuales pagaron transfirieron depositaron mandaron pasaron recibi cargue debe pago").split(" "));
 
 function normV(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); }
 function esVacia(w){ const n=normV(w).replace(/[^a-z0-9ñ]/g,"");
@@ -7178,6 +7178,8 @@ function leerNumeroDesde(tk,i){
     } else break;
   }
   if(!hubo) return null;
+  /* v6.6 · "un palo 850", "un millón quinientos": lo que queda suelto después del millón son miles */
+  if(multPrevio===1e6 && grupo>0 && grupo<1000 && Number.isInteger(grupo) && !/[.,]/.test(tk[ultimo].w)) return {valor:total+grupo*1000, ultimo};
   return {valor:total+grupo, ultimo};
 }
 function leerMonto(L){
@@ -7371,9 +7373,12 @@ function buscarNombre(L, nombre){
 }
 function leerTarjeta(L){
   let best=null;
+  /* v6.6 · "transferencia/débito/cuenta del Galicia": el banco nombrado es la cuenta, no la tarjeta */
+  const esCuenta=/\b(transferencia|transferi|debito|cuenta|cbu|cvu|pase|movi)\b/.test(L.libre);
   const APODO_MARCA={mastercard:"master", "american express":"amex"};
   CARDS.forEach(c=>{ [c.alias,c.banco,c.marca,cardTitulo(c),APODO_MARCA[normV(c.marca||"")]].filter(Boolean).forEach(w=>{
     const i=buscarNombre(L,w);
+    if(i>=0 && esCuenta && w===c.banco && ACCOUNTS.some(a=>normV(a.nombre).includes(normV(w)))) return;
     if(i>=0 && (!best || i>best.i || normV(w).length>best.texto.length)) best={valor:c.id, texto:normV(w), i}; }); });
   if(best){ tachar(L,best.i,best.texto.length); return best; }
   const m=buscar(L,/\b(tarjeta|credito)\b/);
@@ -7384,6 +7389,10 @@ function leerCuenta(L){
   let best=null;
   ACCOUNTS.forEach(a=>{ const i=buscarNombre(L,a.nombre);
     if(i>=0 && (!best || i>best.i)) best={valor:a.key, texto:normV(a.nombre), i}; });
+  /* v6.6 · "del Galicia" también es la cuenta "Banco Galicia" (la palabra que la distingue) */
+  if(!best) ACCOUNTS.forEach(a=>{ const w=normV(a.nombre).split(/\s+/).filter(x=>x.length>=4 && !/^(banco|cuenta|caja|ahorro|corriente|pesos|dolares|pago|mercado|plata|billetera|tarjeta|efectivo)$/.test(x)).pop();
+    if(!w || w===normV(a.nombre)) return;
+    const i=buscarNombre(L,w); if(i>=0 && (!best || i>best.i)) best={valor:a.key, texto:w, i}; });
   if(best){ tachar(L,best.i,best.texto.length); return best; }
   const m=buscar(L,/\b(efectivo|cash|en mano)\b/);
   if(m){ const a=ACCOUNTS.find(x=>/efectivo/i.test(x.nombre));
@@ -7440,7 +7449,8 @@ function comerciosUsados(){
   return [...s].sort((a,b)=>b.length-a.length);
 }
 function nombreOcupado(w){
-  const n=normV(w);
+  const n=normV(w).replace(/[.,;:]+$/,"");
+  if(ACCOUNTS.some(a=>normV(a.nombre).split(/\s+/).includes(n))) return true;
   if(ACCOUNTS.some(a=>normV(a.nombre)===n)) return true;
   if(CARDS.some(c=>[c.alias,c.banco,c.marca].filter(Boolean).some(x=>normV(x)===n))) return true;
   if(catsAlfa().some(c=>normV(c.nombre)===n)) return true;
@@ -7493,11 +7503,11 @@ const CAT_PISTAS=[
   {re:/\b(agua|aysa|absa|aguas)\b/, cats:["Agua","Servicios","Casa","Hogar"]},
   {re:/\b(internet|wifi|fibertel|telecentro|fibra|banda ancha)\b/, cats:["Internet","Servicios","Casa"]},
   {re:/\b(telefono|celular|linea\s+(?:del?\s+)?(?:celu|celular|telefono)|recarga|movistar|tuenti)\b/, cats:["Teléfono","Celular","Servicios"]},
-  {re:/\b(expensas|abl|arba|rentas|impuesto|impuestos|patente|patentes|monotributo|afip|arca|tasa|tasas)\b/,
+  {re:/\b(expensas?|abl|arba|rentas|impuesto|impuestos|patente|patentes|monotributo|afip|arca|tasa|tasas)\b/,
    cats:["Impuestos","Expensas","Servicios","Casa"]},
   {re:/\b(alquiler|renta|inmobiliaria|garantia)\b/, cats:["Alquiler","Casa","Hogar","Servicios"]},
   {re:/\b(?:makro|maxiconsumo|la anonima|golosinas?|chicles?|caramelos?|alfajor(?:es)?)\b/, cats:["Supermercado","Súper","Comida","Alimentos","Kiosco"]},
-  {re:/\b(super|supermercado|almacen|verduleria|verdura|verduras|carniceria|carne|pollo|panaderia|fiambreria|dietetica|kiosco|chino|drugstore|mandado|mandados|mercado(?!\s*(?:libre|pago))|pan|leche|fiambre|queso|yerba|azucar|harina|arroz|fideos|huevos|coto|carrefour|jumbo|changomas|walmart)\b/,
+  {re:/\b(super|supermercado|almacen|verduleria|verdu|verdura|verduras|carniceria|carne|pollo|panaderia|fiambreria|dietetica|kiosco|chino|drugstore|mandado|mandados|mercado(?!\s*(?:libre|pago))|pan|leche|fiambre|queso|yerba|azucar|harina|arroz|fideos|huevos|coto|carrefour|jumbo|changomas|walmart)\b/,
    cats:["Supermercado","Súper","Alimentos","Comestibles","Comida"]},
   /* v5.8 · comer (almuerzo, cena) no es lo mismo que hacer las compras */
   {re:/\b(comida|comidas|almuerzo|almorce|cena|cenas|cene|desayuno|merienda|vianda)\b/,
@@ -7567,6 +7577,9 @@ function leerCategoria(L, comercio, textoEntero){
 /* ================= TIPO Y REPARTO ================= */
 function leerTipo(txt){
   const t=normV(txt);
+  /* v6.6 · "pagué el aguinaldo a la empleada": el sueldo que PAGÁS es un gasto */
+  if(/\b(pague|le pague|pagamos|le pagamos)\b/.test(t) && /\b(sueldo|aguinaldo|honorarios|quincena)\b/.test(t) && !/\b(cobre|me pagaron|me deposit\w*)\b/.test(t)) return "gasto";
+  if(/\bme prestaron\b|\bme presto\b/.test(t)) return "ingreso";
   if(/\b(cobre|me pagaron|me deposit\w*|me transfiri\w*|me mandaron|me pasaron|me devolvieron|recibi|ingreso|entro|entraron|sueldo|aguinaldo|vendi|facture|honorarios|reintegro|plazo fijo|rendimiento|rindio|dividendos?)\b/.test(t)) return "ingreso";
   if(/\b(guarde|ahorre|separe|para la meta|al ahorro|aparte para)\b|^\s*aparte\b/.test(t)) return "ahorro";
   if(/\b(a medias|mitad y mitad|compartido|dividimos|dividido|entre los dos)\b/.test(t)) return "compartido";
@@ -7575,6 +7588,7 @@ function leerTipo(txt){
 function leerSplit(txt){
   const t=normV(txt);
   if(/\ba medias\b|\bmitad y mitad\b|\b50\s*[\/y]\s*50\b|\bentre los dos\b/.test(t)) return "ambos";
+  if(/\bme debe la mitad\b|\bla mitad\b/.test(t)) return "ambos";
   if(/\blo debe entero\b|\bme lo debe\b|\bme debe\b|\bse lo preste\b|\blo pague yo entero\b/.test(t)) return "solo_otro";
   return null;
 }
@@ -7654,6 +7668,12 @@ function leerFrase(txt){
   const mo=leerMonto(L);    if(mo){ r.monto=mo.valor; r.auto.monto=mo.texto;
     if(r.cuotas>1 && (porCuota || new RegExp("cuotas?\\s+(?:fijas\\s+|sin\\s+interes\\s+)?de\\s*\\$?\\s*$").test(util.slice(0,mo.ini))))
       r.monto=round2(mo.valor*r.cuotas); }                  // "12 cuotas de 10.000" = 120.000 · "125 mil por mes"
+  /* v6.6 · "2 entradas a 9 mil cada una": el monto dicho es por unidad */
+  if(r.monto>0 && /\b(cada una|cada uno|c\/u|cada 1|por cabeza|por persona|por unidad)\b/.test(util)){
+    const mc=buscar(L,/\b(\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(?:[a-zñ]+\s+)?(?:a|de)\b/);
+    const n=mc && (/^\d+$/.test(mc[1]) ? parseInt(mc[1],10) : NUM_PAL[mc[1]]);
+    if(n>1 && n<=20){ r.monto=round2(r.monto*n); tachar(L,mc.index,mc[1].length); }
+  }
   const ta=leerTarjeta(L);  if(ta){ r.card=ta.valor; r.auto.card=ta.texto; }
   const cc=leerCuenta(L);   if(cc && !ta){ r.cuenta=cc.valor; r.auto.cuenta=cc.texto; }
   const pe=leerPersona(L);  if(pe){ r.pair=pe.pair; r.auto.persona=normV(pe.nombre); r.conQuien=pe.nombre;
@@ -7672,8 +7692,13 @@ function leerFrase(txt){
   /* v5.8 · esto no es un gasto: cargarlo así lo cuenta dos veces */
   if(/\b(pague|pagar|pago)\s+(?:el\s+|la\s+)?(?:resumen|tarjeta|vencimiento de la tarjeta)\b/.test(util) && !/\bcon\s+(?:la\s+)?tarjeta\b/.test(util))
     r.especial="resumen_tarjeta";
-  else if(/\b(saque|retire|extraje|extraccion)\b.*\b(cajero|banco|cuenta)\b|\bdel\s+cajero\b|\b(pase|transferi|movi)\b.*\ba\s+(?:mi|la)\s+(?:otra\s+)?cuenta\b/.test(util))
-    r.especial="transferencia_propia";
+  else if(/\b(saque|retire|extraje|extraccion)\b.*\b(cajero|banco|cuenta)\b|\bdel\s+cajero\b|\b(pase|transferi|movi)\b.*\ba\s+(?:mi|la)\s+(?:otra\s+)?cuenta\b/.test(util)
+       || (/\b(pase|transferi|movi|mande)\b/.test(util) && ACCOUNTS.filter(a=>new RegExp("\\b"+normV(a.nombre).split(/\s+/).pop()+"\\b").test(util)).length>=2))
+    r.especial="transferencia_propia";                  // "pasé 200 mil del Galicia a Mercado Pago"
+  else if(/\b(compre|vendi|cambie)\s+(?:\d[\d.,]*\s+|[a-z]+\s+)?(dolares|dolar|usd|verdes|euros)\b/.test(util))
+    r.especial="cambio_moneda";
+  else if(/\b(le preste|preste|me prestaron|me presto|prestamo)\b/.test(util))
+    r.especial="prestamo";
   return r;
 }
 /* con correcciones: lo de después pisa SÓLO lo que se volvió a decir */
@@ -7832,7 +7857,7 @@ function esquemaMov(cx){
     descripcion:{type:"STRING", nullable:true},
     pair:{type:"STRING", nullable:true, ...iaEnum(cx.gente.map(g=>g.pair))},
     split:{type:"STRING", nullable:true, enum:["ambos","solo_otro"]},
-    especial:{type:"STRING", nullable:true, enum:["resumen_tarjeta","transferencia_propia"]}
+    especial:{type:"STRING", nullable:true, enum:["resumen_tarjeta","transferencia_propia","cambio_moneda","prestamo"]}
   }, required:["tipo","monto","categoria","cuotas","fecha","comercio","descripcion"]};
 }
 const IA_REGLAS_CAT=`CATEGORÍA (lo más importante):
@@ -7871,7 +7896,7 @@ CUOTAS: 1 salvo que diga otra cosa.
 VARIOS MOVIMIENTOS: si en la misma frase cuenta más de un gasto o ingreso distinto ("15.000 en el kiosco, también otros 12.000 en el chino"), devolvé uno por cada uno, cada uno con su monto, su categoría, su comercio y su descripción. Lo que dice una sola vez y vale para todos (la fecha, "con Mercado Pago" dicho al principio) sólo se repite si queda claro que es para todos; si no, va en el que corresponde. Un mismo gasto contado con detalle ("pan y leche, 3000") es UNO solo.
 CUOTAS CON VALOR: "12 cuotas de 10.000" o "10.000 por mes en 12 cuotas" → monto 120000 (el total) y cuotas 12.
 CUOTAS QUE YA VENÍA PAGANDO (pagadas): muchas compras son de antes de usar la app. "voy por la 7 de 12" o "estoy en la séptima" → pagadas 6 (la 7 es la que sigue); "ya pagué 6 cuotas" → 6; "me quedan 5 de 12" → 7. Si es una compra nueva, 0. El monto sigue siendo el TOTAL de la compra: "un celular de 1,5 millones en 12, voy por la 7" → monto 1500000, cuotas 12, pagadas 6.
-NO ES UN GASTO (especial): "pagué la tarjeta / el resumen" → "resumen_tarjeta"; "saqué del cajero", "pasé plata a mi otra cuenta" → "transferencia_propia". Si no, null. Pagarle a otra persona SÍ es un gasto.
+NO ES UN GASTO (especial): "pagué la tarjeta / el resumen" → "resumen_tarjeta"; "saqué del cajero", "pasé plata del Galicia a Mercado Pago" (entre cuentas propias) → "transferencia_propia"; "compré/vendí dólares" → "cambio_moneda"; "le presté", "me prestaron" → "prestamo". Si no, null. Pagarle a otra persona por algo SÍ es un gasto, y pagar un sueldo o aguinaldo (a una empleada) también.
 CORRECCIONES: "ah no, eso no, fueron 16.500" cambia sólo lo que vuelve a decir (acá el monto); el resto (comercio, fecha, cuenta) queda como lo dijo antes.
 SPLIT: "ambos" si es a medias / mitad y mitad; "solo_otro" si la otra persona lo debe entero; null si no aplica.
 
@@ -7925,7 +7950,7 @@ function iaAplicar(d, cx){
   if(/^\d{4}-\d{2}-\d{2}$/.test(d.fecha||"") && d.fecha<=todayISO()) V.fecha=d.fecha;
   if("comercio" in d) V.comercio=(d.comercio||"").toString().trim().slice(0,60)||null;
   if(d.descripcion) V.descripcion=d.descripcion.toString().trim().slice(0,80);
-  V.especial=["resumen_tarjeta","transferencia_propia","presupuesto"].includes(d.especial) ? d.especial : null;
+  V.especial=["resumen_tarjeta","transferencia_propia","presupuesto","cambio_moneda","prestamo"].includes(d.especial) ? d.especial : null;
   if(V.tipo==="tarjeta" && !V.card){ if(CARDS.length) V.card=CARDS[0].id; else V.tipo="gasto"; }
   if(d.pair && PAIRS.some(p=>p.id===d.pair)){ V.pair=d.pair; if(V.tipo!=="ingreso" && V.tipo!=="ahorro") V.tipo="compartido"; }
   if(V.tipo==="compartido"){
@@ -8057,7 +8082,8 @@ async function leerTicket(file){
   $("voz-estado").textContent="Buscando el código QR de la factura…";
   const qr=await buscarQRFactura(file);
   if(qr){ aplicarQRFactura(qr); textoTicket(); renderVoz(); }
-  const qrTxt = qr ? `${qr.tipoTxt} por ${fmt(qr.importe,qr.moneda==="DOL"?"USD":CUR)} del ${new Date(qr.fecha+"T12:00:00").toLocaleDateString("es-AR",{day:"numeric",month:"long"})}` : "";
+  const qrTxt = qr ? `${qr.tipoTxt} por ${fmt(qr.importe,qr.moneda==="DOL"?"USD":CUR)} del ${new Date(qr.fecha+"T12:00:00").toLocaleDateString("es-AR",{day:"numeric",month:"long",year:qr.fecha.slice(0,4)!==todayISO().slice(0,4)?"numeric":undefined})}`
+    + (qr.fecha>todayISO() ? " (fecha futura: puse la de hoy, cambiala si hace falta)" : "") : "";
 
   if(!iaActiva()){
     if(qr) $("voz-estado").textContent=`Leí el QR: ${qrTxt}. Elegí la categoría y guardá.`;
@@ -8066,7 +8092,7 @@ async function leerTicket(file){
     else if(fotoLado && fotoLado<2000){ $("voz-estado").textContent="";
       toast("La foto es muy chica para leer el QR",{sub:`Mide ${fotoLado} px (las de WhatsApp vienen achicadas). Sacala con la cámara desde la app, o acercate al QR de abajo.`,ms:7000}); }
     else { $("voz-estado").textContent="";
-      toast("No encontré el código QR",{sub:"Las facturas electrónicas lo tienen abajo. En un tique del súper o del chino escribí el total: lo interpreto igual.",ms:6000}); }
+      toast("No encontré el código QR",{sub:"Las facturas electrónicas lo tienen abajo. Si la foto salió movida, sacala de nuevo con el celular quieto. En un tique del súper o del chino escribí el total: lo interpreto igual.",ms:7000}); }
     renderVoz(); return;
   }
   $("voz-estado").textContent = qr ? `Leí el QR (${qrTxt}). Buscando el comercio…` : "Leyendo el ticket…";
@@ -8299,7 +8325,9 @@ function ponerCaret(el,pos){
 const VOZ_ESPECIAL={
   resumen_tarjeta:"Esto parece el pago del resumen de la tarjeta. Como gasto se contaría dos veces (las compras ya están cargadas): usá Tarjetas → Pagar resumen.",
   transferencia_propia:"Esto parece plata que pasa de una cuenta tuya a otra (por ejemplo, del banco al efectivo). Cargalo como transferencia desde el +, así no cuenta como gasto.",
-  presupuesto:"Esto parece un presupuesto o un remito, no un pago. Guardalo cuando lo pagues."};
+  presupuesto:"Esto parece un presupuesto o un remito, no un pago. Guardalo cuando lo pagues.",
+  cambio_moneda:"Comprar o vender dólares no es un gasto: la plata pasa de una cuenta en pesos a una en dólares. Cargalo como transferencia desde el +.",
+  prestamo:"Un préstamo no es un gasto ni un ingreso: la plata vuelve. Si es con alguien con quien compartís gastos, cargalo como Compartido (\u201clo debe entero\u201d)."};
 function vozTituloGuardar(){
   if(VS.length>1) return `Guardar ${VS.length} movimientos`;
   return {gasto:"Guardar gasto",ingreso:"Guardar ingreso",tarjeta:"Guardar compra",ahorro:"Guardar ahorro",compartido:"Guardar compartido"}[V.tipo]||"Guardar gasto";

@@ -18,7 +18,7 @@ const codigo = [
 // lo mínimo de la app que el intérprete necesita
 global.CATS = ['Supermercado', 'Auto', 'Salidas', 'Salud', 'Sueldo', 'Servicios', 'Nafta', 'Comida', 'Cigarrillos', 'Transporte',
   'Suscripciones', 'Ropa', 'Mascotas', 'Regalos', 'Alquiler', 'Gimnasio', 'Cuidado personal', 'Luz', 'Gas', 'Internet', 'Celular', 'Ventas'].map((nombre) => ({ nombre }))
-global.ACCOUNTS = [{ key: 'ef', nombre: 'Efectivo' }, { key: 'mp', nombre: 'Mercado Pago' }, { key: 'gal', nombre: 'Banco Galicia' }]
+global.ACCOUNTS = [{ key: 'ef', nombre: 'Efectivo' }, { key: 'mp', nombre: 'Mercado Pago' }, { key: 'gal', nombre: 'Banco Galicia' }, { key: 'uala', nombre: 'Ualá' }]
 global.CARDS = [{ id: 'v1', alias: '', banco: 'Galicia', marca: 'Visa' }, { id: 'm1', alias: '', banco: 'Santander', marca: 'Mastercard' }]
 global.PAIRS = [{ id: 'p1' }]; global.TX = []; global.PURCH = []; global.STXN = []; global.user = { id: 'u' }
 global.catsAlfa = () => CATS
@@ -97,6 +97,28 @@ const CASOS = [
   ['3 lucas y media', [{ monto: 3500 }]],
   ['me salió 1 palo y pico', [{ monto: 1000000, descripcion: null }]],
   ['50 verdes de spotify', [{ monto: 50, descripcion: null }]],
+
+  'Casos del día a día (v6.6)',
+  ['Me depositaron el sueldo, un palo 850.', [{ monto: 1850000, tipo: 'ingreso' }]],
+  ['un millón quinientos de la moto', [{ monto: 1500000 }]],
+  ['Pagué la expensa, 180.000 por transferencia del Galicia.', [{ monto: 180000, cuenta: 'gal', tipo: 'gasto', descripcion: 'Expensa' }]],
+  ['Pagué 1.200.000 del aguinaldo a la empleada', [{ monto: 1200000, tipo: 'gasto' }]],
+  ['cena con Sofi 36 mil, la pagué yo, me debe la mitad', [{ tipo: 'compartido', split: 'ambos' }]],
+  ['Sofi pagó el súper, 48.000, a medias', [{ tipo: 'compartido', pagador: 'u2', cuenta: 'ef' }]],
+  ['Fuimos al cine, 2 entradas a 9 mil cada una', [{ monto: 18000, categoria: 'Salidas' }]],
+  ['pasé 200 mil del Galicia a Mercado Pago', [{ especial: 'transferencia_propia', tipo: 'gasto' }]],
+  ['compré 200 dólares, me salieron 250 mil pesos', [{ especial: 'cambio_moneda' }]],
+  ['Préstamo: le presté 50 lucas a mi hermano', [{ monto: 50000, especial: 'prestamo' }]],
+  ['Me prestaron 100 mil', [{ tipo: 'ingreso', especial: 'prestamo' }]],
+  ['Gasté 8.500 en la verdu y 12.300 en la carnicería.', [{ monto: 8500, categoria: 'Supermercado' }, { monto: 12300, categoria: 'Supermercado' }]],
+  ['Pague la cuota del gimnasio, 35 lucas con Ualá', [{ monto: 35000, cuenta: 'uala', categoria: 'Gimnasio' }]],
+  ['Hoy cargué nafta por 45.000 en la Shell con la Visa.', [{ monto: 45000, card: 'v1', comercio: 'Shell' }]],
+  ['Netflix 15.990 con la Master.', [{ monto: 15990, card: 'm1', categoria: 'Suscripciones' }]],
+  ['televisor de 900 lucas en 12 cuotas, ya pagué 4', [{ monto: 900000, cuotas: 12, pagadas: 4 }]],
+  ['El 3 de octubre pagué el seguro del auto, 89.000', [{ monto: 89000, categoria: 'Auto' }]],
+  ['Gasté 2.000 en el estacionamiento y 1.500 en el peaje', [{ monto: 2000 }, { monto: 1500 }]],
+  ['compre remedios en la farmacia por 27.640 con 50 centavos', [{ monto: 27640.5, categoria: 'Salud' }]],
+  ['Doce mil trescientos cuarenta y cinco con cincuenta en el súper', [{ monto: 12345.5 }]],
 
   'Orden libre y etiquetas',
   ['supermercado 12.300', [{ monto: 12300, categoria: 'Supermercado' }]],
