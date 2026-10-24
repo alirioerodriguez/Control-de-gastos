@@ -138,6 +138,13 @@ Prueba automática de la lectura del QR: `node tests/factura.test.js`.
 - [ ] Factura A de un comercio a una empresa (caso real: Marash, vanitory): el comercio es el de arriba con el logo, no la "Razón social" del cliente; la fecha es la de emisión, no el "Vencimiento" ni el "Vencimiento CAE"; el total es el "Importe Total", no el neto.
 - [ ] iPhone (Safari) y Android (Chrome): en Android usa el lector del celular; en iPhone, jsQR (se baja la primera vez).
 
+**Facturas de servicios con QR para pagar (EMVCo, el interoperable del BCRA):** Edenor y Edesur lo traen abajo a la derecha, Metrogas desde el diseño 2022. Si es de monto cerrado, la app lee el monto y el nombre de la empresa sin IA, y pone la categoría (Edenor → Luz, Metrogas → Gas).
+- [ ] Factura de Edenor o Edesur: "Leí el QR de pago de EDENOR por $…". Si no lo lee, anotar si el QR de esa factura trae el monto (algunos son de monto abierto).
+- [ ] Factura de Metrogas: lo mismo.
+- [ ] Factura con QR de ARCA y QR de pago: manda el de ARCA (monto y fecha de la factura).
+- [ ] Cartel de QR de un kiosco (sin monto): "El QR es para pagar a …, pero no trae el monto".
+- [ ] AySA, Personal Flow, Movistar, Telecentro: no se encontró que traigan QR con monto; los lee la IA (AySA: el 1er vencimiento).
+
 **Comprobantes sin QR (los lee la IA):**
 - [ ] Ticket de súper nítido: total, comercio, fecha y categoría correctos.
 - [ ] Ticket largo (doblado, con muchos ítems): toma el TOTAL, no un subtotal.

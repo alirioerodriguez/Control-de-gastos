@@ -6,7 +6,7 @@ const path = require('path')
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')
 const tramo = (desde, hasta) => { const i = html.indexOf(desde); return html.slice(i, html.indexOf(hasta, i)) }
 global.round2 = (n) => Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100
-eval(tramo('const TIPO_CMP=', 'let _jsQR=null;') + html.match(/const esQRDelComercio=.*\n/)[0] + ';global.datosQRFactura=datosQRFactura;global.esQRDelComercio=esQRDelComercio;')
+eval(tramo('const TIPO_CMP=', '/* v6.7 · EL QR PARA PAGAR') + tramo('function crc16EMV', 'let _jsQR=null;') + html.match(/const esQRDelComercio=.*\n/)[0] + ';global.datosQRFactura=datosQRFactura;global.datosQRPago=datosQRPago;global.crc16EMV=crc16EMV;global.esQRDelComercio=esQRDelComercio;')
 
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64')
 const base = { ver: 1, fecha: '2026-10-15', cuit: 30500000001, ptoVta: 4, tipoCmp: 6, nroCmp: 1532, importe: 33250.5,
@@ -44,4 +44,23 @@ for (const [nombre, texto, esperado] of CASOS) {
   console.log(ok ? '✓' : '✗', nombre, ok ? '' : JSON.stringify(r))
 }
 console.log(`\n${CASOS.length + 3 - fallas}/${CASOS.length + 3} bien`)
+// QR para pagar (EMVCo): el de las facturas de luz y gas para MODO / Mercado Pago / Cuenta DNI
+const tlv = (id, v) => id + String(v.length).padStart(2, '0') + v
+const emv = (campos) => { const sin = campos.map(([i, v]) => tlv(i, v)).join('') + '6304'; return sin + crc16EMV(sin) }
+const pagoEdenor = emv([['00', '01'], ['01', '12'], ['26', tlv('00', 'ar.com.edenor') + tlv('01', '0123456789')], ['52', '4900'], ['53', '032'], ['54', '38420.00'], ['58', 'AR'], ['59', 'EDENOR S.A.'], ['60', 'CABA']])
+const pagoAbierto = emv([['00', '01'], ['01', '11'], ['26', tlv('00', 'com.mercadopago') + tlv('01', '999')], ['52', '5411'], ['53', '032'], ['58', 'AR'], ['59', 'KIOSCO JUAN'], ['60', 'CABA']])
+let extra = 0
+for (const [nombre, texto, esperado] of [
+  ['QR de pago de Edenor con monto: 38.420 y el nombre', pagoEdenor, { importe: 38420, nombre: 'EDENOR', moneda: 'PES' }],
+  ['QR de pago sin monto (kiosco): no da monto', pagoAbierto, { sinMonto: true }],
+  ['QR de pago con un dígito cambiado: el control lo descarta', pagoEdenor.replace('38420.00', '38429.00'), null],
+  ['QR de ARCA no es QR de pago', 'https://www.arca.gob.ar/fe/qr/?p=' + b64(base), null],
+]) {
+  const r = datosQRPago(texto)
+  const ok = esperado === null ? r === null : r && Object.entries(esperado).every(([k, v]) => r[k] === v)
+  if (!ok) fallas++
+  extra++
+  console.log(ok ? '✓' : '✗', nombre, ok ? '' : JSON.stringify(r))
+}
+console.log(`\n${CASOS.length + 3 + extra - fallas}/${CASOS.length + 3 + extra} bien (QR de pago incluidos)`)
 process.exit(fallas ? 1 : 0)

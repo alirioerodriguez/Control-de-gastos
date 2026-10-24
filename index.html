@@ -2274,7 +2274,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.23-v6.6-casos-nuevos";
+const APP_VERSION = "2026.10.24-v6.7-qr-de-pago-empresas";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -7986,6 +7986,28 @@ function datosQRFactura(texto){
       cuit:String(j.cuit||""), ptoVta:j.ptoVta, nroCmp:j.nroCmp};
   }catch(e){ return null; }
 }
+/* v6.7 · EL QR PARA PAGAR (EMVCo, el interoperable del BCRA)
+   Las facturas de luz y gas (Edenor, Edesur, Metrogas) traen un QR para pagar con
+   MODO, Mercado Pago o Cuenta DNI. Sigue el estándar EMVCo: campos "ID(2) LARGO(2) VALOR".
+   Si es de monto cerrado, el campo 54 es el monto y el 59 el nombre de quien cobra.
+   El 63 es un código de control (CRC16): si no coincide, la lectura salió mal y se descarta. */
+function crc16EMV(t){
+  let c=0xFFFF;
+  for(let i=0;i<t.length;i++){ c^=t.charCodeAt(i)<<8; for(let k=0;k<8;k++) c=(c&0x8000)?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF; }
+  return c.toString(16).toUpperCase().padStart(4,"0");
+}
+function datosQRPago(texto){
+  const t=String(texto||"");
+  if(!/^000201/.test(t)) return null;
+  const campos={}; let i=0;
+  while(i+4<=t.length){ const id=t.slice(i,i+2), n=parseInt(t.slice(i+2,i+4),10); if(isNaN(n)) return null;
+    campos[id]=t.slice(i+4,i+4+n); i+=4+n; }
+  if(i!==t.length || !campos["63"] || crc16EMV(t.slice(0,t.length-4))!==campos["63"].toUpperCase()) return null;
+  const monto=parseFloat(campos["54"]);
+  if(!(monto>0)) return {sinMonto:true, nombre:(campos["59"]||"").trim()||null};
+  const nombre=(campos["59"]||"").trim().replace(/\s+(S\.?A\.?|S\.?R\.?L\.?)$/i,"");
+  return {importe:round2(monto), moneda:campos["53"]==="840"?"DOL":"PES", nombre:nombre||null};
+}
 let _jsQR=null;
 function cargarJsQR(){
   if(window.jsQR) return Promise.resolve(window.jsQR);
@@ -8000,15 +8022,16 @@ function cargarJsQR(){
    del comercio (F.960). Identifica al local, no al tique, y NO trae el monto. Se reconoce para
    no confundirlo y para avisar bien. */
 const esQRDelComercio=t=>/(?:afip|arca)\.gob?\.ar\/(?!fe\/qr)|afip\.gov\.ar|qr\.(?:afip|arca)|clavefiscal/i.test(String(t||""));
-let qrComercioVisto=false, fotoLado=0;
+let qrComercioVisto=false, fotoLado=0, qrPagoVisto=null;
 async function buscarQRFactura(file){
-  qrComercioVisto=false; fotoLado=0;
+  qrComercioVisto=false; fotoLado=0; qrPagoVisto=null;
+  const notar=t=>{ if(esQRDelComercio(t)) qrComercioVisto=true; const pg=datosQRPago(t); if(pg && !(qrPagoVisto && qrPagoVisto.importe)) qrPagoVisto=pg; };
   let bmp; try{ bmp=await createImageBitmap(file); }catch(e){ return null; }
   fotoLado=Math.max(bmp.width,bmp.height);
   try{
     if("BarcodeDetector" in window){
       const det=new BarcodeDetector({formats:["qr_code"]});
-      for(const c of await det.detect(bmp)){ const d=datosQRFactura(c.rawValue); if(d) return d; if(esQRDelComercio(c.rawValue)) qrComercioVisto=true; }
+      for(const c of await det.detect(bmp)){ const d=datosQRFactura(c.rawValue); if(d) return d; notar(c.rawValue); }
     }
   }catch(e){}
   let jsQR; try{ jsQR=await cargarJsQR(); }catch(e){ return null; }
@@ -8026,14 +8049,26 @@ async function buscarQRFactura(file){
     const img=ctx.getImageData(0,0,cv.width,cv.height);
     const r=jsQR(img.data,cv.width,cv.height,{inversionAttempts:"attemptBoth"});
     const d=r && datosQRFactura(r.data); if(d) return d;
-    if(r && esQRDelComercio(r.data)) qrComercioVisto=true;
+    if(r) notar(r.data);
     await new Promise(z=>setTimeout(z,0));   // que la pantalla no se congele
   }
+  /* no hubo QR de factura: si hubo un QR de pago con monto, sirve igual */
+  if(qrPagoVisto && qrPagoVisto.importe) return {importe:qrPagoVisto.importe, fecha:todayISO(), tipoCmp:0, tipoTxt:"QR de pago",
+    credito:false, moneda:qrPagoVisto.moneda, ctz:1, cuit:"", pago:true, nombre:qrPagoVisto.nombre};
   return null;
 }
 /* el QR trae el monto en la moneda de la factura: si es en dólares y hay una cuenta en dólares, va ahí */
 function aplicarQRFactura(q){
   V.monto=q.importe;
+  if(q.pago && q.nombre && !V.comercio){
+    const n=q.nombre.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
+    V.comercio=MARCA_BONITA[normV(n)] || n; }
+  /* con el nombre de la empresa ya se sabe la categoría (Edenor → Luz), sin IA */
+  if(q.pago && V.comercio && !V.categoria){
+    const nc=normV(V.comercio), mc=MARCA_CATS[nc] && catExistente(MARCA_CATS[nc]);
+    const pista=mc ? null : CAT_PISTAS.find(p=>{ p.re.lastIndex=0; return p.re.test(nc); });
+    const cat=mc || (pista && catExistente(pista.cats));
+    if(cat){ V.categoria=cat; V.catAuto=true; } }
   if(q.fecha<=todayISO()) V.fecha=q.fecha;
   if(q.credito){ V.tipo="ingreso"; V.descripcion=V.descripcion||"Devolución ("+q.tipoTxt.toLowerCase()+")"; }
   if(q.moneda!=="PES"){
@@ -8082,12 +8117,15 @@ async function leerTicket(file){
   $("voz-estado").textContent="Buscando el código QR de la factura…";
   const qr=await buscarQRFactura(file);
   if(qr){ aplicarQRFactura(qr); textoTicket(); renderVoz(); }
-  const qrTxt = qr ? `${qr.tipoTxt} por ${fmt(qr.importe,qr.moneda==="DOL"?"USD":CUR)} del ${new Date(qr.fecha+"T12:00:00").toLocaleDateString("es-AR",{day:"numeric",month:"long",year:qr.fecha.slice(0,4)!==todayISO().slice(0,4)?"numeric":undefined})}`
+  const qrTxt = qr && qr.pago ? `QR de pago${qr.nombre?" de "+qr.nombre:""} por ${fmt(qr.importe,qr.moneda==="DOL"?"USD":CUR)}`
+    : qr ? `${qr.tipoTxt} por ${fmt(qr.importe,qr.moneda==="DOL"?"USD":CUR)} del ${new Date(qr.fecha+"T12:00:00").toLocaleDateString("es-AR",{day:"numeric",month:"long",year:qr.fecha.slice(0,4)!==todayISO().slice(0,4)?"numeric":undefined})}`
     + (qr.fecha>todayISO() ? " (fecha futura: puse la de hoy, cambiala si hace falta)" : "") : "";
 
   if(!iaActiva()){
     if(qr) $("voz-estado").textContent=`Leí el QR: ${qrTxt}. Elegí la categoría y guardá.`;
     else if(qrComercioVisto){ $("voz-estado").textContent="Este tique tiene el QR del comercio, que no trae el monto. Escribí el total (por ejemplo: 48.732 en Coto) y lo completo.";
+      try{ $("voz-texto").focus(); }catch(e){} }
+    else if(qrPagoVisto && qrPagoVisto.sinMonto){ $("voz-estado").textContent=`El QR es para pagar${qrPagoVisto.nombre?" a "+qrPagoVisto.nombre:""}, pero no trae el monto. Escribí cuánto fue.`;
       try{ $("voz-texto").focus(); }catch(e){} }
     else if(fotoLado && fotoLado<2000){ $("voz-estado").textContent="";
       toast("La foto es muy chica para leer el QR",{sub:`Mide ${fotoLado} px (las de WhatsApp vienen achicadas). Sacala con la cámara desde la app, o acercate al QR de abajo.`,ms:7000}); }
@@ -8099,7 +8137,8 @@ async function leerTicket(file){
   const foto=await achicarFoto(file);
   const cx=iaContexto();
   const prompt=`Leé esta foto de un comprobante de Argentina. HOY es ${todayISO()}.
-${qr?`El código QR oficial de ARCA ya dice: ${qr.tipoTxt}, TOTAL ${qr.importe} (${qr.moneda}), fecha ${qr.fecha}, CUIT del emisor ${qr.cuit}. Usá ESE total y ESA fecha; tu trabajo es el comercio, la categoría y la descripción.\n`:""}
+${qr&&qr.pago?`El QR para pagar de este comprobante dice: ${qr.nombre||"(sin nombre)"} cobra ${qr.importe}. Usá ESE monto; tu trabajo es la fecha, el comercio, la categoría y la descripción.\n`
+ : qr?`El código QR oficial de ARCA ya dice: ${qr.tipoTxt}, TOTAL ${qr.importe} (${qr.moneda}), fecha ${qr.fecha}, CUIT del emisor ${qr.cuit}. Usá ESE total y ESA fecha; tu trabajo es el comercio, la categoría y la descripción.\n`:""}
 QUÉ PUEDE SER (tipo_doc):
 - "factura": factura A, B, C, E o M (dice "FACTURA" y una letra en un recuadro, "Cod. 01/06/11", CUIT, CAE). En la A el IVA va aparte: "Importe neto gravado" + "IVA 21%" (o 10,5%) + "Percepciones" = "Importe total". Usá el TOTAL, nunca el neto ni el IVA.
   · Arriba está el que VENDE (logo, nombre de fantasía, su CUIT). Más abajo, en "Razón social", "Señor/es", "Cliente" o "Condición de IVA", está el que COMPRA: eso NUNCA es el comercio.
@@ -8148,10 +8187,11 @@ HISTORIAL (cómo categorizó esta persona sus últimos movimientos): ${JSON.stri
     iaAplicar({tipo: credito ? "ingreso" : d.card ? "tarjeta" : (V.tipo||"gasto"), monto:d.monto, categoria:d.categoria, card:d.card, cuotas:d.cuotas,
       fecha:d.fecha, comercio:d.comercio, descripcion:d.descripcion,
       especial: d.tipo_doc==="resumen_tarjeta" ? "resumen_tarjeta" : d.tipo_doc==="transferencia" ? "transferencia_propia" : d.tipo_doc==="presupuesto" ? "presupuesto" : null}, cx);
-    if(qr) aplicarQRFactura(qr);                         // el QR manda en monto y fecha
+    if(qr){ const f=V.fecha; aplicarQRFactura(qr); if(qr.pago) V.fecha=f; }   // el QR manda en el monto (y en la fecha, si es de ARCA)
     if(!qr && d.moneda==="USD"){ const usd=ACCOUNTS.filter(a=>(CTA_MON[a.key]||"ARS")==="USD"); if(usd.length===1 && V.tipo!=="tarjeta") V.cuenta=usd[0].key; }
     textoTicket();
-    $("voz-estado").textContent = qr ? `Leí el QR (${qrTxt}): el monto y la fecha son exactos. Revisá la categoría.`
+    $("voz-estado").textContent = qr && qr.pago ? `Leí el ${qrTxt}: el monto es exacto. Revisá la fecha y la categoría.`
+      : qr ? `Leí el QR (${qrTxt}): el monto y la fecha son exactos. Revisá la categoría.`
       : d.tipo_doc==="transferencia" ? "Es un comprobante de transferencia: si fue a una cuenta tuya, no es un gasto."
       : "Leí el comprobante. Revisá que esté bien.";
   }catch(e){
