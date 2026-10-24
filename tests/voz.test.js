@@ -24,7 +24,7 @@ global.PAIRS = [{ id: 'p1' }]; global.TX = []; global.PURCH = []; global.STXN = 
 global.catsAlfa = () => CATS
 global.cardTitulo = (c) => c.marca + ' ' + c.banco
 global.otherProf = () => ({ apodo: 'Sofi' }); global.otherId = () => 'u2'
-eval(codigo + ';global.planCuotas=planCuotas;global.mesSuma=mesSuma;global.interpretarLocal=interpretarLocal;global.movimientos=()=>VS;global.resetVoz=()=>{VS=[];vozSel=0;};')
+eval(codigo + ';global.planCuotas=planCuotas;global.mesSuma=mesSuma;global.interpretarLocal=interpretarLocal;global.movimientos=()=>VS;global.resetVoz=()=>{VS=[];vozSel=0;APRENDE={categoria:{},comercio:{}};};global.aprender=(a)=>{APRENDE=a;};')
 
 const hoy = diasAtras(0), ayer = diasAtras(1), anteayer = diasAtras(2)
 // frase → lo que tiene que salir (uno por movimiento; sólo se comparan los campos que se ponen)
@@ -119,6 +119,12 @@ const CASOS = [
   ['Gasté 2.000 en el estacionamiento y 1.500 en el peaje', [{ monto: 2000 }, { monto: 1500 }]],
   ['compre remedios en la farmacia por 27.640 con 50 centavos', [{ monto: 27640.5, categoria: 'Salud' }]],
   ['Doce mil trescientos cuarenta y cinco con cincuenta en el súper', [{ monto: 12345.5 }]],
+
+  'Lo que la app aprendió de las correcciones (v6.8)',
+  ['gasté 7000 en lo de Pepe', [{ _aprendido: { categoria: { pepe: 'Salidas' }, comercio: {} }, monto: 7000, categoria: 'Salidas' }]],
+  ['4500 en la verdulería', [{ _aprendido: { categoria: { verduleria: 'Comida' }, comercio: {} }, categoria: 'Comida' }]],   // le gana a la regla general
+  ['compré en el Jumbito 12 mil', [{ _aprendido: { categoria: {}, comercio: { jumbito: 'Jumbo' } }, comercio: 'Jumbo', categoria: 'Supermercado' }]],
+  ['4500 en la verdulería', [{ categoria: 'Supermercado' }]],    // sin nada aprendido, la regla general
 
   'Orden libre y etiquetas',
   ['supermercado 12.300', [{ monto: 12300, categoria: 'Supermercado' }]],
@@ -265,8 +271,9 @@ let fallas = 0
 let total = 0
 for (const caso of CASOS) {
   if (typeof caso === 'string') { console.log('\n— ' + caso); continue }
-  const [frase, esperado] = caso; total++
+  let [frase, esperado] = caso; total++
   resetVoz()
+  if (esperado[0] && esperado[0]._aprendido) { aprender(esperado[0]._aprendido); esperado = esperado.map(({ _aprendido, ...e }) => e) }
   global.V = { texto: frase, auto: {}, manual: {}, iaHecho: null, _n: 0 }
   interpretarLocal()
   const vs = movimientos()

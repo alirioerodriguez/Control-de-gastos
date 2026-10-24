@@ -160,3 +160,30 @@ Prueba automática de la lectura del QR: `node tests/factura.test.js`.
 - [ ] Con TalkBack o VoiceOver, el botón del micrófono se anuncia como "Dictar el gasto por voz".
 - [ ] Los botones de cada movimiento se pueden tocar y leer.
 - [ ] Con letra grande del sistema, la ficha no se corta.
+
+## v6.8 · Calidad, aprendizaje, PDF y cuotas del resumen
+
+Automáticas: `node tests/voz.test.js` (incluye "lo que la app aprendió"), `node tests/factura.test.js`, `node tests/resumen.test.js`.
+
+### D1. Registro de correcciones (tabla `cargas_calidad`)
+- Dictar "gasté 15.000 en el coto", cambiar la categoría a mano y guardar → aparece una fila con `corregidos = {categoria}` y `fuentes.categoria = "local"` (o "ia").
+- No se guardan montos, comercios ni el texto dictado.
+
+### D2. Aprendizaje (tabla `aprendizajes`)
+- Dictar "50 mil en lo de Rosa", poner categoría "Súper", guardar. Volver a dictar "20 mil en lo de Rosa" → ya sale "Súper".
+- Corregir el nombre de un comercio mal escrito → la próxima vez sale corregido.
+
+### D3. Facturas en PDF
+- Factura del mail con QR de ARCA → monto y fecha exactos del QR.
+- PDF sin QR → "Leí el total del PDF: …" (no toma subtotal, neto, IVA, 2do vencimiento).
+- AySA / Edenor / Personal en PDF → 1er vencimiento.
+- PDF roto o escaneado sin texto → aviso claro (con IA: lo lee como foto).
+
+### D4. Cuotas desde el resumen de la tarjeta
+- Tarjetas → "Cargar las cuotas desde el resumen" → PDF del home banking.
+- Lee renglones "C.07/12", "Cuota 04/06", "CUOTA 2 DE 3", "Cta. 05/10". Las compras en 1 pago, pagos, impuestos y bonificaciones (negativas) quedan afuera.
+- Elige sola la tarjeta por banco/marca y el mes por "Vencimiento actual".
+- Las que ya tenés cargadas aparecen destildadas con "ya la tenés cargada".
+- Sin "Ya pagué": la cuota del resumen queda pendiente; con "Ya pagué": queda pagada.
+- Subir el resumen desde la cámara/galería de "Cargar" también abre esta hoja (no lo carga como gasto).
+- Foto del resumen: necesita la IA. Sin IA, pide el PDF.

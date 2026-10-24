@@ -1593,6 +1593,11 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
       <canvas id="chart-proj"></canvas><div class="hint" id="proj-hint"></div></div>
     <div class="sec"><b>Compras en cuotas</b><span id="compras-count"></span></div>
     <div class="panel" id="compras-list"></div>
+    <!-- v6.8 · las cuotas que ya venías pagando, de una sola vez desde el resumen -->
+    <label class="btn ghost w tapz" style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer">
+      <span data-ic="tarjeta" data-ic-size="16" aria-hidden="true"></span>Cargar las cuotas desde el resumen
+      <input id="res-archivo" type="file" accept="image/*,application/pdf,.pdf" style="display:none" aria-label="Elegir el resumen de la tarjeta (PDF o foto)">
+    </label>
     <div class="sec"><b>Cuotas por mes</b></div>
     <div class="panel" id="cuotas-list"></div>
     <div style="height:6px"></div>
@@ -1904,8 +1909,8 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
 <!-- v3.2 · la cámara ofrece las dos formas: sacarla o elegir una que ya tenés -->
 <div id="foto-ov" class="ov hidden" role="dialog" aria-modal="true" aria-labelledby="foto-tit">
   <div class="sheet">
-    <h3 id="foto-tit">Foto del ticket</h3>
-    <p class="hint" style="margin:0 0 16px">Leo el monto, el comercio y la fecha de la foto.</p>
+    <h3 id="foto-tit">Foto o PDF del comprobante</h3>
+    <p class="hint" style="margin:0 0 16px">Leo el monto, el comercio y la fecha. Las facturas que te llegan por mail podés subirlas en PDF.</p>
     <div class="fotoops">
       <label class="fotoop tapz">
         <span class="fi" data-ic="camara" data-ic-size="20" aria-hidden="true"></span>
@@ -1914,8 +1919,8 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
       </label>
       <label class="fotoop tapz">
         <span class="fi" data-ic="grilla" data-ic-size="20" aria-hidden="true"></span>
-        <span class="ft"><b>Elegir una foto</b><span>De la galería o los archivos</span></span>
-        <input id="foto-galeria" type="file" accept="image/*" style="display:none" aria-label="Elegir una foto del ticket ya guardada">
+        <span class="ft"><b>Elegir una foto o un PDF</b><span>De la galería o los archivos (la factura del mail)</span></span>
+        <input id="foto-galeria" type="file" accept="image/*,application/pdf,.pdf" style="display:none" aria-label="Elegir una foto o un PDF del comprobante">
       </label>
     </div>
     <button class="btn ghost w" id="foto-cancel" style="margin-top:14px">Cancelar</button>
@@ -2049,6 +2054,23 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
   <div class="hint">El día de cierre define en qué mes cae la primera cuota. El interés se usa solo si un mes no pagás todo el resumen. Con el límite, la tarjeta muestra cuánto tenés usado.</div>
   <div class="err" id="card-err"></div>
   <div class="r2"><button class="btn ghost" style="flex:1" id="card-cancel">Cancelar</button><button class="btn" style="flex:1" id="card-save">Guardar</button></div>
+</div></div>
+
+<!-- v6.8 · hoja: cuotas leídas del resumen de la tarjeta -->
+<div id="res-ov" class="ov hidden" role="dialog" aria-modal="true" aria-labelledby="res-tit"><div class="sheet">
+  <h3 id="res-tit">Cuotas del resumen</h3>
+  <p class="hint" id="res-sub" style="margin:0 0 12px"></p>
+  <div class="g2">
+    <div class="fld"><label>Tarjeta</label><select id="res-card"></select></div>
+    <div class="fld"><label>Resumen que vence en</label><input id="res-mes" type="month"></div>
+  </div>
+  <label class="chk" style="display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer">
+    <input type="checkbox" id="res-pagado" style="width:20px;height:20px;accent-color:var(--blue)"> Ya pagué este resumen
+  </label>
+  <div class="panel" id="res-lista" style="max-height:46vh;overflow:auto"></div>
+  <div class="hint" id="res-hint"></div>
+  <div class="err" id="res-err"></div>
+  <div class="r2"><button class="btn ghost" style="flex:1" id="res-cancel">Cancelar</button><button class="btn" style="flex:1" id="res-save">Cargar</button></div>
 </div></div>
 
 <!-- hoja: pagar resumen -->
@@ -2274,7 +2296,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.24-v6.7-qr-de-pago-empresas";
+const APP_VERSION = "2026.10.24-v6.8-calidad-aprendizaje-pdf-resumen";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -3159,6 +3181,9 @@ async function loadAll(){
         sb.from("profiles").upsert(cambio,{onConflict:"user_id"}).then(({error})=>{ if(error) anotarError("No pude guardar el nombre de Google", error); });
       } }
     GOALS=(go.error?[]:(go.data||[])); SENT=(se.error?[]:(se.data||[])); STMT=(stm.error?[]:(stm.data||[]));
+    /* v6.8 · lo que la app aprendió de tus correcciones */
+    Promise.resolve(sb.from("aprendizajes").select("tipo,clave,valor")).then(({data})=>{
+      APRENDE={categoria:{},comercio:{}}; (data||[]).forEach(a=>{ if(APRENDE[a.tipo]) APRENDE[a.tipo][a.clave]=a.valor; }); }).catch(()=>{});
     ahorroTablesMissing = !!(go.error||se.error);
     VAL=(va.error?[]:(va.data||[])); valTableMissing = !!va.error;
     /* si las columnas nuevas todavía no están, la app funciona igual y lo avisa */
@@ -6976,7 +7001,53 @@ function vozNuevo(){
 /* v5.5 · lo que corregís a mano en la ficha no lo vuelve a pisar ni el intérprete ni la IA */
 const VOZ_MANUAL={monto:["monto"],cuotas:["cuotas","tipo","pagadas"],pagadas:["pagadas"],fecha:["fecha"],comercio:["comercio"],descripcion:["descripcion"],
   pair:["pair","tipo","conQuien","pagador"],split:["split"],cuenta:["cuenta","card","tipo"],card:["card","tipo"],categoria:["categoria","catAuto"]};
-function vozMarcarManual(campo){ (VOZ_MANUAL[campo]||[campo]).forEach(k=>{ V.manual[k]=V[k]; }); }
+function vozMarcarManual(campo){
+  /* v6.8 · ¿corrigió algo que la app había completado, o completó algo que faltaba? */
+  V.toques ||= {}; if(!V.toques[campo]) V.toques[campo] = (V.origen&&V.origen[campo]) ? "corrigio" : "completo";
+  (VOZ_MANUAL[campo]||[campo]).forEach(k=>{ V.manual[k]=V[k]; }); }
+/* v6.8 · CALIDAD DE LA CARGA
+   Cada dato recuerda de dónde salió (local, ia, foto-ia, qr-arca, qr-pago). Al guardar se
+   registra qué tocó la persona, sin montos ni textos: sólo nombres de campos y de orígenes. */
+let VOZ_ENTRADA="voz", ORIGEN_IA="ia";
+const vozFoto_=()=>Object.fromEntries(CAMPOS_CAL.map(k=>[k,V[k]]));
+function vozAnotarOrigen(antes, origen){
+  V.origen ||= {};
+  V.origenVal ||= {};
+  CAMPOS_CAL.forEach(k=>{ const v=V[k]; if(v!==antes[k] && v!==null && v!==undefined && v!=="" && v!==0){ V.origen[k]=origen; V.origenVal[k]=v; } });
+}
+/* v6.8 · APRENDER de lo que corregiste: al guardar, si cambiaste la categoría o el comercio,
+   la próxima vez la app ya lo sabe (y se lo cuenta a la IA) */
+function aprenderDe(items){
+  try{
+    const filas=[];
+    items.forEach(it=>{
+      const t=it.toques||{};
+      if(t.categoria && it.categoria){
+        const clave = normV(it.comercio||"") || normV((it.auto&&it.auto.categoria)||"") || normV(it.descripcion||"").split(/\s+/).slice(0,3).join(" ");
+        if(clave && clave.length>=3 && clave.length<=40){ APRENDE.categoria[clave]=it.categoria; filas.push({tipo:"categoria",clave,valor:it.categoria}); }
+      }
+      const antes=it.origenVal && it.origenVal.comercio;
+      if(t.comercio==="corrigio" && antes && it.comercio && normV(antes)!==normV(it.comercio)){
+        const clave=normV(antes).slice(0,60);
+        if(clave.length>=2){ APRENDE.comercio[clave]=it.comercio; filas.push({tipo:"comercio",clave,valor:it.comercio.slice(0,60)}); }
+      }
+    });
+    if(filas.length && sb && user) Promise.resolve(sb.from("aprendizajes").upsert(filas.map(f=>({...f, actualizado:new Date().toISOString()})),{onConflict:"user_id,tipo,clave"})).catch(()=>{});
+  }catch(e){}
+}
+function registrarCalidad(items){
+  aprenderDe(items);
+  try{
+    if(!sb || !user || !items.length) return;
+    const filas=items.map(it=>({
+      entrada:VOZ_ENTRADA, con_ia:Object.values(it.origen||{}).some(o=>/ia$/.test(o)),
+      qr:Object.values(it.origen||{}).includes("qr-arca")?"arca":Object.values(it.origen||{}).includes("qr-pago")?"pago":null,
+      movimientos:Math.min(20,items.length),
+      corregidos:Object.entries(it.toques||{}).map(([k,v])=>v==="completo"?k+"+":k),
+      fuentes:it.origen||{}, version:APP_VERSION }));
+    Promise.resolve(sb.from("cargas_calidad").insert(filas)).catch(()=>{});   // si falla, no molesta a nadie
+  }catch(e){}
+}
 function vozRespetarManual(){ Object.keys(V.manual||{}).forEach(k=>{ V[k]=V.manual[k]; }); }
 function vozHoy(){
   const d=new Date();
@@ -6988,7 +7059,7 @@ const CAP_GUARDADO={gasto:"Gasto guardado", ingreso:"Ingreso guardado", tarjeta:
 let vozIds={}, guardandoVoz=false;
 function idVoz(clave){ return (vozIds[(V._n||0)+":"+clave] ||= nuevoId()); }   /* v5.7 · uno por movimiento */
 function openVoz(pre){
-  vozNuevo(); vozIds={};
+  vozNuevo(); vozIds={}; VOZ_ENTRADA="voz"; ORIGEN_IA="ia";
   const ce=$("voz-err"); if(ce) ce.textContent="";
   if($("voz-hoy")) $("voz-hoy").textContent=vozHoy();
   /* v3 · la hoja hereda el tipo que esté eligiendo la calculadora */
@@ -7458,6 +7529,8 @@ function nombreOcupado(w){
   return false;
 }
 function leerComercio(L){
+  { const a=aprendidoEnTexto("comercio", L.libre);                 // v6.8 · "cotó" → Coto, porque ya lo corregiste
+    if(a){ tachar(L,a.i,a.clave.length); return {valor:a.valor, texto:a.clave}; } }
   for(const c of comerciosUsados()){
     const i=buscarNombre(L,c);
     if(i>=0){ tachar(L,i,normV(c).length); return {valor:c, texto:normV(c)}; }
@@ -7559,13 +7632,17 @@ function leerCategoria(L, comercio, textoEntero){
     palabras.forEach(w=>{ if((n.startsWith(w)||w.startsWith(n)) && (!best||w.length>best.texto.length))
       best={valor:c.nombre, texto:w, explicita:true}; }); });
   if(best){ const i=buscarNombre(L,best.texto); if(i>=0) tachar(L,i,best.texto.length); return best; }
+  { const porComercio = comercio && APRENDE.categoria[normV(comercio)];
+    const enTexto = !porComercio && aprendidoEnTexto("categoria", normV(textoEntero||L.libre));
+    const v = porComercio || (enTexto && enTexto.valor);
+    if(v && catsAlfa().some(c=>c.nombre===v)) return {valor:v, texto:enTexto?enTexto.clave:null, explicita:false}; }
   if(comercio){
     const prev=TX.concat(PURCH).reverse().find(x=>normV(x.comercio||"")===normV(comercio) && x.categoria);
     if(prev) return {valor:prev.categoria, texto:null, explicita:false};
     const mc=MARCA_CATS[normV(comercio)] && catExistente(MARCA_CATS[normV(comercio)]);
     if(mc) return {valor:mc, texto:null, explicita:false};
   }
-  const todo=normV(textoEntero||L.libre);
+  const todo=normV(textoEntero||L.libre)+" "+normV(comercio||"");   // v6.8 · también el comercio ("Jumbito" → Jumbo → súper)
   for(const p of CAT_PISTAS){
     p.re.lastIndex=0;
     const m=p.re.exec(todo);
@@ -7643,6 +7720,17 @@ function textoLibre(L,ini,fin,esNombre){
 }
 
 /* ================= EL DIRECTOR DE ORQUESTA ================= */
+/* v6.8 · los datos de un movimiento cuyo origen se registra (ver "CALIDAD DE LA CARGA") */
+/* v6.8 · lo que la app aprendió de las correcciones de esta persona:
+   categoria: {"chino": "Supermercado", "coto": "Supermercado"} · comercio: {"coto": "Coto"} (alias mal dictados) */
+let APRENDE={categoria:{},comercio:{}};
+function aprendidoEnTexto(tipo, texto){
+  const claves=Object.keys(APRENDE[tipo]||{}).sort((a,b)=>b.length-a.length);
+  for(const c of claves){ const re=new RegExp("(?:^|[^a-z0-9ñ])("+c.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")(?![a-z0-9ñ])");
+    const m=re.exec(texto); if(m) return {clave:c, valor:APRENDE[tipo][c], i:m.index+m[0].length-c.length}; }
+  return null;
+}
+const CAMPOS_CAL=["monto","categoria","comercio","descripcion","fecha","cuenta","card","cuotas","pagadas","tipo","pair","split"];
 /* lee UN movimiento y devuelve lo que encontró, sin tocar el borrador */
 function leerFrase(txt){
   const L=nuevoLienzo(txt), r={auto:{}};
@@ -7764,7 +7852,7 @@ function vozItem(prev, n){
   return {texto:V?V.texto:"", monto:0, categoria:null, catAuto:false, cuenta:(ACCOUNTS[0]||{}).key||null, card:null, cuotas:1,
     fecha:todayISO(), comercio:null, descripcion:null, tipo:VOZ_TIPO_BASE, pagadas:0, pair:(PAIRS[0]||{}).id||null, split:null,
     pagador:(user||{}).id||null, conQuien:null, corregido:false, auto:{},
-    manual:(prev&&prev.manual)||{}, iaHecho:null, _n:n};
+    manual:(prev&&prev.manual)||{}, toques:(prev&&prev.toques)||{}, origen:{}, iaHecho:null, _n:n};
 }
 /* las reglas que valen para cualquier lectura, local o de la IA */
 function vozDerivar(it){
@@ -7798,6 +7886,8 @@ function interpretarLocal(){
     const it=vozItem(prev[n], n);
     Object.keys(r).forEach(k=>{ if(r[k]!==undefined) it[k]=r[k]; });
     vozDerivar(it);
+    it.origenVal={};
+    CAMPOS_CAL.forEach(k=>{ if(r[k]!==undefined && r[k]!==null && r[k]!=="" && r[k]!==0){ it.origen[k]="local"; it.origenVal[k]=r[k]; } });
     /* v5.5 · antes, si no reconocía la categoría, ponía la última que usaste: así salían
        categorías equivocadas sin aviso. Mejor "Sin categoría", que se ve y se toca. */
     Object.keys(it.manual).forEach(k=>{ it[k]=it.manual[k]; });
@@ -7835,7 +7925,9 @@ function iaContexto(){
     ctas: ACCOUNTS.map(a=>({key:a.key, nombre:a.nombre, moneda:CTA_MON[a.key]||CUR})),
     tars: CARDS.map(c=>({id:c.id, nombre:cardTitulo(c), marca:c.marca||null, banco:c.banco||null})),
     gente: PAIRS.map(p=>({pair:p.id, nombre:otherProf(otherId(p)).apodo})).filter(g=>g.nombre),
-    hist: iaHistorial(60)
+    hist: Object.entries(APRENDE.categoria).slice(0,40).map(([k,v])=>`${k} → ${v} (corregido por la persona)`)
+      .concat(Object.entries(APRENDE.comercio).slice(0,20).map(([k,v])=>`"${k}" es el comercio ${v} (corregido por la persona)`))
+      .concat(iaHistorial(60))
   };
 }
 /* esquema de respuesta: el modelo no puede inventar categorías, cuentas ni tarjetas */
@@ -7938,6 +8030,9 @@ Frase: ${JSON.stringify(texto)}`;
 /* vuelca la lectura de la IA en el borrador, validando todo */
 function iaAplicar(d, cx){
   if(!d || typeof d!=="object") return;
+  const _antes=vozFoto_(); try{ iaAplicar_(d,cx); } finally{ vozAnotarOrigen(_antes, ORIGEN_IA); }
+}
+function iaAplicar_(d, cx){
   const m=typeof d.monto==="number" ? d.monto : parseMonto(d.monto);
   if(m>0) V.monto=round2(m);
   if(["gasto","ingreso","tarjeta","ahorro","compartido"].includes(d.tipo)) V.tipo=d.tipo;
@@ -8059,6 +8154,9 @@ async function buscarQRFactura(file){
 }
 /* el QR trae el monto en la moneda de la factura: si es en dólares y hay una cuenta en dólares, va ahí */
 function aplicarQRFactura(q){
+  const _antes=vozFoto_(); try{ aplicarQRFactura_(q); } finally{ vozAnotarOrigen(_antes, q.pago?"qr-pago":"qr-arca"); }
+}
+function aplicarQRFactura_(q){
   V.monto=q.importe;
   if(q.pago && q.nombre && !V.comercio){
     const n=q.nombre.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
@@ -8076,6 +8174,62 @@ function aplicarQRFactura(q){
     if(q.moneda==="DOL" && usd.length===1 && V.tipo!=="tarjeta") V.cuenta=usd[0].key;
   }
   vozRespetarManual();
+}
+
+/* ===================== v6.8 · FACTURAS EN PDF =====================
+   Las facturas electrónicas llegan en PDF por mail. Con pdf.js (Mozilla, versión 4: la 3
+   tiene una falla de seguridad con PDF maliciosos) se dibuja la primera página a alta
+   resolución —el QR sale perfecto— y se saca el TEXTO exacto, que sirve para leer el
+   total sin IA aunque no haya QR. Se baja sólo la primera vez que alguien elige un PDF. */
+const PDFJS_URL="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/";
+let _pdfjs=null;
+function cargarPdfJs(){
+  return _pdfjs ||= import(PDFJS_URL+"pdf.min.mjs").then(m=>{ m.GlobalWorkerOptions.workerSrc=PDFJS_URL+"pdf.worker.min.mjs"; return m; })
+    .catch(e=>{ _pdfjs=null; throw new Error("no pude abrir el lector de PDF"); });
+}
+/* el texto de una página, armado en renglones (pdf.js lo da en pedacitos sueltos) */
+function renglonesPDF(items){
+  const filas=[];
+  items.filter(it=>it.str && it.str.trim()).forEach(it=>{
+    const y=it.transform[5], x=it.transform[4];
+    let f=filas.find(r=>Math.abs(r.y-y)<3); if(!f){ f={y,partes:[]}; filas.push(f); }
+    f.partes.push({x,t:it.str});
+  });
+  return filas.sort((a,b)=>b.y-a.y).map(f=>f.partes.sort((a,b)=>a.x-b.x).map(p=>p.t).join(" ").replace(/\s+/g," ").trim()).join("\n");
+}
+async function leerPDF(file){
+  const pdfjs=await cargarPdfJs();
+  const doc=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()), isEvalSupported:false}).promise;
+  let texto="";
+  for(let n=1;n<=Math.min(doc.numPages,6);n++){ const pg=await doc.getPage(n); texto+=renglonesPDF((await pg.getTextContent()).items)+"\n"; }
+  const pg=await doc.getPage(1), v1=pg.getViewport({scale:1});
+  const vp=pg.getViewport({scale:Math.min(5, 2600/Math.max(v1.width,v1.height))});
+  const cv=document.createElement("canvas"); cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
+  const ctx=cv.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,cv.width,cv.height);
+  await pg.render({canvasContext:ctx, viewport:vp}).promise;
+  const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
+  return {imagen:new File([blob],"pagina-1.png",{type:"image/png"}), texto:texto.trim(), paginas:doc.numPages};
+}
+/* el total y la fecha, leídos del texto del PDF (exacto: no es una foto) */
+function totalDelTexto(texto){
+  const L=String(texto||"").split("\n").map(x=>x.trim()).filter(Boolean);
+  const importe=l=>{ const m=l.match(/(?:\$|ARS|US\$|U\$S)?\s*(-?\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})|-?\d+(?:,\d{1,2})?|\d{1,3}(?:,\d{3})*\.\d{2})\s*$/);
+    if(!m) return null; const v=parseMonto(m[1].replace(/\s/g,"")); return v>0?round2(v):null; };
+  const prioridad=[
+    /\b(total a pagar|importe a pagar|a pagar|total a abonar|importe total|total factura|total pagado|monto total)\b/i,
+    /^\s*total\b(?!\s*(neto|pvp|gravado|iva|exento|ahorr))/i,
+    /\b1\s*(er|°|º)?\s*venc/i ];                         // AySA: "1er vencimiento 03/11 $ 23.400"
+  let monto=null, linea=null;
+  for(const re of prioridad){
+    for(const l of L){ if(!re.test(l) || /sub\s*total|neto gravado|saldo anterior|\b2\s*(do|°|º)?\s*venc|segundo venc|\b3\s*(er|°|º)?\s*venc|recargo/i.test(l)) continue;
+      const v=importe(l) ?? importe(L[L.indexOf(l)+1]||"");   // a veces el número queda en el renglón de abajo
+      if(v){ monto=v; linea=l; break; } }
+    if(monto) break;
+  }
+  let fecha=null;
+  const mf=String(texto).match(/fecha(?:\s+de)?(?:\s+emisi[oó]n)?\s*:?\s*(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/i);
+  if(mf){ const y=mf[3].length===2?"20"+mf[3]:mf[3]; fecha=`${y}-${p2(+mf[2])}-${p2(+mf[1])}`; if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) fecha=null; }
+  return monto ? {monto, fecha, linea} : null;
 }
 
 /* las fotos del celu pesan 3-8 MB: achicadas a 1600 px se leen igual de bien y viajan rápido */
@@ -8113,16 +8267,32 @@ function textoTicket(){
   V.iaHecho=V.texto; V.auto={}; V._n=0; VS=[V]; vozSel=0;
 }
 async function leerTicket(file){
+  VOZ_ENTRADA = /pdf/i.test(file.type||"") ? "pdf" : "foto"; ORIGEN_IA="foto-ia";
   if(IA_SERVIDOR===null) await detectarIAServidor();
+  let textoPDF=null, delTexto=null; const original=file;
+  if(VOZ_ENTRADA==="pdf" || /\.pdf$/i.test(file.name||"")){
+    VOZ_ENTRADA="pdf"; $("voz-estado").textContent="Abriendo el PDF…";
+    try{ const r=await leerPDF(file); file=r.imagen; textoPDF=r.texto; }
+    catch(e){ $("voz-estado").textContent="No pude abrir el PDF ("+e.message+"). Probá con una captura de pantalla de la factura."; renderVoz(); return; }
+    /* v6.8 · el resumen de la tarjeta no es un gasto: lo que sirve son sus cuotas */
+    const rr=cuotasDelResumen(textoPDF);
+    if(rr.esResumen && rr.cuotas.length){ $("voz-estado").textContent=""; cerrarVoz(); abrirResumen(rr,textoPDF); return; }
+  }
   $("voz-estado").textContent="Buscando el código QR de la factura…";
   const qr=await buscarQRFactura(file);
   if(qr){ aplicarQRFactura(qr); textoTicket(); renderVoz(); }
+  else if(textoPDF && (delTexto=totalDelTexto(textoPDF))){
+    const _antes=vozFoto_(); V.monto=delTexto.monto; if(delTexto.fecha && delTexto.fecha<=todayISO()) V.fecha=delTexto.fecha;
+    vozRespetarManual(); vozAnotarOrigen(_antes,"pdf-texto"); textoTicket(); renderVoz();
+  }
   const qrTxt = qr && qr.pago ? `QR de pago${qr.nombre?" de "+qr.nombre:""} por ${fmt(qr.importe,qr.moneda==="DOL"?"USD":CUR)}`
     : qr ? `${qr.tipoTxt} por ${fmt(qr.importe,qr.moneda==="DOL"?"USD":CUR)} del ${new Date(qr.fecha+"T12:00:00").toLocaleDateString("es-AR",{day:"numeric",month:"long",year:qr.fecha.slice(0,4)!==todayISO().slice(0,4)?"numeric":undefined})}`
     + (qr.fecha>todayISO() ? " (fecha futura: puse la de hoy, cambiala si hace falta)" : "") : "";
 
   if(!iaActiva()){
     if(qr) $("voz-estado").textContent=`Leí el QR: ${qrTxt}. Elegí la categoría y guardá.`;
+    else if(delTexto) $("voz-estado").textContent=`Leí el total del PDF: ${fmt(delTexto.monto,CUR)} (dice "${delTexto.linea.slice(0,40)}"). Revisalo y elegí la categoría.`;
+    else if(textoPDF) $("voz-estado").textContent="Abrí el PDF pero no encontré el total. Escribí cuánto fue.";
     else if(qrComercioVisto){ $("voz-estado").textContent="Este tique tiene el QR del comercio, que no trae el monto. Escribí el total (por ejemplo: 48.732 en Coto) y lo completo.";
       try{ $("voz-texto").focus(); }catch(e){} }
     else if(qrPagoVisto && qrPagoVisto.sinMonto){ $("voz-estado").textContent=`El QR es para pagar${qrPagoVisto.nombre?" a "+qrPagoVisto.nombre:""}, pero no trae el monto. Escribí cuánto fue.`;
@@ -8136,7 +8306,8 @@ async function leerTicket(file){
   $("voz-estado").textContent = qr ? `Leí el QR (${qrTxt}). Buscando el comercio…` : "Leyendo el ticket…";
   const foto=await achicarFoto(file);
   const cx=iaContexto();
-  const prompt=`Leé esta foto de un comprobante de Argentina. HOY es ${todayISO()}.
+  const prompt=`Leé esta ${textoPDF?"página de un PDF":"foto"} de un comprobante de Argentina. HOY es ${todayISO()}.
+${textoPDF?"TEXTO EXACTO DEL PDF (usalo antes que la imagen para los números):\n\"\"\"\n"+textoPDF.slice(0,6000)+"\n\"\"\"\n":""}
 ${qr&&qr.pago?`El QR para pagar de este comprobante dice: ${qr.nombre||"(sin nombre)"} cobra ${qr.importe}. Usá ESE monto; tu trabajo es la fecha, el comercio, la categoría y la descripción.\n`
  : qr?`El código QR oficial de ARCA ya dice: ${qr.tipoTxt}, TOTAL ${qr.importe} (${qr.moneda}), fecha ${qr.fecha}, CUIT del emisor ${qr.cuit}. Usá ESE total y ESA fecha; tu trabajo es el comercio, la categoría y la descripción.\n`:""}
 QUÉ PUEDE SER (tipo_doc):
@@ -8194,11 +8365,214 @@ HISTORIAL (cómo categorizó esta persona sus últimos movimientos): ${JSON.stri
       : qr ? `Leí el QR (${qrTxt}): el monto y la fecha son exactos. Revisá la categoría.`
       : d.tipo_doc==="transferencia" ? "Es un comprobante de transferencia: si fue a una cuenta tuya, no es un gasto."
       : "Leí el comprobante. Revisá que esté bien.";
+    if(!qr && d.tipo_doc==="resumen_tarjeta"){
+      $("voz-estado").innerHTML=`Es el resumen de la tarjeta: no es un gasto. <button class="chip" id="voz-res-cuotas">Cargar sus cuotas</button>`;
+      $("voz-res-cuotas").onclick=()=>{ cerrarVoz(); leerResumen(original); };
+    }
   }catch(e){
     $("voz-estado").textContent = qr ? `Leí el QR (${qrTxt}), pero la IA no respondió: elegí la categoría y guardá.` : "No pude leer el ticket: "+e.message;
   }
   renderVoz();
 }
+
+/* v6.8 · CUOTAS DEL RESUMEN DE LA TARJETA (parte pura: sólo lee texto)
+   Quien empieza a usar la app ya tiene varias compras en cuotas corriendo. En vez de cargarlas
+   una por una ("voy por la 7 de 12"), sube el resumen: cada renglón con "C.07/12" o "Cuota 7 de 12"
+   es una compra en cuotas. Del resumen salen la cuota en la que va, cuántas son y el monto de
+   cada una; el mes es el del vencimiento del resumen. */
+const MESES_ABR={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,set:9,oct:10,nov:11,dic:12,
+  jan:1,apr:4,aug:8,dec:12};
+function fechaResumen(t){
+  const m=String(t||"").match(/\b(\d{1,2})\s*[-./ ]\s*(\d{1,2}|[a-zA-Z]{3})[a-zA-Z]*\.?\s*[-./ ]\s*(\d{4}|\d{2})\b/);
+  if(!m) return null;
+  const d=Number(m[1]), mes=/\d/.test(m[2]) ? Number(m[2]) : MESES_ABR[m[2].toLowerCase()];
+  let y=Number(m[3]); if(y<100) y+=2000;
+  if(!mes || mes>12 || d<1 || d>31 || y<2000 || y>2100) return null;
+  return `${y}-${String(mes).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+}
+const RE_CUOTA=/(?:^|[^a-z0-9])(?:cuotas?|cta\.?|c\.|c(?=\s*\d))\s*(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})(?!\d)/i;
+const RE_IMPORTE=/-?\d{1,3}(?:\.\d{3})*,\d{2}(?!\d)/g;
+function importeAR(t){ return Number(String(t).replace(/\./g,"").replace(",",".")); }
+function cuotasDelResumen(texto){
+  const lineas=String(texto||"").split(/\n+/).map(l=>l.replace(/\s+/g," ").trim()).filter(Boolean);
+  const out=[];
+  let vence=null, cierre=null;
+  for(const l of lineas){
+    /* "CIERRE ACTUAL 24 Oct 26 VENCIMIENTO ACTUAL 05 Nov 26" suele venir en un solo renglón */
+    const v=l.match(/(?:venc\w*|vto)\.?\s+actual\s*:?(.*)/i), c=l.match(/cierre\s+actual\s*:?(.*)/i);
+    if(!vence && v) vence=fechaResumen(v[1]);
+    if(!cierre && c) cierre=fechaResumen(c[1]);
+  }
+  if(!vence) for(const l of lineas) if(/venc|vto\b/i.test(l) && !/pr[oó]x|anterior|cae/i.test(l)){ const v=l.match(/(?:venc\w*|vto)\.?(.*)/i); vence=fechaResumen(v[1]); if(vence) break; }
+  for(const l of lineas){
+    const c=l.match(RE_CUOTA); if(!c) continue;
+    const actual=Number(c[1]), total=Number(c[2]);
+    if(!(total>=2 && total<=60 && actual>=1 && actual<=total)) continue;
+    const resto=l.slice(c.index+c[0].length), montos=resto.match(RE_IMPORTE);
+    if(!montos) continue;
+    const monto=importeAR(montos[0]);
+    if(!(monto>0)) continue;                                   // bonificaciones y devoluciones van en negativo
+    let antes=l.slice(0,c.index);
+    const f=fechaResumen(antes.slice(0,14));
+    antes=antes.replace(/^\s*\d{1,2}\s*[-./ ]\s*(\d{1,2}|[a-zA-Z]{3})[a-zA-Z]*\.?\s*[-./ ]\s*\d{2,4}/,"")
+      .replace(/\b\d{5,}\b/g," ").replace(/[*#]+/g," ").replace(/\s+/g," ").trim();
+    const desc=antes.replace(/^[KkFf]\s+/,"").slice(0,40) || "Compra en cuotas";
+    out.push({descripcion:desc, fecha:f, actual, total, monto, moneda:/u\$s|us\$|usd|d[oó]lar/i.test(l)?"USD":"ARS"});
+  }
+  const esResumen = /saldo actual|pago m[ií]nimo|cierre actual|resumen de (cuenta|tarjeta)|l[ií]mite de compra/i.test(texto||"");
+  return {cuotas:out, vence, cierre, esResumen};
+}
+/* fin cuotas del resumen (puro) */
+
+/* Lo que pasa en la app con lo leído */
+let RES={items:[], archivo:null};
+function mesDelResumen(r){
+  if(r.vence) return r.vence.slice(0,7);
+  if(r.cierre) return mesSuma(r.cierre.slice(0,7),1);
+  return curMonth();
+}
+function normDesc(t){ return normV(String(t||"")).replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim(); }
+/* ¿ya la cargaste? misma tarjeta, mismas cuotas y el mismo monto o el mismo nombre */
+function compraYaCargada(it, cardId){
+  const total=round2(it.monto*it.total), d=normDesc(it.descripcion).split(" ")[0]||"";
+  return PURCH.some(p=>(!cardId || !p.card_id || p.card_id===cardId) && Number(p.cuotas)===it.total &&
+    (Math.abs(Number(p.monto_total)-total)<=Math.max(2,total*0.02) || (d.length>=4 && normDesc(p.descripcion).startsWith(d))));
+}
+function adivinarTarjeta(texto){
+  const t=normV(String(texto||""));
+  const marca=/american express|amex/.test(t)?"amex":/mastercard/.test(t)?"mastercard":/\bvisa\b/.test(t)?"visa":null;
+  let c=CARDS.filter(c=>c.banco && t.includes(normV(c.banco)));
+  if(marca && c.length>1) c=c.filter(x=>x.marca===marca);
+  if(!c.length && marca) c=CARDS.filter(x=>x.marca===marca);
+  return (c[0]||CARDS[0]||{}).id||"";
+}
+/* la categoría y un nombre legible salen del mismo intérprete de la voz: "MERCADOLIBRE*CELULAR" → Mercado Libre */
+function completarCuota(it){
+  let r=null; try{ r=leerFrase(it.descripcion); }catch(e){}
+  const hay=n=>catsAlfa().some(c=>c.nombre===n), compras=hay("Compras")?"Compras":"Otros";
+  let cat = r && r.categoria && hay(r.categoria) ? r.categoria : compras;
+  /* la luz o el plan del celular no se pagan en cuotas: "Mercado Libre celular" es un teléfono comprado */
+  if(/^(servicios|celular|tel[eé]fono|internet)$/i.test(cat)) cat=compras;
+  let desc=it.descripcion;
+  if(desc===desc.toUpperCase()) desc=desc.toLowerCase().replace(/(^|\s)\S/,x=>x.toUpperCase());   // los resúmenes vienen en mayúsculas
+  if(r && r.comercio){ const resto=normV(desc).replace(/[^a-z0-9 ]/g," ").split(" ").filter(w=>w.length>2 && !normV(r.comercio).replace(/\s/g,"").includes(w)).join(" ");
+    desc=r.comercio+(resto?" "+resto:""); }
+  return {...it, descripcion:desc.slice(0,40), comercio:r&&r.comercio||null, categoria:cat};
+}
+function abrirResumen(leido, texto){
+  if(!CARDS.length){ toast("Primero agregá la tarjeta",{sub:"Tarjetas → Agregar tarjeta. Después subí el resumen y cargo sus cuotas.",tipo:"err",ms:6000}); return; }
+  const card=adivinarTarjeta(texto);
+  RES.items=leido.cuotas.map(completarCuota);
+  $("res-card").innerHTML=CARDS.map(c=>`<option value="${c.id}">${esc(cardLabel(c))}</option>`).join("");
+  $("res-card").value=card;
+  $("res-mes").value=mesDelResumen(leido);
+  $("res-pagado").checked=false;
+  $("res-err").textContent="";
+  $("res-sub").textContent=`Encontré ${RES.items.length} compra${RES.items.length===1?"":"s"} en cuotas. Destildá las que no quieras cargar.`;
+  RES.items.forEach(it=>{ it.dup=compraYaCargada(it,card); it.ok=!it.dup; });
+  pintarResumen();
+  $("res-ov").classList.remove("hidden");
+}
+function pintarResumen(){
+  const card=$("res-card").value, cur=monedaTarjeta(cardById(card)), pagado=$("res-pagado").checked, mes=$("res-mes").value;
+  $("res-lista").innerHTML=RES.items.map((it,i)=>{
+    const quedan=it.total-it.actual+(pagado?0:1);
+    return `<label class="row" style="gap:10px;cursor:pointer;align-items:center">
+      <input type="checkbox" data-res="${i}" ${it.ok?"checked":""} style="width:20px;height:20px;flex:none;accent-color:var(--blue)">
+      <div class="rt"><div class="rtop"><b>${esc(it.descripcion)}</b><div class="rv num">${fmt(it.monto,it.moneda==="USD"?"USD":cur)}</div></div>
+      <span>Cuota ${it.actual} de ${it.total} · ${quedan>0?`quedan ${quedan}`:"es la última"} · ${esc(it.categoria)}${it.dup?` · <b style="color:var(--amber)">ya la tenés cargada</b>`:""}</span></div></label>`;
+  }).join('<div class="sep"></div>');
+  $("res-lista").querySelectorAll("[data-res]").forEach(b=>b.onchange=()=>{ RES.items[+b.dataset.res].ok=b.checked; pintarResumenPie(); });
+  pintarResumenPie();
+}
+function pintarResumenPie(){
+  const sel=RES.items.filter(x=>x.ok), mes=$("res-mes").value, cur=monedaTarjeta(cardById($("res-card").value));
+  const porMes=round2(sel.reduce((a,x)=>a+x.monto,0));
+  $("res-hint").textContent = sel.length
+    ? `En el resumen de ${mes?mesLargo(mes):"este mes"} suman ${fmt(porMes,cur)}. ${$("res-pagado").checked?"Lo marco como pagado.":"Si ya lo pagaste, tildá la casilla de arriba."}`
+    : "No hay ninguna tildada.";
+  $("res-save").textContent = sel.length ? `Cargar ${sel.length}` : "Cargar";
+}
+["res-card","res-mes","res-pagado"].forEach(id=>$(id).addEventListener("change",()=>{
+  if(id==="res-card") RES.items.forEach(it=>{ const d=compraYaCargada(it,$("res-card").value); if(d!==it.dup){ it.dup=d; it.ok=!d; } });
+  pintarResumen(); }));
+$("res-cancel").onclick=()=>$("res-ov").classList.add("hidden");
+let guardandoRes=false;
+$("res-save").onclick=async()=>{
+  if(guardandoRes) return;
+  const sel=RES.items.filter(x=>x.ok), cardId=$("res-card").value, mes=$("res-mes").value, pagado=$("res-pagado").checked;
+  if(!sel.length){ $("res-err").textContent="Tildá al menos una compra."; return; }
+  if(!/^\d{4}-\d{2}$/.test(mes)){ $("res-err").textContent="Elegí el mes en que vence el resumen."; return; }
+  const card=cardById(cardId);
+  guardandoRes=true; botonOcupado($("res-save"),true);
+  const _creados=[];
+  try{
+    for(const it of sel){
+      const n=it.total, pagadas=pagado?it.actual:it.actual-1;
+      const primera=mesSuma(mes,-(it.actual-1));
+      const fecha = it.fecha && it.fecha<=todayISO() && it.fecha.slice(0,7)<primera ? it.fecha : `${mesSuma(primera,-1)}-15`;
+      const total=round2(it.monto*n);
+      const compra={id:nuevoId(),fecha_compra:fecha,tarjeta:card?cardLabel(card):"Otra",card_id:cardId||null,
+        descripcion:it.descripcion,comercio:it.comercio||null,categoria:it.categoria,monto_total:total,cuotas:n};
+      const rows=[];
+      for(let i=1;i<=n;i++) rows.push({id:nuevoId(),nro_cuota:i,monto:it.monto,mes:mesSuma(primera,i-1)+"-01",pagada:i<=pagadas});
+      const {error}=await sb.rpc("crear_compra_cuotas",{p_compra:compra,p_cuotas:rows});
+      if(error) throw error;
+      _creados.push({t:"card_purchases",id:compra.id});
+    }
+    $("res-ov").classList.add("hidden");
+    await loadAll(); renderTarjetas();
+    avisarGuardadoConDeshacer(`Cargué ${sel.length} compra${sel.length===1?"":"s"} en cuotas`, `Del resumen de ${mesLargo(mes)}`, _creados);
+  }catch(e){
+    /* si una falló, saco las que ya entraron: o se cargan todas o ninguna */
+    for(const c of _creados) try{ await sb.from(c.t).delete().eq("id",c.id); }catch(_){}
+    $("res-err").textContent="No pude cargarlas: "+(e.message||e);
+  }finally{ guardandoRes=false; botonOcupado($("res-save"),false); }
+};
+/* leer el archivo: el PDF se lee exacto; la foto (o un PDF escaneado) va a la IA */
+async function leerResumen(file){
+  let texto="", imagen=file;
+  if(/pdf/i.test(file.type||"") || /\.pdf$/i.test(file.name||"")){
+    toast("Leyendo el resumen…",{ms:2500});
+    try{ const r=await leerPDF(file); texto=r.texto; imagen=r.imagen; }
+    catch(e){ toast("No pude abrir el PDF",{sub:e.message,tipo:"err"}); return; }
+    const r=cuotasDelResumen(texto);
+    if(r.cuotas.length){ abrirResumen(r,texto); return; }
+  }
+  if(IA_SERVIDOR===null) await detectarIAServidor();
+  if(!iaActiva()){
+    toast(texto?"No encontré cuotas en el PDF":"Para leer una foto del resumen hace falta la IA",
+      {sub:texto?"Busco renglones como \"C.07/12\" o \"Cuota 7 de 12\". Si tu banco lo escribe distinto, cargalas a mano (Cargar → Tarjeta → Ya venía pagando).":"Subí el resumen en PDF (lo bajás del home banking) y lo leo sin IA.",tipo:"err",ms:7000});
+    return;
+  }
+  toast("Leyendo el resumen con la IA…",{ms:4000});
+  try{
+    const foto=await achicarFoto(imagen);
+    const esquema={type:"OBJECT",properties:{
+      es_resumen:{type:"BOOLEAN"}, vencimiento:{type:"STRING",nullable:true}, banco:{type:"STRING",nullable:true},
+      cuotas:{type:"ARRAY",items:{type:"OBJECT",properties:{descripcion:{type:"STRING"},fecha_compra:{type:"STRING",nullable:true},
+        cuota_actual:{type:"INTEGER"},cuotas_total:{type:"INTEGER"},monto_cuota:{type:"NUMBER"},moneda:{type:"STRING",enum:["ARS","USD"]}},
+        required:["descripcion","cuota_actual","cuotas_total","monto_cuota","moneda"]}}},
+      required:["es_resumen","cuotas"]};
+    const prompt=`Esto es el resumen de una tarjeta de crédito de Argentina. HOY es ${todayISO()}.
+${texto?"TEXTO EXACTO DEL PDF:\n\"\"\"\n"+texto.slice(0,8000)+"\n\"\"\"\n":""}Listá SÓLO las compras en cuotas: los renglones que dicen la cuota en que va ("C.07/12", "Cuota 7/12", "07 de 12"). Ignorá las compras en un pago, los pagos, los impuestos, los intereses y las bonificaciones.
+- descripcion: el comercio o lo que se compró, corto ("Frávega", "Mercado Libre celular").
+- cuota_actual y cuotas_total: 7 y 12 en "C.07/12".
+- monto_cuota: lo que se paga de esa cuota en este resumen (formato argentino: "12.345,67" = 12345.67). La columna de dólares es moneda "USD".
+- fecha_compra: YYYY-MM-DD si se ve.
+- vencimiento: la fecha de "Vencimiento actual" (YYYY-MM-DD), no el próximo.
+- es_resumen: false si no es un resumen de tarjeta.`;
+    const j=await llamarGemini({contents:[{role:"user",parts:[{inline_data:{mime_type:foto.mime,data:foto.data}},{text:prompt}]}],
+      generationConfig:{...iaConfig(esquema),maxOutputTokens:4096}});
+    const d=JSON.parse(iaTexto(j));
+    const cuotas=(d.cuotas||[]).map(c=>({descripcion:String(c.descripcion||"Compra en cuotas").slice(0,40), fecha:/^\d{4}-\d{2}-\d{2}$/.test(c.fecha_compra||"")?c.fecha_compra:null,
+      actual:Math.round(c.cuota_actual), total:Math.round(c.cuotas_total), monto:round2(Number(c.monto_cuota)), moneda:c.moneda==="USD"?"USD":"ARS"}))
+      .filter(c=>c.total>=2 && c.total<=60 && c.actual>=1 && c.actual<=c.total && c.monto>0);
+    if(!d.es_resumen || !cuotas.length){ toast(d.es_resumen?"El resumen no tiene compras en cuotas":"No parece el resumen de una tarjeta",{sub:"Si tenés cuotas, cargalas a mano: Cargar → Tarjeta → Ya venía pagando.",ms:6000}); return; }
+    abrirResumen({cuotas, vence:/^\d{4}-\d{2}-\d{2}$/.test(d.vencimiento||"")?d.vencimiento:null}, (texto||"")+" "+(d.banco||""));
+  }catch(e){ toast("No pude leer el resumen",{sub:e.message,tipo:"err"}); }
+}
+$("res-archivo").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) leerResumen(f); });
 
 /* ---------------- dictado ----------------
    Como el audio de WhatsApp: arranca cuando tocás el micrófono y NO se corta
@@ -8452,7 +8826,7 @@ function renderVozFilas(){
   $("voz-filas").querySelectorAll("[data-vp]").forEach(b=>{
     b.onmousedown=e=>e.preventDefault();
     b.onclick=()=>{ const p=PAIRS.find(x=>x.id===V.pair);
-      V.pagador = b.dataset.vp==="yo" ? user.id : (p?otherId(p):user.id); V.manual.pagador=V.pagador;
+      V.pagador = b.dataset.vp==="yo" ? user.id : (p?otherId(p):user.id); V.manual.pagador=V.pagador; (V.toques ||= {}).pagador ||= "corrigio";
       renderVozFilas(); }; });
 
   const AT=vozAtajos();
@@ -8596,6 +8970,7 @@ async function vozGuardar(){
     if(_volver==="metas") renderMetas();
     if(_volver==="meta") renderMeta();
     if(_volver==="movs") renderMovs();
+    registrarCalidad(_todos);
     avisarGuardadoConDeshacer(_todos.length>1 ? `${_todos.length} movimientos guardados` : (CAP_GUARDADO[V.tipo]||"Gasto guardado"), _resumen, _creados);
   }catch(e){
     if(_creados.length) await deshacerCreados(_creados).catch(()=>{});
