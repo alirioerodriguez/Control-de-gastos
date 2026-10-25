@@ -25,6 +25,13 @@ const CASOS = [
   ['QR de otra cosa (Mercado Pago)', 'https://mpago.la/2ABcd3', null],
   ['QR de ARCA roto', 'https://www.arca.gob.ar/fe/qr/?p=no-es-base64!!', null],
   ['QR sin importe', 'https://www.arca.gob.ar/fe/qr/?p=' + b64({ ...base, importe: 0 }), null],
+  // Todas las notas de crédito de ARCA devuelven plata; las de débito y las facturas de crédito MiPyME son gasto.
+  ...[[3, 'Nota de crédito A'], [13, 'Nota de crédito C'], [21, 'Nota de crédito E'], [53, 'Nota de crédito M'],
+    [203, 'Nota de crédito MiPyME A'], [208, 'Nota de crédito MiPyME B'], [213, 'Nota de crédito MiPyME C']].map(([tipoCmp, tipoTxt]) =>
+    [`${tipoTxt}: plata que vuelve`, 'https://www.arca.gob.ar/fe/qr/?p=' + b64({ ...base, tipoCmp }), { credito: true, tipoTxt }]),
+  ...[[2, 'Nota de débito A'], [12, 'Nota de débito C'], [20, 'Nota de débito E'], [52, 'Nota de débito M'],
+    [201, 'Factura de crédito MiPyME A']].map(([tipoCmp, tipoTxt]) =>
+    [`${tipoTxt}: es un gasto`, 'https://www.arca.gob.ar/fe/qr/?p=' + b64({ ...base, tipoCmp }), { credito: false, tipoTxt }]),
 ]
 let fallas = 0
 // el QR "Data Fiscal" de los tiques de impresora fiscal identifica al comercio y no trae el monto

@@ -2296,7 +2296,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.24-v6.8-calidad-aprendizaje-pdf-resumen";
+const APP_VERSION = "2026.10.25-v6.9-notas-arca-para-resumen-compartido";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -5137,6 +5137,7 @@ function subDividir(){
   <div id="pair-detail" class="panel pad hidden">
     <div class="sec" style="padding:0 0 8px"><b id="pair-title">—</b><button class="btn sm" id="add-shared-btn">+ Gasto</button></div>
     <div class="hint" id="pair-balance" style="margin:0 0 6px"></div>
+    <div id="pair-wa"></div>
     <div id="pair-txns"></div></div>`;
 }
 /* --- gráficos --- */
@@ -5464,6 +5465,17 @@ function sharedOwed(t){ const m=Number(t.monto);
 function sharedDelta(t){ const owed=sharedOwed(t); return round2(t.pagado_por===user.id?owed:-round2(Number(t.monto)-owed)); }
 function sharedTxt(t){ return t.dividido==="pct"?`${Number(t.porcentaje)||50}/${100-(Number(t.porcentaje)||50)}`:(t.dividido==="ambos"?"mitad":"entero"); }
 function pairTxns(id){ return STXN.filter(t=>t.pair_id===id); }
+/* v6.9 · resumen de la deuda compartida para mandar por WhatsApp. `f` formatea montos (fmt con la moneda).
+   movs: [{fecha, titulo, monto, pagueYo, reparto}] · bal > 0: te debe; < 0: le debés. */
+function resumenCompartido(otro, movs, bal, alias, f){
+  const nom=String(otro||"").split(" ")[0]||"";
+  const ult=movs.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,15).reverse();
+  const lineas=ult.map(m=>`• ${fechaCorta(m.fecha)} · ${m.titulo} — ${m.pagueYo?"pagué yo":"pagaste vos"} ${f(m.monto)} (${m.reparto})`);
+  if(movs.length>ult.length) lineas.unshift(`(los últimos ${ult.length} de ${movs.length})`);
+  const saldo = bal>0 ? `Saldo: me debés ${f(bal)}.` : bal<0 ? `Saldo: te debo ${f(-bal)}.` : "Estamos al día.";
+  return [`Hola ${nom}! Así vamos con los gastos compartidos:`, ...lineas, "", saldo,
+    ...(bal>0 && alias ? [`Mi alias para transferir: ${alias}`] : [])].join("\n");
+}
 function bindDividir(){
   const el=$("sub-body");
   $("link-search").onclick=async()=>{ const email=$("link-email").value.trim(), box=$("link-result");
@@ -5515,6 +5527,19 @@ function renderPairDetail(){
   const op=otherProf(otherId(p)); box.classList.remove("hidden"); $("pair-title").textContent="Con "+op.apodo;
   const txns=pairTxns(p.id), bal=round2(txns.reduce((a,t)=>a+sharedDelta(t),0));
   $("pair-balance").textContent = bal>0?`${op.apodo} te debe ${fmt(bal,CUR)}`:(bal<0?`Le debés ${fmt(-bal,CUR)} a ${op.apodo}`:"Están al día");
+  /* v6.9 · el resumen para mandarle por WhatsApp, con tu alias si te tiene que transferir */
+  const wa=$("pair-wa");
+  if(wa){
+    const texto=()=>resumenCompartido(op.apodo, txns.map(t=>({fecha:t.fecha, titulo:t.titulo, monto:Number(t.monto),
+      pagueYo:t.pagado_por===user.id, reparto:sharedTxt(t)})), bal, (UI.aliasPago||"").trim(), v=>fmt(v,CUR));
+    wa.innerHTML = txns.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 10px">
+        ${bal>0?`<input id="pair-alias" type="text" placeholder="Tu alias (opcional)" aria-label="Tu alias para que te transfieran" value="${esc(UI.aliasPago||"")}" style="flex:1;min-width:140px">`:""}
+        <a class="btn ghost sm" id="pair-wa-btn" target="_blank" rel="noopener noreferrer">${icon('exportar',15)} Mandar resumen por WhatsApp</a></div>` : "";
+    const btn=$("pair-wa-btn"), al=$("pair-alias");
+    const actualizar=()=>{ if(btn) btn.href="https://wa.me/?text="+encodeURIComponent(texto()); };
+    if(al) al.oninput=()=>{ UI.aliasPago=al.value; saveUI(); actualizar(); };
+    actualizar();
+  }
   const el=$("pair-txns");
   el.innerHTML = txns.length? txns.map(t=>{ const d=sharedDelta(t); const col=d>0?"var(--green)":(d<0?"var(--red-ink)":"var(--ink-3)");
     return `<div class="row rowz" style="padding:12px 0" data-open="sh" data-oid="${t.id}">
@@ -7137,7 +7162,7 @@ function buscar(L,re){
 
 /* ================= "no, me equivoqué" =================
    Corta todo lo dicho antes de la corrección.                            */
-const CORRECCION=/\b(no,?\s*(?:me\s+)?equivoqu[ei]|me\s+confundi|me\s+confundo|no\s+era\s+asi|mejor\s+dicho|en\s+realidad|perdon|corrijo|correccion|mentira|error|no,?\s*digo|no,?\s*(?:son|fue|fueron|era|es|eran)\b|(?:ah|uy|ay|eh)\s*,?\s*no\b(?:\s*,?\s*eso\s+no)?|eso\s+no|no\s*,?\s*no\b|borra\s+eso|olvidat?e?\s+de\s+eso|empiezo\s+de\s+nuevo|a\s+ver\s+no|no\s*,?\s*espera|no\s*,\s*(?=\$?\d)|no\s*,\s*(?=(?:en|con|el|la|de|del|al|fue|fueron|era)\b))/g;
+const CORRECCION=/\b(no,?\s*(?:me\s+)?equivoqu[ei]|me\s+confundi|me\s+confundo|no\s+era\s+asi|mejor\s+dicho|en\s+realidad|perdon|corrijo|correccion|mentira|error|no,?\s*digo|no,?\s*(?:son|fue|fueron|era|es|eran)\b|(?:ah|uy|ay|eh)\s*,?\s*no\b(?:\s*,?\s*eso\s+no)?|eso\s+no|no\s*,?\s*no\b|borra\s+eso|olvidat?e?\s+de\s+eso|empiezo\s+de\s+nuevo|a\s+ver\s+no|no\s*,?\s*espera|no\s*,?\s*para\s*(?:,|(?=\$?\d))|,\s*(?:para|espera)\s*,|no\s*,\s*(?=\$?\d)|no\s*,\s*(?=(?:en|con|el|la|de|del|al|fue|fueron|era)\b))/g;
 function hayNumero(s){ return /\d/.test(s) || s.split(/[^a-zñ]+/).some(w=>NUM_PAL[w]!==undefined); }
 /* v5.7 · "15.000 en el Coto, ah no, eso no, fueron 16.500": parte la frase en lo de ANTES
    y lo de DESPUÉS de la última corrección. Lo de después pisa sólo lo que vuelve a decir;
@@ -7989,7 +8014,7 @@ VARIOS MOVIMIENTOS: si en la misma frase cuenta más de un gasto o ingreso disti
 CUOTAS CON VALOR: "12 cuotas de 10.000" o "10.000 por mes en 12 cuotas" → monto 120000 (el total) y cuotas 12.
 CUOTAS QUE YA VENÍA PAGANDO (pagadas): muchas compras son de antes de usar la app. "voy por la 7 de 12" o "estoy en la séptima" → pagadas 6 (la 7 es la que sigue); "ya pagué 6 cuotas" → 6; "me quedan 5 de 12" → 7. Si es una compra nueva, 0. El monto sigue siendo el TOTAL de la compra: "un celular de 1,5 millones en 12, voy por la 7" → monto 1500000, cuotas 12, pagadas 6.
 NO ES UN GASTO (especial): "pagué la tarjeta / el resumen" → "resumen_tarjeta"; "saqué del cajero", "pasé plata del Galicia a Mercado Pago" (entre cuentas propias) → "transferencia_propia"; "compré/vendí dólares" → "cambio_moneda"; "le presté", "me prestaron" → "prestamo". Si no, null. Pagarle a otra persona por algo SÍ es un gasto, y pagar un sueldo o aguinaldo (a una empleada) también.
-CORRECCIONES: "ah no, eso no, fueron 16.500" cambia sólo lo que vuelve a decir (acá el monto); el resto (comercio, fecha, cuenta) queda como lo dijo antes.
+CORRECCIONES: "ah no, eso no, fueron 16.500" o "10 lucas, no, pará, 12 lucas" cambia sólo lo que vuelve a decir (acá el monto); el resto (comercio, fecha, cuenta) queda como lo dijo antes.
 SPLIT: "ambos" si es a medias / mitad y mitad; "solo_otro" si la otra persona lo debe entero; null si no aplica.
 
 Categorías: ${JSON.stringify(cx.cats)}
@@ -8063,9 +8088,16 @@ function iaAplicar_(d, cx){
    viejas) con un JSON en Base64 que trae el TOTAL, la fecha, el tipo de comprobante y
    el CUIT del que la emitió. Si se lee el QR, el monto y la fecha salen exactos, sin
    adivinar y sin IA. La IA (si está) completa comercio, categoría y descripción. */
-const TIPO_CMP={1:"Factura A",2:"Nota de débito A",3:"Nota de crédito A",6:"Factura B",7:"Nota de débito B",8:"Nota de crédito B",
-  11:"Factura C",12:"Nota de débito C",13:"Nota de crédito C",19:"Factura E",51:"Factura M"};
-const CMP_CREDITO=new Set([3,8,13]);   /* notas de crédito: plata que vuelve */
+const TIPO_CMP={1:"Factura A",2:"Nota de débito A",3:"Nota de crédito A",4:"Recibo A",
+  6:"Factura B",7:"Nota de débito B",8:"Nota de crédito B",9:"Recibo B",
+  11:"Factura C",12:"Nota de débito C",13:"Nota de crédito C",15:"Recibo C",
+  19:"Factura E",20:"Nota de débito E",21:"Nota de crédito E",
+  51:"Factura M",52:"Nota de débito M",53:"Nota de crédito M",54:"Recibo M",
+  201:"Factura de crédito MiPyME A",202:"Nota de débito MiPyME A",203:"Nota de crédito MiPyME A",
+  206:"Factura de crédito MiPyME B",207:"Nota de débito MiPyME B",208:"Nota de crédito MiPyME B",
+  211:"Factura de crédito MiPyME C",212:"Nota de débito MiPyME C",213:"Nota de crédito MiPyME C"};
+/* notas de crédito: plata que vuelve. Las «Facturas de crédito MiPyME» (201, 206, 211) son facturas: gasto. */
+const CMP_CREDITO=new Set([3,8,13,21,53,203,208,213]);
 function datosQRFactura(texto){
   const m=String(texto||"").match(/(?:afip|arca)\.gob\.ar\/fe\/qr\/?\?(?:.*&)?p=([A-Za-z0-9+/=_%-]+)/i);
   if(!m) return null;

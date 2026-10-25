@@ -157,6 +157,10 @@ const CASOS = [
   ['120 mil en 12x con la visa', [{ cuotas: 12, card: 'v1' }]],
   ['50 lucas, dos cuotas, la visa', [{ monto: 50000, cuotas: 2 }]],
   ['12 cuotas de 10000 de la heladera', [{ monto: 120000, cuotas: 12 }]],   // el total, no la cuota
+  ['12 cuotas de 10 lucas de la heladera', [{ monto: 120000, cuotas: 12 }]],
+  ['6 cuotas de 30 mil del celular', [{ monto: 180000, cuotas: 6 }]],
+  ['180 lucas en 6 cuotas de 30 mil', [{ monto: 180000, cuotas: 6 }]],
+  ['doce cuotas de diez lucas', [{ monto: 120000, cuotas: 12 }]],
   ['15.000 y 3 cuotas en el coto', [{ monto: 15000, cuotas: 3 }]],
 
   'Tipo de movimiento',
@@ -224,6 +228,12 @@ const CASOS = [
   ['gasté 15.000 en el coto, uy no, 16.500', [{ monto: 16500, comercio: 'Coto' }]],
   ['gasté 15 mil en el coto, me confundí, 16 mil 500', [{ monto: 16500, comercio: 'Coto' }]],
   ['15.000 en el coto, no espera, 16.000', [{ monto: 16000, comercio: 'Coto' }]],
+  ['gasté 10 lucas, no, pará, 12 lucas en el coto', [{ monto: 12000 }]],
+  ['15.000 en el coto, no pará, 16.000', [{ monto: 16000, comercio: 'Coto' }]],
+  ['15.000 en el coto, pará, 16.000', [{ monto: 16000, comercio: 'Coto' }]],
+  ['15.000 en el coto, esperá, 16.000', [{ monto: 16000, comercio: 'Coto' }]],
+  ['15.000, para el regalo de mamá, en el coto', [{ monto: 15000 }]],                 // «para» común: no es corrección
+  ['no, para 20 mil en el coto', [{ monto: 20000 }]],
   ['quince mil, digo, dieciséis mil en el coto', [{ monto: 16000 }]],
   ['gasté 15.000 en el coto, no, en el jumbo', [{ monto: 15000, comercio: 'Jumbo' }]],
   ['15.000 en el coto, no, en el jumbo, no, en el disco', [{ monto: 15000, comercio: 'Disco' }]],
