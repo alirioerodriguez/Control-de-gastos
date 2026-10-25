@@ -2072,6 +2072,7 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
 <div id="res-ov" class="ov hidden" role="dialog" aria-modal="true" aria-labelledby="res-tit"><div class="sheet">
   <h3 id="res-tit">Cuotas del resumen</h3>
   <p class="hint" id="res-sub" style="margin:0 0 12px"></p>
+  <div class="hint hidden" id="res-cargos" style="margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--soft);border:1px solid var(--line)"></div>
   <div class="g2">
     <div class="fld"><label>Tarjeta</label><select id="res-card"></select></div>
     <div class="fld"><label>Resumen que vence en</label><input id="res-mes" type="month"></div>
@@ -2308,7 +2309,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.25-v6.10-dictado-teclado-candado";
+const APP_VERSION = "2026.10.25-v6.11-cargos-del-banco";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -8465,7 +8466,35 @@ function cuotasDelResumen(texto){
     out.push({descripcion:desc, fecha:f, actual, total, monto, moneda:/u\$s|us\$|usd|d[oó]lar/i.test(l)?"USD":"ARS"});
   }
   const esResumen = /saldo actual|pago m[ií]nimo|cierre actual|resumen de (cuenta|tarjeta)|l[ií]mite de compra/i.test(texto||"");
-  return {cuotas:out, vence, cierre, esResumen};
+  return {cuotas:out, vence, cierre, esResumen, cargos:cargosDelResumen(texto)};
+}
+/* v6.11 · CARGOS DEL BANCO: sellos, percepciones, IVA, intereses, comisiones y seguros del resumen.
+   No son compras: se muestran aparte para que se vea cuánto se va en el banco cada mes. */
+const CARGOS_RESUMEN=[
+  ["Impuesto de sellos", /\bsellos\b/],
+  ["Percepciones", /percep|\bperc\b|\bdb\s*rg\b|\brg\s*\d{3,4}\b|imp(uesto)?\s*pais|ley\s*27\s*541|ganancias|ii\s*bb|ing(resos)?\s*brutos/],
+  ["Intereses", /interes|\bint\s*(financ|punit|compens)|punitorio/],
+  ["IVA", /\biva\b/],
+  ["Comisiones y seguros", /comision|\bcargo\s*(por\s*)?(mantenimiento|renovacion|administracion|emision|resumen|servicio)|mantenimiento|renovacion anual|\bseguro\b/],
+];
+function cargosDelResumen(texto){
+  const items=[], total={ARS:0,USD:0};
+  String(texto||"").split(/\n+/).forEach(l0=>{
+    const l=l0.replace(/\s+/g," ").trim(), n=l.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[.\/]/g," ");
+    if(!l || RE_CUOTA.test(l)) return;
+    /* tasas (TNA 89,00 %), saldos y pagos no son cargos */
+    if(/\b(tna|tea|cft|cftea|tasa)\b|saldo|pago minimo|su pago|limite/.test(n)) return;
+    const hit=CARGOS_RESUMEN.find(([,re])=>re.test(n)); if(!hit) return;
+    /* el monto es el último importe que no sea un porcentaje ("DB.RG 5617 30% 12.100,00") */
+    const montos=[...l.matchAll(RE_IMPORTE)].filter(m=>!/^\s*%/.test(l.slice(m.index+m[0].length)));
+    if(!montos.length) return;
+    const monto=importeAR(montos[montos.length-1][0]);
+    if(!(monto>0)) return;                                      // devoluciones de percepciones van en negativo
+    const moneda=/u\$s|us\$|usd|d[oó]lar/i.test(l)?"USD":"ARS";
+    items.push({concepto:hit[0], detalle:l.replace(RE_IMPORTE,"").replace(/^\s*\d{1,2}\s*[-./ ]\s*(\d{1,2}|[a-zA-Z]{3})[a-zA-Z]*\.?\s*[-./ ]\s*\d{2,4}/,"").replace(/\s+/g," ").trim().slice(0,50), monto, moneda});
+    total[moneda]=round2(total[moneda]+monto);
+  });
+  return {items, total};
 }
 /* fin cuotas del resumen (puro) */
 
@@ -8504,6 +8533,15 @@ function completarCuota(it){
     desc=r.comercio+(resto?" "+resto:""); }
   return {...it, descripcion:desc.slice(0,40), comercio:r&&r.comercio||null, categoria:cat};
 }
+/* v6.11 · «Este mes se fueron $ X en cargos del banco», con el detalle por concepto */
+function textoCargos(cargos, cur){
+  if(!cargos || !cargos.items.length) return "";
+  const tot=["ARS","USD"].filter(m=>cargos.total[m]>0).map(m=>fmt(cargos.total[m], m==="USD"?"USD":cur)).join(" + ");
+  const porConcepto={};
+  cargos.items.forEach(it=>{ const k=it.concepto+"|"+it.moneda; porConcepto[k]=round2((porConcepto[k]||0)+it.monto); });
+  const detalle=Object.entries(porConcepto).map(([k,v])=>{ const [c,m]=k.split("|"); return `${esc(c)} ${fmt(v, m==="USD"?"USD":cur)}`; }).join(" · ");
+  return `<b>Este mes se fueron ${tot} en cargos del banco.</b><br>${detalle}`;
+}
 function abrirResumen(leido, texto){
   if(!CARDS.length){ toast("Primero agregá la tarjeta",{sub:"Tarjetas → Agregar tarjeta. Después subí el resumen y cargo sus cuotas.",tipo:"err",ms:6000}); return; }
   const card=adivinarTarjeta(texto);
@@ -8515,6 +8553,9 @@ function abrirResumen(leido, texto){
   $("res-err").textContent="";
   $("res-sub").textContent=`Encontré ${RES.items.length} compra${RES.items.length===1?"":"s"} en cuotas. Destildá las que no quieras cargar.`;
   RES.items.forEach(it=>{ it.dup=compraYaCargada(it,card); it.ok=!it.dup; });
+  /* v6.11 · lo que se fue en el banco: sólo se muestra, no se carga como gasto */
+  const cg=$("res-cargos"), txt=textoCargos(leido.cargos, monedaTarjeta(cardById(card)));
+  if(cg){ cg.innerHTML=txt; cg.classList.toggle("hidden", !txt); }
   pintarResumen();
   $("res-ov").classList.remove("hidden");
 }
@@ -8583,6 +8624,11 @@ async function leerResumen(file){
     catch(e){ toast("No pude abrir el PDF",{sub:e.message,tipo:"err"}); return; }
     const r=cuotasDelResumen(texto);
     if(r.cuotas.length){ abrirResumen(r,texto); return; }
+    /* v6.11 · sin cuotas pero con cargos: igual se avisa cuánto se fue en el banco */
+    if(r.esResumen && r.cargos.items.length){
+      const t=textoCargos(r.cargos, CUR).replace(/<br>/," ").replace(/<[^>]+>/g,"");
+      toast("El resumen no tiene compras en cuotas",{sub:t,ms:9000}); return;
+    }
   }
   if(IA_SERVIDOR===null) await detectarIAServidor();
   if(!iaActiva()){

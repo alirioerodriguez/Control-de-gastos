@@ -5,7 +5,8 @@ const fs = require('fs')
 const path = require('path')
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')
 const tramo = (desde, hasta) => { const i = html.indexOf(desde); return html.slice(i, html.indexOf(hasta, i)) }
-eval(tramo('const MESES_ABR=', '/* fin cuotas del resumen (puro) */') + ';global.cuotasDelResumen=cuotasDelResumen;global.fechaResumen=fechaResumen;')
+global.round2 = (n) => Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100
+eval(tramo('const MESES_ABR=', '/* fin cuotas del resumen (puro) */') + ';global.cuotasDelResumen=cuotasDelResumen;global.fechaResumen=fechaResumen;global.cargosDelResumen=cargosDelResumen;')
 
 const CASOS = [
   ['Visa (Galicia): "C.07/12" y columnas de pesos y dólares', `
@@ -76,5 +77,39 @@ for (const [nombre, texto, esp] of CASOS) {
   if (errs.length) fallas++
   console.log(errs.length ? '✗' : '✓', nombre + (errs.length ? '\n    ' + errs.join('\n    ') : ''))
 }
-console.log(`\n${CASOS.length - fallas}/${CASOS.length} bien`)
+// v6.11 · cargos del banco (renglones inventados, con el formato de cada banco)
+const CARGOS = [
+  ['Galicia: sellos, percepción RG y IVA', `
+SALDO ACTUAL $ 186.674,99   PAGO MINIMO $ 22.000,00
+12-04-26 * 004512 MERCADOLIBRE*CELULAR C.07/12 45.833,33
+24-10-26 IMPUESTO DE SELLOS 3.420,50
+24-10-26 DB.RG 5617 30% 12.100,00
+24-10-26 IVA RG 4240 21% 882,00
+TASA NOMINAL ANUAL 89,00 %`, { ARS: 16402.5, USD: 0, n: 3 }],   // el 30 % no es el monto; la TNA no es un cargo
+  ['Santander: intereses, comisión y su IVA', `
+Saldo actual 250.000,00
+23/10/2026 INTERESES FINANCIACION 8.500,00
+23/10/2026 COMISION MANTENIMIENTO CUENTA 4.200,00
+23/10/2026 IVA S/COMISION 882,00
+TNA 89,00 TEA 132,40`, { ARS: 13582, USD: 0, n: 3 }],
+  ['BBVA: percepción en dólares y una devolución', `
+05-10-26 PERCEPCION GANANCIAS USD 3,00
+05-10-26 DEVOLUCION PERCEPCION -1.200,00
+05-10-26 SEGURO DE VIDA 1.150,00`, { ARS: 1150, USD: 3, n: 2 }],
+  ['Mercado Pago: sin cargos', `
+Resumen de tarjeta Mercado Pago
+15/10/2026 SUPERMERCADO DIA 25.000,00
+Pago mínimo 5.000,00`, { ARS: 0, USD: 0, n: 0 }],
+]
+for (const [nombre, texto, esp] of CARGOS) {
+  const r = cargosDelResumen(texto)
+  const ok = r.total.ARS === esp.ARS && r.total.USD === esp.USD && r.items.length === esp.n
+  if (!ok) fallas++
+  console.log(ok ? '✓' : '✗', 'cargos · ' + nombre + (ok ? '' : '\n    ' + JSON.stringify(r)))
+}
+const conCargos = cuotasDelResumen(CARGOS[1][1])
+if (!conCargos.cargos || conCargos.cargos.total.ARS !== 13582) { fallas++; console.log('✗ cuotasDelResumen no devuelve los cargos') }
+
+const total = CASOS.length + CARGOS.length
+console.log(`\n${total - fallas}/${total} bien`)
 process.exit(fallas ? 1 : 0)
