@@ -1,0 +1,29 @@
+name: Pruebas
+
+# Las pruebas sacan el código directamente de index.html y lo corren con Node, sin IA ni internet:
+# voz (interprete de «Contame el gasto»), factura y QR de pago, resumen de la tarjeta y gastos compartidos.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Correr todas las pruebas
+        run: |
+          estado=0
+          for t in tests/*.test.js; do
+            echo "== $t"
+            node "$t" || estado=1
+          done
+          exit $estado

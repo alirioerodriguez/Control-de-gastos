@@ -1,0 +1,3 @@
+# index.html se descarga siempre con saltos de línea LF, también en Windows: las pruebas (tests/*.test.js)
+# extraen código con expresiones regulares que no funcionan con CRLF.
+*.html text eol=lf
