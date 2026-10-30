@@ -7862,8 +7862,10 @@ function leerConCorrecciones(txt){
 /* v5.7 · VARIOS GASTOS EN UNA FRASE
    "15.000 en el kiosco con Mercado Pago, también otros 12.000 en el chino" son dos
    movimientos. Se corta donde dice "también", "además", "aparte", "después", "y otros",
-   "y 12.000"…; un pedazo sin monto propio no es otro gasto: vuelve a pegarse al anterior. */
-const SEPARA_MOV=/\b(?:y\s+)?(?:tambien|ademas|aparte|despues|luego)\b|\by\s+otr[oa]s?\b|\botr[oa]s?\s+(?=\$?\s?\d)|\by\s+(?=\$\s?\d|\d)(?!\d{1,2}\s*(?:centavos?|centimos?))|,\s+(?=\$\s?\d|\d)|\b(?:y|[.;])\s*(?=(?:gaste|pague|compre|cobre|cargue|puse|saque|me\s+pagaron|me\s+cobraron)\b)|[.;]\s*(?=tambien\b)|,\s*y\s+(?=(?:el|la|los|las|un|una)\s)/g;
+   "y 12.000", "y el cine", "y la nafta"…; un pedazo sin monto propio no es otro gasto: vuelve a pegarse al anterior.
+   «y» + artículo corta también sin coma ("el super 30 mil y la nafta 20 mil"): los números dichos con palabras
+   nunca llevan artículo después de la «y», salvo "un/una" ("treinta y un mil"), que sólo corta con coma. */
+const SEPARA_MOV=/\b(?:y\s+)?(?:tambien|ademas|aparte|despues|luego)\b|\by\s+otr[oa]s?\b|\botr[oa]s?\s+(?=\$?\s?\d)|\by\s+(?=\$\s?\d|\d)(?!\d{1,2}\s*(?:centavos?|centimos?))|,\s+(?=\$\s?\d|\d)|\b(?:y|[.;])\s*(?=(?:gaste|pague|compre|cobre|cargue|puse|saque|me\s+pagaron|me\s+cobraron)\b)|[.;]\s*(?=tambien\b)|,\s*y\s+(?=(?:el|la|los|las|un|una)\s)|\by\s+(?=(?:el|la|los|las)\s)/g;
 function quitarSeparador(t){
   let prev; do{ prev=t;
     t=t.replace(/^\s*,?\s*(?:y\s+)?(?:tambi[eé]n|adem[aá]s|aparte|despu[eé]s|luego)\b\s*,?|^\s*(?:y\s+)?otr[oa]s?\b\s*|^\s*y\s+/i,"");
