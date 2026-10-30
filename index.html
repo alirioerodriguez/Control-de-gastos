@@ -7530,14 +7530,18 @@ function leerCuenta(L){
 }
 /* si nombrás a alguien con quien compartís gastos, es un gasto compartido */
 function leerPersona(L){
-  let best=null;
+  let best=null; const nombradas=[];
   PAIRS.forEach(p=>{
     const o=otherProf(otherId(p)); const nom=(o.apodo||"").trim();
     if(nom.length<3) return;
     const i=buscarNombre(L,nom);
+    if(i>=0) nombradas.push(nom);
     if(i>=0 && (!best || i>best.i)) best={pair:p.id, nombre:nom, i, len:normV(nom).length};
   });
   if(best){
+    /* "cena con Sofi y Fede": el gasto es entre dos personas a la vez, y acá se asigna a UNA (la última que nombrás).
+       Se guarda a quién más nombraste para avisarlo en la tarjeta en vez de dejarlo pasar en silencio. */
+    best.otras=nombradas.filter(n=>n!==best.nombre);
     /* "pagó Sofi", "Sofi pagó": lo puso la otra persona */
     const cerca=L.libre.slice(Math.max(0,best.i-12), best.i+best.len+10);
     best.pagoOtro=new RegExp("\\bpago\\s+(?:la\\s+|el\\s+)?"+normV(best.nombre)+"\\b|\\b"+normV(best.nombre)+"\\s+(?:lo\\s+)?pago\\b").test(cerca);
@@ -7819,6 +7823,7 @@ function leerFrase(txt){
   const ta=leerTarjeta(L);  if(ta){ r.card=ta.valor; r.auto.card=ta.texto; }
   const cc=leerCuenta(L);   if(cc && !ta){ r.cuenta=cc.valor; r.auto.cuenta=cc.texto; }
   const pe=leerPersona(L);  if(pe){ r.pair=pe.pair; r.auto.persona=normV(pe.nombre); r.conQuien=pe.nombre;
+    if(pe.otras.length) r.otrasPersonas=pe.otras;                  // nombraste a más de una: se avisa en la tarjeta
     if(pe.pagoOtro){ const pp=PAIRS.find(x=>x.id===pe.pair); if(pp) r.pagador=otherId(pp); } }
   const et=leerEtiquetas(L);                          // v5.6 · "descripción: …", "comercio: …", en cualquier orden
   const co=et.comercio ? {valor:et.comercio, texto:null} : leerComercio(L);
@@ -8958,6 +8963,8 @@ function renderVozFilas(){
   if(V.tipo==="compartido"){
     const p=PAIRS.find(x=>x.id===V.pair); const o=p?otherProf(otherId(p)):{apodo:"la otra persona"};
     h+=fila("Con",esc(V.conQuien||o.apodo),"pair");
+    if(V.otrasPersonas && V.otrasPersonas.length && V.conQuien && !V.manual?.pair)
+      h+=`<div class="detrow"><span class="v" style="font-size:13px;color:var(--amber);flex:1;text-align:left;line-height:1.35">Nombraste también a ${esc(V.otrasPersonas.join(" y "))}: este gasto quedó solo con ${esc(V.conQuien)}. Si fue entre todos, cargá uno por persona.</span></div>`;
     const pagoYo=(V.pagador||user.id)===user.id;
     h+=`<div class="detrow"><span class="k">Pagó</span><span class="v" style="gap:6px">
       <button class="chip ${pagoYo?'on':''}" data-vp="yo" style="padding:5px 11px;font-size:13px">Vos</button>

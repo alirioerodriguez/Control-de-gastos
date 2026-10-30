@@ -77,8 +77,13 @@ const CASOS = [
   ['cuarenta y cinco mil en el super', [{ monto: 45000, categoria: 'Supermercado' }]],
   ['veinte y cinco mil de alquiler', [{ monto: 25000, categoria: 'Alquiler' }]],
 
-  'LÍMITE CONOCIDO: un gasto con dos personas a la vez (grupo). Hoy se asigna a UNA sola, la última que nombrás, y la otra no se avisa.',
-  ['cena con Sofi y Fede 60 mil a medias', [{ tipo: 'compartido', pair: 'p2', monto: 60000 }]],
+  'Un gasto con dos personas a la vez (grupo): se asigna a UNA, la última que nombrás, pero ya no en silencio: se guarda a quién más nombraste para avisarlo en la tarjeta',
+  ['cena con Sofi y Fede 60 mil a medias', [{ tipo: 'compartido', pair: 'p2', monto: 60000, otrasPersonas: ['Sofi'] }]],
+  ['cena con Fede y Mamá 45 mil a medias', [{ tipo: 'compartido', pair: 'p3', otrasPersonas: ['Fede'] }]],
+  ['cena con Sofi, Fede y Mamá 90 mil', [{ tipo: 'compartido', pair: 'p3', otrasPersonas: ['Sofi', 'Fede'] }]],
+  ['cena con Fede 24 mil a medias', [{ tipo: 'compartido', pair: 'p2', otrasPersonas: undefined }]],      // una sola persona: nada que avisar
+  ['el super 30 mil', [{ tipo: 'gasto', otrasPersonas: undefined }]],
+  ['cena con Fede 24 mil a medias y el cine con Sofi 10 mil a medias', [{ pair: 'p2', otrasPersonas: undefined }, { pair: 'p1', otrasPersonas: undefined }]], // una persona por gasto
 ]
 
 let fallas = 0
@@ -93,7 +98,8 @@ for (const caso of CASOS) {
   const errores = []
   if (vs.length !== esperado.length) errores.push(`${vs.length} movimientos, esperaba ${esperado.length}`)
   esperado.forEach((e, i) => Object.entries(e).forEach(([k, v]) => {
-    if (!vs[i] || vs[i][k] !== v) errores.push(`#${i + 1} ${k}: ${JSON.stringify(vs[i] && vs[i][k])}, esperaba ${JSON.stringify(v)}`)
+    const igual = (a, b) => (Array.isArray(b) ? JSON.stringify(a) === JSON.stringify(b) : a === b)
+    if (!vs[i] || !igual(vs[i][k], v)) errores.push(`#${i + 1} ${k}: ${JSON.stringify(vs[i] && vs[i][k])}, esperaba ${JSON.stringify(v)}`)
   }))
   if (errores.length) { fallas++; console.log('✗', frase, '\n   ' + errores.join('\n   ')) }
   else console.log('✓', frase)
