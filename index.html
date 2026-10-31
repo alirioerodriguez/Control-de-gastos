@@ -5192,7 +5192,7 @@ function subDividir(){
    Los integrantes no necesitan cuenta: son nombres. Guarda en Supabase (supabase/grupos.sql); si esas tablas todavía
    no están creadas, lo guarda solo en este teléfono y lo avisa en pantalla. */
 let GRP={cargado:false, local:false, grupos:[], miembros:[], gastos:[], liqs:[]}, grpAbierto=null, grpMsg="";
-let grpForm={desc:"", monto:"", moneda:"ARS", pagador:"", entre:null, reparto:"igual", partes:{}};
+let grpForm={desc:"", monto:"", moneda:"ARS", pagador:"", entre:null, reparto:"igual", partes:{}, valores:{}};
 const GRP_TABLAS={grupos:"grupos", miembros:"grupo_miembros", gastos:"grupo_gastos", liqs:"grupo_liquidaciones"};
 const grpClaveLocal=()=>"miscuentas_grupos_"+(user?user.id:"anon");
 const grpFaltaTabla=e=>e && (e.code==="42P01" || e.code==="PGRST205" || /does not exist|schema cache|Could not find the table/i.test(e.message||""));
@@ -5237,7 +5237,7 @@ async function grpDesdeVoz(){
     if(r.error) return; g=r;
   }
   const ms=grpMiembros(g.id), idDe=n=>(ms.find(m=>m.nombre.toLowerCase()===String(n).toLowerCase())||{}).id;
-  grpForm={desc:datos.desc, monto:datos.monto, moneda:datos.moneda, pagador:idDe(quienPago)||(ms[0]&&ms[0].id)||"", entre:new Set(todos.map(idDe).filter(Boolean)), reparto:"igual", partes:{}};
+  grpForm={desc:datos.desc, monto:datos.monto, moneda:datos.moneda, pagador:idDe(quienPago)||(ms[0]&&ms[0].id)||"", entre:new Set(todos.map(idDe).filter(Boolean)), reparto:"igual", partes:{}, valores:{}};
   grpAbierto=g.id; grpMsg="";
   avisarOK("Grupo listo","Revisá el gasto y guardalo.");
   subView="grupos"; show("sub"); renderSub(); pintarFab();
@@ -5277,10 +5277,10 @@ function grpVistaGrupo(gid){
   const nom=id=>esc(grpNombre(gid,id));
   const miembros=ms.map(m=>`<span class="chip" role="listitem" style="display:inline-flex;align-items:center;gap:6px">${esc(m.nombre)}<button class="iconx" data-g-quitar="${m.id}" aria-label="Sacar a ${esc(m.nombre)}" style="min-width:32px;min-height:32px">${icon('borrar',14)}</button></span>`).join("");
   const entre=ms.map(m=>`<label class="grpfila"><span class="nm">${esc(m.nombre)}</span>
-      ${grpForm.reparto==="partes"&&grpForm.entre.has(m.id)?`<input type="number" min="1" step="1" inputmode="numeric" data-g-parte="${m.id}" value="${grpForm.partes[m.id]||1}" aria-label="Partes de ${esc(m.nombre)}">`:""}
+      ${grpForm.entre.has(m.id)?grpCampoReparto(m):""}
       <input type="checkbox" role="switch" data-g-entre="${m.id}" ${grpForm.entre.has(m.id)?"checked":""} aria-label="${esc(m.nombre)} entra en el reparto"></label>`).join("");
   const lista=gs.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).map(x=>`<div class="row"><div class="rt"><b>${esc(x.descripcion||"Gasto")}</b>
-      <span>Pagó ${nom(x.pagador)} · entre ${(x.participantes||[]).map(nom).join(", ")}</span></div>
+      <span>Pagó ${nom(x.pagador)} · entre ${(x.participantes||[]).map(nom).join(", ")}${GRP_REPARTO_TXT[x.reparto]?" · "+GRP_REPARTO_TXT[x.reparto]:""}</span></div>
       <div class="racts" style="text-align:right"><b>${fmt(x.monto,x.moneda)}</b><button class="iconx" data-g-del-gasto="${x.id}" aria-label="Borrar ${esc(x.descripcion||"gasto")}">${icon('borrar',16)}</button></div></div>`).join('<div class="sep"></div>');
   let saldar="";
   if(gs.length&&ms.length>1){
@@ -5305,21 +5305,46 @@ function grpVistaGrupo(gid){
         <div class="fld" style="width:120px"><label for="g-x-moneda">Moneda</label><select id="g-x-moneda"><option ${grpForm.moneda==="ARS"?"selected":""}>ARS</option><option ${grpForm.moneda==="USD"?"selected":""}>USD</option></select></div></div>
       <div class="fld"><label for="g-x-pagador">¿Quién pagó?</label><select id="g-x-pagador">${ms.map(m=>`<option value="${m.id}" ${m.id===grpForm.pagador?"selected":""}>${esc(m.nombre)}</option>`).join("")}</select></div>
       <div class="fld"><label>¿Entre quiénes se reparte?</label><div>${entre}</div></div>
-      <div class="fld"><label for="g-x-reparto">Cómo se reparte</label><select id="g-x-reparto"><option value="igual" ${grpForm.reparto==="igual"?"selected":""}>En partes iguales</option><option value="partes" ${grpForm.reparto==="partes"?"selected":""}>Por partes (una pareja cuenta doble)</option></select></div>
+      <div class="fld"><label for="g-x-reparto">Cómo se reparte</label><select id="g-x-reparto"><option value="igual" ${grpForm.reparto==="igual"?"selected":""}>En partes iguales</option><option value="partes" ${grpForm.reparto==="partes"?"selected":""}>Por partes (una pareja cuenta doble)</option><option value="porcentajes" ${grpForm.reparto==="porcentajes"?"selected":""}>Por porcentajes</option><option value="montos" ${grpForm.reparto==="montos"?"selected":""}>Por montos exactos</option></select></div>
+      <div id="g-x-falta" class="hint" aria-live="polite" style="margin:-4px 0 8px">${grpTextoFalta()}</div>
       <div id="g-x-error" role="alert" style="color:var(--red);font-weight:600;min-height:1.3em;margin-bottom:6px">${esc(grpMsg)}</div>
       <button class="btn w" id="g-x-guardar">Guardar gasto</button></div>`:`<div class="hint" style="margin-top:12px">Sumá al menos a dos personas para cargar gastos.</div>`}
     <div class="sec"><b>Gastos</b></div><div class="panel">${gs.length?lista:`<div class="empty">Todavía no cargaste ninguno.</div>`}</div>
     ${saldar?`<div class="sec" style="margin-top:6px"><b>Saldar cuentas</b></div>${saldar}`:""}
     <button class="btn ghost w" id="g-borrar" style="margin-top:18px">Borrar este grupo</button>`;
 }
+/* campo por persona: partes (entero), porcentaje o monto. Vacío = todavía no lo cargó (cuenta como 0 al sumar). */
+const GRP_REPARTO_TXT={partes:"por partes",porcentajes:"por porcentajes",montos:"montos exactos"};
+function grpCampoReparto(m){
+  const f=grpForm, n=esc(m.nombre);
+  if(f.reparto==="partes") return `<input type="number" min="1" step="1" inputmode="numeric" data-g-parte="${m.id}" value="${f.partes[m.id]||1}" aria-label="Partes de ${n}">`;
+  if(f.reparto==="porcentajes") return `<span style="display:inline-flex;align-items:center;gap:4px"><input type="text" inputmode="decimal" data-g-valor="${m.id}" value="${esc(f.valores[m.id]??"")}" placeholder="0" aria-label="Porcentaje de ${n}" style="width:64px">%</span>`;
+  if(f.reparto==="montos") return `<input type="text" inputmode="decimal" data-g-valor="${m.id}" value="${esc(f.valores[m.id]??"")}" placeholder="0" aria-label="Monto de ${n}" style="width:96px">`;
+  return "";
+}
+function grpDetalle(part){
+  const f=grpForm;
+  if(f.reparto==="partes") return Object.fromEntries(part.map(id=>[id,f.partes[id]||1]));
+  if(f.reparto==="porcentajes"||f.reparto==="montos") return Object.fromEntries(part.map(id=>[id,grpLeerMonto(f.valores[id]??"")||0]));
+  return null;
+}
+function grpTextoFalta(){
+  const f=grpForm, part=[...(f.entre||[])];
+  const x=Grupo.cuantoFalta({monto:grpLeerMonto(f.monto)||0,participantes:part,reparto:f.reparto,detalle:grpDetalle(part)||{}});
+  if(!x) return "";
+  const v=n=>x.unidad==="%"?String(n).replace(".",",")+" %":fmt(n,f.moneda);
+  if(x.unidad==="$"&&!(x.objetivo>0)) return "Primero poné el monto del gasto.";
+  if(x.falta===0) return "✓ Suman "+v(x.objetivo)+", justo.";
+  return "Suman "+v(x.suma)+" de "+v(x.objetivo)+(x.falta>0?" · faltan "+v(x.falta):" · sobran "+v(-x.falta));
+}
 function grpLeerMonto(t){ const s=String(t).trim().replace(/\s/g,"").replace(/\.(?=\d{3}(\D|$))/g,"").replace(",","."); const n=Number(s); return (s!==""&&isFinite(n))?n:null; }
 function grpBind(root){
   const gid=grpAbierto;
   const crear=async()=>{ const n=($("g-nuevo").value||"").trim(); if(!n){ toast("Escribí un nombre"); return; }
     const r=await guardar(()=>grpInsertar("grupos",GRP.local?{nombre:n}:{nombre:n}),{err:"No pude crear el grupo",boton:"g-crear"}); if(r.error) return;
-    grpAbierto=GRP.grupos[GRP.grupos.length-1].id; grpForm={desc:"",monto:"",moneda:"ARS",pagador:"",entre:null,reparto:"igual",partes:{}}; grpMsg=""; grpPintar(); };
+    grpAbierto=GRP.grupos[GRP.grupos.length-1].id; grpForm={desc:"",monto:"",moneda:"ARS",pagador:"",entre:null,reparto:"igual",partes:{},valores:{}}; grpMsg=""; grpPintar(); };
   if($("g-crear")){ $("g-crear").onclick=crear; $("g-nuevo").onkeydown=e=>{ if(e.key==="Enter") crear(); }; }
-  root.querySelectorAll("[data-g-abrir]").forEach(b=>b.onclick=()=>{ grpAbierto=b.dataset.gAbrir; grpForm={desc:"",monto:"",moneda:"ARS",pagador:"",entre:null,reparto:"igual",partes:{}}; grpMsg=""; grpPintar(); });
+  root.querySelectorAll("[data-g-abrir]").forEach(b=>b.onclick=()=>{ grpAbierto=b.dataset.gAbrir; grpForm={desc:"",monto:"",moneda:"ARS",pagador:"",entre:null,reparto:"igual",partes:{},valores:{}}; grpMsg=""; grpPintar(); });
   if(!gid) return;
   $("g-volver").onclick=()=>{ grpAbierto=null; grpPintar(); };
   const sumar=async()=>{ const n=($("g-m-nombre").value||"").trim(); if(!n){ toast("Escribí un nombre"); return; }
@@ -5332,19 +5357,21 @@ function grpBind(root){
     const r=await guardar(()=>grpBorrar("miembros",id),{err:"No pude sacar a la persona"}); if(r.error) return; grpForm.entre=null; grpPintar(); });
   const f=grpForm;
   if($("g-x-guardar")){
-    $("g-x-desc").oninput=e=>{ f.desc=e.target.value; }; $("g-x-monto").oninput=e=>{ f.monto=e.target.value; };
+    const falta=()=>{ const el=$("g-x-falta"); if(el) el.textContent=grpTextoFalta(); };
+    $("g-x-desc").oninput=e=>{ f.desc=e.target.value; }; $("g-x-monto").oninput=e=>{ f.monto=e.target.value; falta(); };
     $("g-x-moneda").onchange=e=>{ f.moneda=e.target.value; }; $("g-x-pagador").onchange=e=>{ f.pagador=e.target.value; };
     $("g-x-reparto").onchange=e=>{ f.reparto=e.target.value; grpPintar(); };
-    root.querySelectorAll("[data-g-entre]").forEach(c=>c.onchange=()=>{ c.checked?f.entre.add(c.dataset.gEntre):f.entre.delete(c.dataset.gEntre); if(f.reparto==="partes") grpPintar(); });
+    root.querySelectorAll("[data-g-entre]").forEach(c=>c.onchange=()=>{ c.checked?f.entre.add(c.dataset.gEntre):f.entre.delete(c.dataset.gEntre); if(f.reparto!=="igual") grpPintar(); });
+    root.querySelectorAll("[data-g-valor]").forEach(i=>i.oninput=()=>{ f.valores[i.dataset.gValor]=i.value; falta(); });
     root.querySelectorAll("[data-g-parte]").forEach(i=>i.oninput=()=>{ f.partes[i.dataset.gParte]=Math.max(1,Number(i.value)||1); });
     $("g-x-guardar").onclick=async()=>{
       const monto=grpLeerMonto(f.monto), part=[...f.entre];
       const fila={grupo_id:gid,fecha:todayISO(),descripcion:(f.desc||"").trim(),monto,moneda:f.moneda,pagador:f.pagador,participantes:part,reparto:f.reparto,
-        detalle:f.reparto==="partes"?Object.fromEntries(part.map(id=>[id,f.partes[id]||1])):null};
+        detalle:grpDetalle(part)};
       grpMsg = monto===null ? "Ingresá un monto." : Grupo.problema({...fila,id:"nuevo",detalle:fila.detalle||undefined},grpMiembros(gid));
       if(grpMsg){ $("g-x-error").textContent=grpMsg; return; }
       const r=await guardar(()=>grpInsertar("gastos",fila),{err:"No pude guardar el gasto",ok:"Gasto guardado",boton:"g-x-guardar"}); if(r.error) return;
-      grpForm.desc=""; grpForm.monto=""; grpMsg=""; grpPintar(); };
+      grpForm.desc=""; grpForm.monto=""; grpForm.valores={}; grpMsg=""; grpPintar(); };
   }
   root.querySelectorAll("[data-g-del-gasto]").forEach(b=>b.onclick=async()=>{
     if(!await confirmar({titulo:"¿Borrar este gasto?",texto:"Se recalcula quién le debe a quién.",ok:"Borrar",peligro:true})) return;

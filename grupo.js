@@ -169,6 +169,27 @@
     return porMoneda
   }
 
+  /**
+   * Mientras se completa un reparto por porcentajes o por montos: cuánto suman los valores cargados y cuánto falta.
+   * Devuelve null para 'igual' y 'partes' (no hay nada que cuadrar). Los montos se cuentan en centavos para no fallar
+   * por la coma flotante, pero se devuelven en pesos. `falta` negativo: se pasaron.
+   */
+  function cuantoFalta(gasto) {
+    const modo = gasto.reparto || 'igual'
+    const ids = gasto.participantes || []
+    const d = gasto.detalle || {}
+    if (modo === 'porcentajes') {
+      const suma = Math.round(ids.reduce((t, id) => t + (Number(d[id]) || 0), 0) * 1000) / 1000
+      return { suma, objetivo: 100, falta: Math.round((100 - suma) * 1000) / 1000, unidad: '%' }
+    }
+    if (modo === 'montos') {
+      const suma = ids.reduce((t, id) => t + aC(Number(d[id]) || 0), 0)
+      const objetivo = aC(Number(gasto.monto) || 0)
+      return { suma: aP(suma), objetivo: aP(objetivo), falta: aP(objetivo - suma), unidad: '$' }
+    }
+    return null
+  }
+
   /** Las frases para compartir por WhatsApp: «Fede le paga $ 12.000,00 a Sofi». Sin deudas: «Están a mano». */
   function frases(miembros, gastos, liquidaciones = []) {
     const nombre = Object.fromEntries(miembros.map((m) => [m.id, m.nombre]))
@@ -182,5 +203,5 @@
     return out
   }
 
-  return { repartir, aportes, problema, saldos, simplificar, resumen, frases, monto }
+  return { repartir, aportes, problema, saldos, simplificar, resumen, frases, monto, cuantoFalta }
 })
