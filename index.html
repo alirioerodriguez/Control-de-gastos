@@ -17,6 +17,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="/grupo.js"></script>
 <style>
 /* ===================== Sistema visual (diseño Clara) ===================== */
 /* ===== Temas. El primero (clara) es el look original. ===== */
@@ -4759,6 +4760,7 @@ const MAS=[
   {k:"fijos",    n:"Gastos e ingresos fijos", s:"Alquiler, sueldo, suscripciones",ic:"fijos",     col:"green"},
   {k:"presu",    n:"Presupuesto",      s:"Un límite por categoría",               ic:"gasto",     col:"red"},
   {k:"dividir",  n:"Compartido",       s:"Lo que dividís con otra persona",       ic:"gente",     col:"violet"},
+  {k:"grupos",   n:"Grupos y viajes",  s:"Dividí gastos entre varios amigos",     ic:"gente",     col:"violet"},
   {k:"graficos", n:"Gráficos",         s:"Ingresos, gastos y categorías",         ic:"ingreso",   col:"teal"},
   {k:"exportar", n:"Exportar a CSV",   s:"Bajate todos tus movimientos",          ic:"exportar",  col:"blue",   go:()=>$("mv-export").onclick()},
   {k:"recorrido",n:"Ver el recorrido", s:"Cómo funciona la app, paso a paso",     ic:"chispa",    col:"violet", go:()=>iniciarRecorrido()},
@@ -5065,6 +5067,7 @@ function renderSub(){
   if(subView==="fijos") el.innerHTML=subFijos();
   if(subView==="presu") el.innerHTML=subPresu();
   if(subView==="dividir") el.innerHTML=subDividir();
+  if(subView==="grupos") el.innerHTML=subGrupos();
   if(subView==="graficos") el.innerHTML=subGraficos();
   if(subView==="tema") el.innerHTML=subTema();
   if(subView==="seguridad") el.innerHTML=subSeguridad();
@@ -5168,6 +5171,157 @@ function subDividir(){
     <div id="pair-wa"></div>
     <div id="pair-txns"></div></div>`;
 }
+/* --- grupos y viajes (v7.0) ---
+   Gastos entre VARIAS personas (un viaje, una casa, una salida): quién pagó, entre quiénes se reparte y quién le paga a quién.
+   Los cálculos viven en grupo.js (con pruebas); acá solo está la pantalla y el guardado.
+   Los integrantes no necesitan cuenta: son nombres. Guarda en Supabase (supabase/grupos.sql); si esas tablas todavía
+   no están creadas, lo guarda solo en este teléfono y lo avisa en pantalla. */
+let GRP={cargado:false, local:false, grupos:[], miembros:[], gastos:[], liqs:[]}, grpAbierto=null, grpMsg="";
+let grpForm={desc:"", monto:"", moneda:"ARS", pagador:"", entre:null, reparto:"igual", partes:{}};
+const GRP_TABLAS={grupos:"grupos", miembros:"grupo_miembros", gastos:"grupo_gastos", liqs:"grupo_liquidaciones"};
+const grpClaveLocal=()=>"miscuentas_grupos_"+(user?user.id:"anon");
+const grpFaltaTabla=e=>e && (e.code==="42P01" || e.code==="PGRST205" || /does not exist|schema cache|Could not find the table/i.test(e.message||""));
+function grpGuardarLocal(){ try{ localStorage.setItem(grpClaveLocal(),JSON.stringify({grupos:GRP.grupos,miembros:GRP.miembros,gastos:GRP.gastos,liqs:GRP.liqs})); }catch(e){ anotarError("No pude guardar los grupos en este teléfono",e); } }
+async function grpCargar(){
+  const q=t=>sb.from(GRP_TABLAS[t]).select("*");
+  const r=await Promise.all([q("grupos").order("creado",{ascending:true}),q("miembros"),q("gastos").order("fecha",{ascending:true}),q("liqs")]);
+  if(r.some(x=>grpFaltaTabla(x.error))){
+    let g={}; try{ g=JSON.parse(localStorage.getItem(grpClaveLocal())||"{}"); }catch(e){}
+    GRP={cargado:true, local:true, grupos:g.grupos||[], miembros:g.miembros||[], gastos:g.gastos||[], liqs:g.liqs||[]};
+    return;
+  }
+  const mal=r.find(x=>x.error); if(mal) throw mal.error;
+  const num=f=>({...f,monto:Number(f.monto)});
+  GRP={cargado:true, local:false, grupos:r[0].data||[], miembros:r[1].data||[], gastos:(r[2].data||[]).map(num), liqs:(r[3].data||[]).map(num)};
+}
+async function grpInsertar(t,fila){
+  if(GRP.local){ const f={...fila,id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2))}; if(t==="grupos") f.creado=new Date().toISOString(); GRP[t].push(f); grpGuardarLocal(); return f; }
+  const {data,error}=await sb.from(GRP_TABLAS[t]).insert(fila).select().single(); if(error) throw error;
+  const f=("monto" in data)?{...data,monto:Number(data.monto)}:data; GRP[t].push(f); return f;
+}
+async function grpBorrar(t,id){
+  if(!GRP.local){ const {error}=await sb.from(GRP_TABLAS[t]).delete().eq("id",id); if(error) throw error; }
+  GRP[t]=GRP[t].filter(x=>x.id!==id);
+  if(t==="grupos"){ GRP.miembros=GRP.miembros.filter(x=>x.grupo_id!==id); GRP.gastos=GRP.gastos.filter(x=>x.grupo_id!==id); GRP.liqs=GRP.liqs.filter(x=>x.grupo_id!==id); }
+  if(GRP.local) grpGuardarLocal();
+}
+const grpMiembros=gid=>GRP.miembros.filter(m=>m.grupo_id===gid);
+const grpNombre=(gid,id)=>(grpMiembros(gid).find(m=>m.id===id)||{nombre:"?"}).nombre;
+function subGrupos(){ return `<div id="grp-root"><div class="empty">Cargando…</div></div>`; }
+async function grpMontar(){
+  const root=$("grp-root"); if(!root) return;
+  if(!GRP.cargado){
+    try{ await grpCargar(); }
+    catch(e){ avisarError(e,"No pude cargar los grupos"); root.innerHTML=`<div class="panel pad"><div class="warn">No pude cargar los grupos. Probá de nuevo en un rato.</div></div>`; return; }
+  }
+  grpPintar();
+}
+function grpPintar(){
+  const root=$("grp-root"); if(!root) return;
+  root.innerHTML = grpAbierto && GRP.grupos.some(g=>g.id===grpAbierto) ? grpVistaGrupo(grpAbierto) : grpVistaLista();
+  pintarIconos(root);
+  grpBind(root);
+}
+const grpAviso=()=>GRP.local?`<div class="warn" style="margin-bottom:12px">Por ahora los grupos se guardan solo en este teléfono: falta crear las tablas en Supabase (archivo <b>supabase/grupos.sql</b>).</div>`:"";
+function grpVistaLista(){
+  const filas=GRP.grupos.map(g=>{ const n=grpMiembros(g.id).length, k=GRP.gastos.filter(x=>x.grupo_id===g.id).length;
+    return `<button class="cfgrow rowz" data-g-abrir="${g.id}"><div class="ri" style="background:var(--violet-bg);color:var(--violet)">${icon('gente',17)}</div>
+      <div class="rt" style="flex:1"><b>${esc(g.nombre||"Grupo sin nombre")}</b><span>${n} persona${n===1?"":"s"} · ${k} gasto${k===1?"":"s"}</span></div>
+      <span style="color:var(--ink-3)">${icon('adelante',16)}</span></button>`; }).join('<div class="sep"></div>');
+  return `${grpAviso()}<div class="hint" style="margin:0 0 12px">Para un viaje o una salida de amigos: cargás lo que paga cada uno y la app te dice quién le paga a quién. Las otras personas no necesitan la app.</div>
+    <div class="panel pad"><div class="fld"><label for="g-nuevo">Nombre del viaje o salida</label><input id="g-nuevo" placeholder="Bariloche 2026" maxlength="60" autocomplete="off"></div>
+      <button class="btn w" id="g-crear">+ Nuevo grupo</button></div>
+    <div class="panel" style="margin-top:14px">${GRP.grupos.length?filas:`<div class="empty">Todavía no tenés grupos.</div>`}</div>`;
+}
+function grpVistaGrupo(gid){
+  const g=GRP.grupos.find(x=>x.id===gid), ms=grpMiembros(gid), gs=GRP.gastos.filter(x=>x.grupo_id===gid), ls=GRP.liqs.filter(x=>x.grupo_id===gid);
+  if(!grpForm.entre) grpForm.entre=new Set(ms.map(m=>m.id));
+  grpForm.entre=new Set([...grpForm.entre].filter(id=>ms.some(m=>m.id===id)));
+  if(!ms.some(m=>m.id===grpForm.pagador)) grpForm.pagador=ms[0]?ms[0].id:"";
+  const nom=id=>esc(grpNombre(gid,id));
+  const miembros=ms.map(m=>`<span class="chip" role="listitem" style="display:inline-flex;align-items:center;gap:6px">${esc(m.nombre)}<button class="iconx" data-g-quitar="${m.id}" aria-label="Sacar a ${esc(m.nombre)}" style="min-width:32px;min-height:32px">${icon('borrar',14)}</button></span>`).join("");
+  const entre=ms.map(m=>`<label class="chip" style="display:inline-flex;align-items:center;gap:8px;min-height:44px"><input type="checkbox" data-g-entre="${m.id}" ${grpForm.entre.has(m.id)?"checked":""}> ${esc(m.nombre)}
+      ${grpForm.reparto==="partes"&&grpForm.entre.has(m.id)?`<input type="number" min="1" step="1" inputmode="numeric" data-g-parte="${m.id}" value="${grpForm.partes[m.id]||1}" aria-label="Partes de ${esc(m.nombre)}" style="width:56px;min-height:36px;padding:4px 6px;border:1px solid var(--line-in);border-radius:10px;font-size:16px">`:""}</label>`).join("");
+  const lista=gs.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).map(x=>`<div class="row"><div class="rt"><b>${esc(x.descripcion||"Gasto")}</b>
+      <span>Pagó ${nom(x.pagador)} · entre ${(x.participantes||[]).map(nom).join(", ")}</span></div>
+      <div class="racts" style="text-align:right"><b>${fmt(x.monto,x.moneda)}</b><button class="iconx" data-g-del-gasto="${x.id}" aria-label="Borrar ${esc(x.descripcion||"gasto")}">${icon('borrar',16)}</button></div></div>`).join('<div class="sep"></div>');
+  let saldar="";
+  if(gs.length&&ms.length>1){
+    const r=Grupo.resumen(ms,gs,ls);
+    saldar=Object.entries(r).map(([mon,x])=>{
+      const filas=x.filas.map(f=>`<tr><td>${esc(f.nombre)}</td><td>${fmt(f.pago,mon)}</td><td>${fmt(f.leTocaba,mon)}</td><td style="${f.saldo<0?"color:var(--red)":""}">${fmt(f.saldo,mon)}</td></tr>`).join("");
+      const pasos=x.transferencias.length?x.transferencias.map((t,i)=>`<div class="row"><div class="rt"><b>${nom(t.de)} le paga ${fmt(t.monto,mon)}</b><span>a ${nom(t.a)}</span></div><button class="chip" style="padding:7px 11px;font-size:13px" data-g-pagado="${mon}|${i}">Ya pagó</button></div>`).join('<div class="sep"></div>'):`<div class="empty">Están a mano.</div>`;
+      return `<div class="sec"><b>${mon} · total ${fmt(x.total,mon)}</b></div>
+        <div class="panel pad" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--ink-2);text-align:left"><th>Quién</th><th>Puso</th><th>Le tocaba</th><th>Saldo</th></tr></thead><tbody>${filas}</tbody></table></div>
+        <div class="panel" style="margin-top:10px">${pasos}</div>`; }).join("")
+      +`<button class="btn w" id="g-copiar" style="margin-top:12px">Copiar para WhatsApp</button>`;
+  }
+  return `${grpAviso()}<button class="chip" id="g-volver" style="margin-bottom:12px">← Todos los grupos</button>
+    <div class="sec" style="padding:0 0 8px"><b>${esc(g.nombre||"Grupo")}</b></div>
+    <div class="panel pad"><div class="sec" style="padding:0 0 8px"><b>Personas</b></div>
+      <div role="list" style="display:flex;flex-wrap:wrap;gap:8px">${miembros||`<span class="hint">Sumá a las personas del grupo.</span>`}</div>
+      <div style="display:flex;gap:8px;margin-top:10px"><input id="g-m-nombre" placeholder="Nombre de una persona" aria-label="Nombre de una persona" autocomplete="off" maxlength="40" style="flex:1;border:1px solid var(--line-in);border-radius:16px;padding:12px 14px;font-size:16px;min-height:48px;background:var(--card);color:var(--ink)"><button class="btn sm" id="g-m-sumar">Sumar</button></div>
+      <div class="hint" style="margin-top:6px">No hace falta que tengan la app: alcanza con el nombre.</div></div>
+    ${ms.length>1?`<div class="sec"><b>Cargar un gasto</b></div><div class="panel pad">
+      <div class="fld"><label for="g-x-desc">¿Qué fue?</label><input id="g-x-desc" value="${esc(grpForm.desc)}" placeholder="Nafta, cena, entradas…" maxlength="80" autocomplete="off"></div>
+      <div style="display:flex;gap:8px"><div class="fld" style="flex:1"><label for="g-x-monto">Monto</label><input id="g-x-monto" inputmode="decimal" value="${esc(grpForm.monto)}" placeholder="25000"></div>
+        <div class="fld" style="width:120px"><label for="g-x-moneda">Moneda</label><select id="g-x-moneda"><option ${grpForm.moneda==="ARS"?"selected":""}>ARS</option><option ${grpForm.moneda==="USD"?"selected":""}>USD</option></select></div></div>
+      <div class="fld"><label for="g-x-pagador">¿Quién pagó?</label><select id="g-x-pagador">${ms.map(m=>`<option value="${m.id}" ${m.id===grpForm.pagador?"selected":""}>${esc(m.nombre)}</option>`).join("")}</select></div>
+      <div class="fld"><label>¿Entre quiénes se reparte?</label><div style="display:flex;flex-wrap:wrap;gap:8px">${entre}</div></div>
+      <div class="fld"><label for="g-x-reparto">Cómo se reparte</label><select id="g-x-reparto"><option value="igual" ${grpForm.reparto==="igual"?"selected":""}>En partes iguales</option><option value="partes" ${grpForm.reparto==="partes"?"selected":""}>Por partes (una pareja cuenta doble)</option></select></div>
+      <div id="g-x-error" role="alert" style="color:var(--red);font-weight:600;min-height:1.3em;margin-bottom:6px">${esc(grpMsg)}</div>
+      <button class="btn w" id="g-x-guardar">Guardar gasto</button></div>`:`<div class="hint" style="margin-top:12px">Sumá al menos a dos personas para cargar gastos.</div>`}
+    <div class="sec"><b>Gastos</b></div><div class="panel">${gs.length?lista:`<div class="empty">Todavía no cargaste ninguno.</div>`}</div>
+    ${saldar?`<div class="sec" style="margin-top:6px"><b>Saldar cuentas</b></div>${saldar}`:""}
+    <button class="btn ghost w" id="g-borrar" style="margin-top:18px">Borrar este grupo</button>`;
+}
+function grpLeerMonto(t){ const s=String(t).trim().replace(/\s/g,"").replace(/\.(?=\d{3}(\D|$))/g,"").replace(",","."); const n=Number(s); return (s!==""&&isFinite(n))?n:null; }
+function grpBind(root){
+  const gid=grpAbierto;
+  const crear=async()=>{ const n=($("g-nuevo").value||"").trim(); if(!n){ toast("Escribí un nombre"); return; }
+    const r=await guardar(()=>grpInsertar("grupos",GRP.local?{nombre:n}:{nombre:n}),{err:"No pude crear el grupo",boton:"g-crear"}); if(r.error) return;
+    grpAbierto=GRP.grupos[GRP.grupos.length-1].id; grpForm={desc:"",monto:"",moneda:"ARS",pagador:"",entre:null,reparto:"igual",partes:{}}; grpMsg=""; grpPintar(); };
+  if($("g-crear")){ $("g-crear").onclick=crear; $("g-nuevo").onkeydown=e=>{ if(e.key==="Enter") crear(); }; }
+  root.querySelectorAll("[data-g-abrir]").forEach(b=>b.onclick=()=>{ grpAbierto=b.dataset.gAbrir; grpForm={desc:"",monto:"",moneda:"ARS",pagador:"",entre:null,reparto:"igual",partes:{}}; grpMsg=""; grpPintar(); });
+  if(!gid) return;
+  $("g-volver").onclick=()=>{ grpAbierto=null; grpPintar(); };
+  const sumar=async()=>{ const n=($("g-m-nombre").value||"").trim(); if(!n){ toast("Escribí un nombre"); return; }
+    if(grpMiembros(gid).some(m=>m.nombre.toLowerCase()===n.toLowerCase())){ toast("Ya está en el grupo"); return; }
+    const r=await guardar(()=>grpInsertar("miembros",{grupo_id:gid,nombre:n}),{err:"No pude sumar a la persona"}); if(r.error) return;
+    grpForm.entre=null; grpPintar(); const i=$("g-m-nombre"); if(i) i.focus(); };
+  $("g-m-sumar").onclick=sumar; $("g-m-nombre").onkeydown=e=>{ if(e.key==="Enter") sumar(); };
+  root.querySelectorAll("[data-g-quitar]").forEach(b=>b.onclick=async()=>{ const id=b.dataset.gQuitar;
+    if(GRP.gastos.some(x=>x.grupo_id===gid&&(x.pagador===id||(x.participantes||[]).includes(id)))||GRP.liqs.some(x=>x.grupo_id===gid&&(x.de===id||x.a===id))){ toast("Tiene gastos cargados",{sub:"Borrá esos gastos primero."}); return; }
+    const r=await guardar(()=>grpBorrar("miembros",id),{err:"No pude sacar a la persona"}); if(r.error) return; grpForm.entre=null; grpPintar(); });
+  const f=grpForm;
+  if($("g-x-guardar")){
+    $("g-x-desc").oninput=e=>{ f.desc=e.target.value; }; $("g-x-monto").oninput=e=>{ f.monto=e.target.value; };
+    $("g-x-moneda").onchange=e=>{ f.moneda=e.target.value; }; $("g-x-pagador").onchange=e=>{ f.pagador=e.target.value; };
+    $("g-x-reparto").onchange=e=>{ f.reparto=e.target.value; grpPintar(); };
+    root.querySelectorAll("[data-g-entre]").forEach(c=>c.onchange=()=>{ c.checked?f.entre.add(c.dataset.gEntre):f.entre.delete(c.dataset.gEntre); if(f.reparto==="partes") grpPintar(); });
+    root.querySelectorAll("[data-g-parte]").forEach(i=>i.oninput=()=>{ f.partes[i.dataset.gParte]=Math.max(1,Number(i.value)||1); });
+    $("g-x-guardar").onclick=async()=>{
+      const monto=grpLeerMonto(f.monto), part=[...f.entre];
+      const fila={grupo_id:gid,fecha:todayISO(),descripcion:(f.desc||"").trim(),monto,moneda:f.moneda,pagador:f.pagador,participantes:part,reparto:f.reparto,
+        detalle:f.reparto==="partes"?Object.fromEntries(part.map(id=>[id,f.partes[id]||1])):null};
+      grpMsg = monto===null ? "Ingresá un monto." : Grupo.problema({...fila,id:"nuevo",detalle:fila.detalle||undefined},grpMiembros(gid));
+      if(grpMsg){ $("g-x-error").textContent=grpMsg; return; }
+      const r=await guardar(()=>grpInsertar("gastos",fila),{err:"No pude guardar el gasto",ok:"Gasto guardado",boton:"g-x-guardar"}); if(r.error) return;
+      grpForm.desc=""; grpForm.monto=""; grpMsg=""; grpPintar(); };
+  }
+  root.querySelectorAll("[data-g-del-gasto]").forEach(b=>b.onclick=async()=>{
+    if(!await confirmar({titulo:"¿Borrar este gasto?",texto:"Se recalcula quién le debe a quién.",ok:"Borrar",peligro:true})) return;
+    const r=await guardar(()=>grpBorrar("gastos",b.dataset.gDelGasto),{err:"No pude borrar el gasto"}); if(!r.error) grpPintar(); });
+  root.querySelectorAll("[data-g-pagado]").forEach(b=>b.onclick=async()=>{
+    const [mon,i]=b.dataset.gPagado.split("|"), t=Grupo.resumen(grpMiembros(gid),GRP.gastos.filter(x=>x.grupo_id===gid),GRP.liqs.filter(x=>x.grupo_id===gid))[mon].transferencias[Number(i)];
+    const r=await guardar(()=>grpInsertar("liqs",{grupo_id:gid,de:t.de,a:t.a,monto:t.monto,moneda:mon}),{err:"No pude anotar el pago",ok:"Pago anotado"}); if(!r.error) grpPintar(); });
+  if($("g-copiar")) $("g-copiar").onclick=async()=>{ const g=GRP.grupos.find(x=>x.id===gid);
+    const texto=`${g.nombre||"Gastos del grupo"}\n`+Grupo.frases(grpMiembros(gid),GRP.gastos.filter(x=>x.grupo_id===gid),GRP.liqs.filter(x=>x.grupo_id===gid)).join("\n");
+    try{ await navigator.clipboard.writeText(texto); avisarOK("Copiado","Pegalo en el grupo de WhatsApp"); }catch(e){ toast("No pude copiar",{sub:"Seleccioná el texto a mano."}); } };
+  $("g-borrar").onclick=async()=>{
+    if(!await confirmar({titulo:"¿Borrar el grupo?",texto:"Se borran sus personas y todos sus gastos. No se puede deshacer.",ok:"Borrar",peligro:true})) return;
+    const r=await guardar(()=>grpBorrar("grupos",gid),{err:"No pude borrar el grupo",ok:"Grupo borrado"}); if(!r.error){ grpAbierto=null; grpPintar(); } };
+}
 /* --- gráficos --- */
 function subGraficos(){
   return `<div class="panel pad"><div class="sec" style="padding:0 0 12px"><b>Ingresos vs. gastos por mes</b></div><canvas id="chart-flow"></canvas></div>
@@ -5199,6 +5353,7 @@ function subTema(){
 function bindSub(){
   const el=$("sub-body");
   if(subView==="honorapp") cargarHonorapp();
+  if(subView==="grupos") grpMontar();
   if(subView==="pruebas") bindPruebas();
   if(subView==="resultados") cargarResultados();
   if(subView==="diagnostico"){
