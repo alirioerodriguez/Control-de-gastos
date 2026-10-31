@@ -867,18 +867,13 @@ input[type=checkbox]:checked{background:var(--sw-on);box-shadow:none}
 input[type=checkbox]:checked::after{transform:translateX(20px)}
 input[type=checkbox]:active::after{width:33px}
 input[type=checkbox]:checked:active::after{transform:translateX(14px)}
-/* elegir a varias personas (grupos): no son interruptores sino botones que se marcan; el checkbox queda escondido pero sigue funcionando */
-.grpchk{position:relative;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border:1.5px solid var(--line-in);border-radius:999px;background:var(--card);color:var(--ink);font-size:14px;font-weight:600;cursor:pointer;transition:background .16s ease,border-color .16s ease}
-.grpchk input[type=checkbox]{position:absolute;opacity:0;width:1px;height:1px;min-height:0;padding:0;margin:0;border:0;pointer-events:none}
-.grpchk input[type=checkbox]::after{display:none}
-.grpchk::before{content:"";flex:none;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line-in);background:var(--card);box-sizing:border-box}
-.grpchk:has(input:checked){background:var(--violet-bg);border-color:var(--violet)}
-.grpchk:has(input:checked)::before{background:var(--violet) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-6.5' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% no-repeat;border-color:var(--violet)}
-.grpchk:has(input:focus-visible){outline:3px solid var(--acc);outline-offset:2px}
-.grpchk input[type=number]{position:static;opacity:1;pointer-events:auto;width:56px;min-height:36px;padding:4px 6px;border:1px solid var(--line-in);border-radius:10px;font-size:16px;background:var(--card);color:var(--ink)}
+/* elegir a varias personas (grupos): una fila por persona con su interruptor (el estilo es el de todos los checkbox de arriba) */
+.grpfila{display:flex;align-items:center;gap:12px;min-height:48px;padding:4px 0;border-top:1px solid var(--line);font-size:15px;font-weight:600;cursor:pointer}
+.grpfila:first-child{border-top:0}
+.grpfila .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.grpfila input[type=number]{width:64px;min-height:40px;padding:4px 8px;border:1px solid var(--line-in);border-radius:12px;font-size:16px;background:var(--card);color:var(--ink);text-align:center}
 input[type=checkbox]:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){input[type=checkbox],input[type=checkbox]::after{transition:none}}
-.grpchk input[type=checkbox]{box-shadow:none;background:transparent}
 .cvdmuestra{display:flex;gap:6px;margin-top:12px}
 .cvdmuestra i{flex:1;height:22px;border-radius:6px;display:block;position:relative;overflow:hidden}
 
@@ -5281,8 +5276,9 @@ function grpVistaGrupo(gid){
   if(!ms.some(m=>m.id===grpForm.pagador)) grpForm.pagador=ms[0]?ms[0].id:"";
   const nom=id=>esc(grpNombre(gid,id));
   const miembros=ms.map(m=>`<span class="chip" role="listitem" style="display:inline-flex;align-items:center;gap:6px">${esc(m.nombre)}<button class="iconx" data-g-quitar="${m.id}" aria-label="Sacar a ${esc(m.nombre)}" style="min-width:32px;min-height:32px">${icon('borrar',14)}</button></span>`).join("");
-  const entre=ms.map(m=>`<label class="grpchk"><input type="checkbox" data-g-entre="${m.id}" ${grpForm.entre.has(m.id)?"checked":""}>${esc(m.nombre)}
-      ${grpForm.reparto==="partes"&&grpForm.entre.has(m.id)?`<input type="number" min="1" step="1" inputmode="numeric" data-g-parte="${m.id}" value="${grpForm.partes[m.id]||1}" aria-label="Partes de ${esc(m.nombre)}">`:""}</label>`).join("");
+  const entre=ms.map(m=>`<label class="grpfila"><span class="nm">${esc(m.nombre)}</span>
+      ${grpForm.reparto==="partes"&&grpForm.entre.has(m.id)?`<input type="number" min="1" step="1" inputmode="numeric" data-g-parte="${m.id}" value="${grpForm.partes[m.id]||1}" aria-label="Partes de ${esc(m.nombre)}">`:""}
+      <input type="checkbox" role="switch" data-g-entre="${m.id}" ${grpForm.entre.has(m.id)?"checked":""} aria-label="${esc(m.nombre)} entra en el reparto"></label>`).join("");
   const lista=gs.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).map(x=>`<div class="row"><div class="rt"><b>${esc(x.descripcion||"Gasto")}</b>
       <span>Pagó ${nom(x.pagador)} · entre ${(x.participantes||[]).map(nom).join(", ")}</span></div>
       <div class="racts" style="text-align:right"><b>${fmt(x.monto,x.moneda)}</b><button class="iconx" data-g-del-gasto="${x.id}" aria-label="Borrar ${esc(x.descripcion||"gasto")}">${icon('borrar',16)}</button></div></div>`).join('<div class="sep"></div>');
@@ -5308,7 +5304,7 @@ function grpVistaGrupo(gid){
       <div style="display:flex;gap:8px"><div class="fld" style="flex:1"><label for="g-x-monto">Monto</label><input id="g-x-monto" inputmode="decimal" value="${esc(grpForm.monto)}" placeholder="25000"></div>
         <div class="fld" style="width:120px"><label for="g-x-moneda">Moneda</label><select id="g-x-moneda"><option ${grpForm.moneda==="ARS"?"selected":""}>ARS</option><option ${grpForm.moneda==="USD"?"selected":""}>USD</option></select></div></div>
       <div class="fld"><label for="g-x-pagador">¿Quién pagó?</label><select id="g-x-pagador">${ms.map(m=>`<option value="${m.id}" ${m.id===grpForm.pagador?"selected":""}>${esc(m.nombre)}</option>`).join("")}</select></div>
-      <div class="fld"><label>¿Entre quiénes se reparte?</label><div style="display:flex;flex-wrap:wrap;gap:8px">${entre}</div></div>
+      <div class="fld"><label>¿Entre quiénes se reparte?</label><div>${entre}</div></div>
       <div class="fld"><label for="g-x-reparto">Cómo se reparte</label><select id="g-x-reparto"><option value="igual" ${grpForm.reparto==="igual"?"selected":""}>En partes iguales</option><option value="partes" ${grpForm.reparto==="partes"?"selected":""}>Por partes (una pareja cuenta doble)</option></select></div>
       <div id="g-x-error" role="alert" style="color:var(--red);font-weight:600;min-height:1.3em;margin-bottom:6px">${esc(grpMsg)}</div>
       <button class="btn w" id="g-x-guardar">Guardar gasto</button></div>`:`<div class="hint" style="margin-top:12px">Sumá al menos a dos personas para cargar gastos.</div>`}
