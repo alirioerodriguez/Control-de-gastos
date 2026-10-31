@@ -37,6 +37,18 @@ lanza('sin participantes', () => G.repartir({ id: 'x', monto: 10, participantes:
 lanza('persona repetida', () => G.repartir({ id: 'x', monto: 10, participantes: ['ana', 'ana'] }), /repetida/)
 lanza('porcentajes que no suman 100', () => G.repartir({ id: 'x', monto: 10, participantes: ['ana', 'beto'], reparto: 'porcentajes', detalle: { ana: 50, beto: 40 } }), /suman 90/)
 lanza('montos que no suman el gasto', () => G.repartir({ id: 'x', monto: 1000, participantes: ['ana', 'beto'], reparto: 'montos', detalle: { ana: 400, beto: 500 } }), /suman 900/)
+console.log('\n— Lo que falta mientras se completa el reparto')
+eq('partes iguales: no hay nada que cuadrar', G.cuantoFalta({ monto: 100, participantes: todos }), null)
+eq('porcentajes a medio cargar: faltan 30', G.cuantoFalta({ monto: 100, participantes: ['ana', 'beto'], reparto: 'porcentajes', detalle: { ana: 70 } }), { suma: 70, objetivo: 100, falta: 30, unidad: '%' })
+eq('porcentajes con decimales: 33,3 + 33,3 + 33,4 dan justo', G.cuantoFalta({ monto: 100, participantes: ['ana', 'beto', 'cami'], reparto: 'porcentajes', detalle: { ana: 33.3, beto: 33.3, cami: 33.4 } }).falta, 0)
+eq('porcentajes de más: falta negativo', G.cuantoFalta({ monto: 100, participantes: ['ana', 'beto'], reparto: 'porcentajes', detalle: { ana: 70, beto: 40 } }).falta, -10)
+eq('montos: 0,10 + 0,20 de 0,30 no falla por la coma', G.cuantoFalta({ monto: 0.3, participantes: ['ana', 'beto'], reparto: 'montos', detalle: { ana: 0.1, beto: 0.2 } }).falta, 0)
+eq('montos a medio cargar: faltan 600', G.cuantoFalta({ monto: 1000, participantes: ['ana', 'beto'], reparto: 'montos', detalle: { ana: 400 } }), { suma: 400, objetivo: 1000, falta: 600, unidad: '$' })
+eq('solo cuentan los que entran en el reparto', G.cuantoFalta({ monto: 1000, participantes: ['ana'], reparto: 'montos', detalle: { ana: 1000, beto: 500 } }).falta, 0)
+{
+  const g = { id: 'g6', monto: 1000, participantes: ['ana', 'beto', 'cami'], reparto: 'porcentajes', detalle: { ana: 50, beto: 25, cami: 25 } }
+  ok('cuando falta 0, repartir no lanza y suma exacto', G.cuantoFalta(g).falta === 0 && suma(G.repartir(g)) === 100000)
+}
 lanza('sin pagador', () => G.aportes({ id: 'x', monto: 10, participantes: ['ana'] }), /quién pagó/)
 eq('problema(): alguien que no es del grupo', G.problema({ id: 'x', monto: 10, pagador: 'zoe', participantes: ['ana'] }, viaje), 'Hay alguien que no es del grupo.')
 eq('problema(): gasto bien cargado', G.problema({ id: 'x', monto: 10, pagador: 'ana', participantes: ['ana', 'beto'] }, viaje), null)
