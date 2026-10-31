@@ -5226,6 +5226,27 @@ async function grpBorrar(t,id){
   if(GRP.local) grpGuardarLocal();
 }
 const grpMiembros=gid=>GRP.miembros.filter(m=>m.grupo_id===gid);
+/* «cena con Sofi, Fede y Mamá 90 mil»: arma (o reusa) el grupo con esas personas y deja el gasto cargado en el formulario para revisarlo y guardarlo */
+async function grpDesdeVoz(){
+  const yo=(((PROFILE&&PROFILE.nombre)||"Yo").trim().split(/\s+/)[0])||"Yo";
+  const nombres=[V.conQuien,...(V.otrasPersonas||[])].filter(Boolean);
+  const todos=[yo,...nombres.filter(n=>n.toLowerCase()!==yo.toLowerCase())];
+  const pagaYo=(V.pagador||user.id)===user.id, quienPago=pagaYo?yo:V.conQuien;
+  const datos={desc:V.descripcion||V.comercio||"", monto:V.monto>0?String(V.monto).replace(".",","):"", moneda:V.moneda==="USD"?"USD":"ARS"};
+  cerrarVoz();
+  try{ if(!GRP.cargado) await grpCargar(); }catch(e){ avisarError(e,"No pude cargar los grupos"); return; }
+  const mismos=x=>{ const ns=grpMiembros(x.id).map(m=>m.nombre.toLowerCase()); return todos.every(n=>ns.includes(n.toLowerCase())); };
+  let g=GRP.grupos.find(mismos);
+  if(!g){
+    const r=await guardar(async()=>{ const nuevo=await grpInsertar("grupos",{nombre:"Con "+nombres.join(", ")}); for(const n of todos) await grpInsertar("miembros",{grupo_id:nuevo.id,nombre:n}); return nuevo; },{err:"No pude armar el grupo"});
+    if(r.error) return; g=r;
+  }
+  const ms=grpMiembros(g.id), idDe=n=>(ms.find(m=>m.nombre.toLowerCase()===String(n).toLowerCase())||{}).id;
+  grpForm={desc:datos.desc, monto:datos.monto, moneda:datos.moneda, pagador:idDe(quienPago)||(ms[0]&&ms[0].id)||"", entre:new Set(todos.map(idDe).filter(Boolean)), reparto:"igual", partes:{}};
+  grpAbierto=g.id; grpMsg="";
+  avisarOK("Grupo listo","Revisá el gasto y guardalo.");
+  subView="grupos"; show("sub"); renderSub(); pintarFab();
+}
 const grpNombre=(gid,id)=>(grpMiembros(gid).find(m=>m.id===id)||{nombre:"?"}).nombre;
 function subGrupos(){ return `<div id="grp-root"><div class="empty">Cargando…</div></div>`; }
 async function grpMontar(){
@@ -9139,7 +9160,7 @@ function renderVozFilas(){
     const p=PAIRS.find(x=>x.id===V.pair); const o=p?otherProf(otherId(p)):{apodo:"la otra persona"};
     h+=fila("Con",esc(V.conQuien||o.apodo),"pair");
     if(V.otrasPersonas && V.otrasPersonas.length && V.conQuien && !V.manual?.pair)
-      h+=`<div class="detrow"><span class="v" style="font-size:13px;color:var(--amber);flex:1;text-align:left;line-height:1.35">Nombraste también a ${esc(V.otrasPersonas.join(" y "))}: este gasto quedó solo con ${esc(V.conQuien)}. Si fue entre todos, cargá uno por persona.</span></div>`;
+      h+=`<div class="detrow"><span class="v" style="font-size:13px;color:var(--amber);flex:1;text-align:left;line-height:1.35">Nombraste también a ${esc(V.otrasPersonas.join(" y "))}: este gasto quedó solo con ${esc(V.conQuien)}. Si fue entre todos, armá un grupo.</span><button class="chip" data-vgrupo type="button" style="padding:6px 12px;font-size:13px;flex:none">Armar grupo</button></div>`;
     const pagoYo=(V.pagador||user.id)===user.id;
     h+=`<div class="detrow"><span class="k">Pagó</span><span class="v" style="gap:6px">
       <button class="chip ${pagoYo?'on':''}" data-vp="yo" style="padding:5px 11px;font-size:13px">Vos</button>
@@ -9154,6 +9175,7 @@ function renderVozFilas(){
   $("voz-filas").querySelectorAll("[data-vf]").forEach(b=>{
     b.onmousedown=e=>e.preventDefault();          // que el clic no se pierda al desenfocar el texto
     b.onclick=()=>vozEditar(b.dataset.vf); });
+  const bg=$("voz-filas").querySelector("[data-vgrupo]"); if(bg){ bg.onmousedown=e=>e.preventDefault(); bg.onclick=()=>grpDesdeVoz(); }
   $("voz-filas").querySelectorAll("[data-vp]").forEach(b=>{
     b.onmousedown=e=>e.preventDefault();
     b.onclick=()=>{ const p=PAIRS.find(x=>x.id===V.pair);
