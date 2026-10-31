@@ -2976,6 +2976,8 @@ $("logo-auth").innerHTML=LOGO; $("logo-auth-2").innerHTML=LOGO; $("logo-portada"
 if(!configured()){ show("setup"); }
 else{
   sb=supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:{ flowType:'pkce',   /* v3.9 · PKCE: el token ya no viaja en la URL (#access_token) */ detectSessionInUrl:true, persistSession:true, autoRefreshToken:true } });
+  window.__sesionDesdeApp=(at,rt)=>sb.auth.setSession({ access_token:at, refresh_token:rt });
+  if(!puenteApp()){
   sb.auth.getSession().then(({data})=>{ if(recoveryMode){ show("recovery"); rcMostrar(3); } else onSession(data.session); });
   // Cuando volvés a la pestaña de Chrome, Supabase dispara SIGNED_IN / TOKEN_REFRESHED.
   // Si la sesión es la misma, no recargamos nada: eso era lo que "reiniciaba" la app.
@@ -2987,6 +2989,43 @@ else{
     if(booted && uid && uid===currentUid) return;
     onSession(s);
   });
+  }
+}
+
+/* ---------- PUENTE CON LA APP DEL CELULAR (carpeta mobile/) ----------
+   Google no deja iniciar sesión dentro de la vista web de una app. La app abre esta página en la ventana
+   segura del sistema con ?ingresoApp=google; acá se entra con Google, se vuelve con ?ingresoApp=volver y la
+   sesión se le pasa a la app (miscuentas://auth#access_token=…&refresh_token=…), que la carga con
+   window.__sesionDesdeApp. En esta ventana se borra (sin cerrarla en el servidor, que cerraría la de la app). */
+function enLaApp(){ return !!window.ReactNativeWebView; }
+function cubrir(txt){ const d=document.createElement("div"); d.textContent=txt;
+  d.style.cssText="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#f1efec;color:#2b2723;font:600 17px system-ui";
+  document.body.appendChild(d); }
+function puenteApp(){
+  const MARCA="miscuentas_ingreso_app", volver=h=>window.location.replace("miscuentas://auth#"+h);
+  const paso=new URLSearchParams(window.location.search).get("ingresoApp");
+  const marca=+(localStorage.getItem(MARCA)||0), pendiente=marca>0 && Date.now()-marca<10*60*1000;
+  if(paso==="google"){
+    localStorage.setItem(MARCA,String(Date.now()));
+    cubrir("Abriendo Google…");
+    sb.auth.signInWithOAuth({ provider:"google", options:{ redirectTo:window.location.origin+window.location.pathname+"?ingresoApp=volver", queryParams:{ prompt:"select_account" } } })
+      .then(({error})=>{ if(error) volver("error="+encodeURIComponent(error.message)); });
+    return true;
+  }
+  const vieneDeGoogle=paso==="volver" || /[?&#](code|error)=/.test(window.location.search+window.location.hash);
+  if(!pendiente || !vieneDeGoogle) return false;
+  localStorage.removeItem(MARCA);
+  cubrir("Volviendo a Mis Cuentas…");
+  const err=new URLSearchParams(window.location.search+"&"+window.location.hash.replace(/^#/,"")).get("error_description");
+  if(err){ volver("error="+encodeURIComponent(err)); return true; }
+  sb.auth.getSession().then(({data})=>{
+    const s=data.session;
+    if(!s) return volver("error="+encodeURIComponent("No se pudo entrar con Google"));
+    sb.auth.stopAutoRefresh();
+    Object.keys(localStorage).forEach(k=>{ if(/^sb-.*-auth-token/.test(k)) localStorage.removeItem(k); });
+    volver("access_token="+encodeURIComponent(s.access_token)+"&refresh_token="+encodeURIComponent(s.refresh_token));
+  });
+  return true;
 }
 
 /* ---------- AUTH ---------- */
@@ -3011,6 +3050,8 @@ async function googleDisponible(){
 }
 if(configured()) googleDisponible().then(ok=>{ $("au-google-wrap").classList.toggle("hidden", !ok); });
 $("au-google").onclick=async()=>{
+  /* En la app del celular lo hace la app (ver PUENTE CON LA APP) */
+  if(enLaApp()){ window.ReactNativeWebView.postMessage(JSON.stringify({ type:"google" })); return; }
   const b=$("au-google"); b.disabled=true; $("au-google-txt").textContent="Abriendo Google…"; $("au-err").textContent="";
   const {error}=await sb.auth.signInWithOAuth({ provider:"google",
     options:{ redirectTo:window.location.origin+window.location.pathname, queryParams:{ prompt:"select_account" } } });

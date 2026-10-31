@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Mis Cuentas",
+    "slug": "mis-cuentas",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "miscuentas",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#f1efec",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "ar.alirio.miscuentas",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "ar.alirio.miscuentas",
+      "adaptiveIcon": {
+        "backgroundColor": "#2b2723",
+        "foregroundImage": "./assets/android-icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120,
+          "resizeMode": "contain",
+          "backgroundColor": "#2b2723"
+        }
+      ]
+    ]
+  }
+}
