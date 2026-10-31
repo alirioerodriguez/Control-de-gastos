@@ -1,0 +1,31 @@
+{
+  "name": "miscuentas-mobile",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "expo": "~58.0.19",
+    "expo-file-system": "~58.0.11",
+    "expo-sharing": "~58.0.20",
+    "expo-splash-screen": "~58.0.11",
+    "expo-status-bar": "~58.0.4",
+    "expo-system-ui": "~58.0.6",
+    "expo-web-browser": "~58.0.6",
+    "react": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-webview": "14.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "typecheck": "tsc --noEmit",
+    "build:android": "eas build --platform android --profile apk",
+    "build:ios": "eas build --platform ios --profile iphone",
+    "build:tienda": "eas build --platform ios --profile production",
+    "subir:tienda": "eas submit --platform ios"
+  },
+  "private": true
+}
