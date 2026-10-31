@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gastos de grupo</title>
+<style>
+  :root { --bg:#f7f6f3; --card:#fff; --ink:#1d1d1f; --muted:#5b5b62; --line:#d9d7d0; --acc:#1f6f5c; --on-acc:#fff; --bad:#a3262a; --soft:#e6f1ed; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141414; --card:#1e1e1f; --ink:#f2f2f2; --muted:#b4b4ba; --line:#3a3a3d; --acc:#58c2a6; --on-acc:#0b1f19; --bad:#ff8f8f; --soft:#1d2e29; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 96px; display:flex; flex-direction:column; gap:16px; }
+  h1 { font-size:1.4rem; margin:8px 0 0; } h2 { font-size:1.05rem; margin:0 0 8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; }
+  label { display:flex; flex-direction:column; gap:6px; font-weight:600; font-size:.95rem; margin-bottom:10px; }
+  input, select { font:inherit; font-size:16px; padding:12px; border-radius:12px; border:1px solid var(--line); background:var(--bg); color:var(--ink); min-height:48px; width:100%; }
+  button { font:inherit; font-weight:600; min-height:48px; padding:0 18px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+  button.primario { background:var(--acc); color:var(--on-acc); border-color:var(--acc); }
+  button.chico { min-height:40px; padding:0 12px; font-size:.9rem; }
+  button.peligro { color:var(--bad); }
+  :focus-visible { outline:3px solid var(--acc); outline-offset:2px; }
+  .fila { display:flex; gap:8px; align-items:center; } .fila > * { flex:1; } .fila > button { flex:none; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:0 14px; border:1px solid var(--line); border-radius:999px; background:var(--bg); font-weight:500; }
+  .chip input { width:20px; min-height:20px; height:20px; padding:0; accent-color:var(--acc); }
+  .chip input[type=number] { width:56px; height:36px; min-height:36px; padding:4px 6px; }
+  ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  li.gasto { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; border-top:1px solid var(--line); padding-top:10px; } li.gasto:first-child { border-top:0; padding-top:0; }
+  .m { color:var(--muted); font-size:.9rem; } .grande { font-weight:700; }
+  .deuda { background:var(--soft); border-radius:12px; padding:10px 12px; display:flex; justify-content:space-between; gap:8px; align-items:center; }
+  table { width:100%; border-collapse:collapse; font-size:.92rem; } th, td { text-align:right; padding:6px 4px; border-top:1px solid var(--line); } th:first-child, td:first-child { text-align:left; } th { color:var(--muted); font-weight:600; border-top:0; }
+  .neg { color:var(--bad); }
+  .error { color:var(--bad); font-weight:600; min-height:1.4em; }
+  .aviso { position:fixed; left:16px; right:16px; bottom:16px; max-width:528px; margin:0 auto; background:var(--ink); color:var(--bg); padding:12px 16px; border-radius:14px; }
+  .oculto { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="titulo">Gastos de grupo</h1>
+    <div class="m">Para un viaje o una salida de amigos: cargás lo que paga cada uno y te dice quién le paga a quién. Funciona en este teléfono, sin cuenta.</div>
+  </header>
+
+  <section class="card" id="sec-grupo" aria-labelledby="h-grupo">
+    <h2 id="h-grupo">Grupo</h2>
+    <label>Nombre del viaje o salida
+      <input id="g-nombre" placeholder="Bariloche 2026" autocomplete="off">
+    </label>
+    <div class="chips" id="miembros" role="list" aria-label="Integrantes"></div>
+    <div class="fila" style="margin-top:10px">
+      <input id="m-nombre" placeholder="Nombre de una persona" aria-label="Nombre de una persona" autocomplete="off">
+      <button id="m-agregar" class="primario">Sumar</button>
+    </div>
+    <div class="m" style="margin-top:6px">No hace falta que tengan la app: alcanza con el nombre.</div>
+  </section>
+
+  <section class="card" id="sec-gasto" aria-labelledby="h-gasto">
+    <h2 id="h-gasto">Cargar un gasto</h2>
+    <label>¿Qué fue?
+      <input id="x-desc" placeholder="Nafta, cena, entradas…" autocomplete="off">
+    </label>
+    <div class="fila">
+      <label style="margin:0">Monto
+        <input id="x-monto" inputmode="decimal" placeholder="25000">
+      </label>
+      <label style="margin:0">Moneda
+        <select id="x-moneda"><option>ARS</option><option>USD</option></select>
+      </label>
+    </div>
+    <label style="margin-top:10px">¿Quién pagó?
+      <select id="x-pagador"></select>
+    </label>
+    <div style="font-weight:600; font-size:.95rem; margin-bottom:6px">¿Entre quiénes se reparte?</div>
+    <div class="chips" id="x-entre"></div>
+    <label style="margin-top:10px">Cómo se reparte
+      <select id="x-reparto"><option value="igual">En partes iguales</option><option value="partes">Por partes (una pareja cuenta doble)</option></select>
+    </label>
+    <div class="error" id="x-error" role="alert"></div>
+    <button id="x-guardar" class="primario" style="width:100%">Guardar gasto</button>
+  </section>
+
+  <section class="card" id="sec-gastos" aria-labelledby="h-gastos">
+    <h2 id="h-gastos">Gastos</h2>
+    <div class="m" id="gastos-vacio">Todavía no cargaste ninguno.</div>
+    <ul id="gastos"></ul>
+  </section>
+
+  <section class="card" id="sec-saldar" aria-labelledby="h-saldar">
+    <h2 id="h-saldar">Saldar cuentas</h2>
+    <div id="saldar"></div>
+    <div class="fila" style="margin-top:10px">
+      <button id="copiar">Copiar para WhatsApp</button>
+      <button id="reiniciar" class="chico peligro">Borrar todo</button>
+    </div>
+  </section>
+</main>
+<div class="aviso oculto" id="aviso" role="status"></div>
+
+<script src="grupo.js"></script>
+<script>
+(function () {
+  const CLAVE = 'grupo_actual_v1'
+  const $ = (id) => document.getElementById(id)
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  const nuevoId = () => (self.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2))
+  let G = { nombre: '', miembros: [], gastos: [], liquidaciones: [] }
+  try { const g = JSON.parse(localStorage.getItem(CLAVE) || 'null'); if (g && Array.isArray(g.miembros)) G = { liquidaciones: [], ...g } } catch (e) { /* sin almacenamiento: funciona igual, sin recordar */ }
+  const guardar = () => { try { localStorage.setItem(CLAVE, JSON.stringify(G)) } catch (e) { /* idem */ } }
+  const aviso = (t) => { const a = $('aviso'); a.textContent = t; a.classList.remove('oculto'); clearTimeout(aviso.t); aviso.t = setTimeout(() => a.classList.add('oculto'), 2600) }
+  const nombre = (id) => (G.miembros.find((m) => m.id === id) || { nombre: '?' }).nombre
+  const parseMonto = (t) => { const s = String(t).trim().replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'); const n = Number(s); return isFinite(n) && s !== '' ? n : null }
+
+  function dibujar() {
+    $('g-nombre').value = G.nombre
+    $('titulo').textContent = G.nombre || 'Gastos de grupo'
+    $('miembros').innerHTML = G.miembros.map((m) => `<span class="chip" role="listitem">${esc(m.nombre)} <button class="chico peligro" data-quitar="${esc(m.id)}" aria-label="Sacar a ${esc(m.nombre)}">✕</button></span>`).join('') || '<span class="m">Sumá a las personas del grupo.</span>'
+    const sel = $('x-pagador'); const previo = sel.value
+    sel.innerHTML = G.miembros.map((m) => `<option value="${esc(m.id)}">${esc(m.nombre)}</option>`).join('')
+    if (G.miembros.some((m) => m.id === previo)) sel.value = previo
+    const marcados = new Set([...document.querySelectorAll('#x-entre input[type=checkbox]:checked')].map((i) => i.dataset.id))
+    const primera = !document.querySelector('#x-entre input')
+    $('x-entre').innerHTML = G.miembros.map((m) => `<span class="chip"><label style="flex-direction:row;align-items:center;gap:8px;margin:0;font-weight:500"><input type="checkbox" data-id="${esc(m.id)}" ${primera || marcados.has(m.id) ? 'checked' : ''}> ${esc(m.nombre)}</label><input type="number" min="1" step="1" value="1" data-parte="${esc(m.id)}" aria-label="Partes de ${esc(m.nombre)}" class="oculto"></span>`).join('')
+    mostrarPartes()
+
+    $('gastos-vacio').classList.toggle('oculto', G.gastos.length > 0)
+    $('gastos').innerHTML = G.gastos.slice().reverse().map((g) => `<li class="gasto"><div><div class="grande">${esc(g.descripcion || 'Gasto')}</div><div class="m">Pagó ${esc(nombre(g.pagador))} · entre ${g.participantes.map((p) => esc(nombre(p))).join(', ')}</div></div><div style="text-align:right"><div class="grande">${Grupo.monto(g.monto, g.moneda)}</div><button class="chico peligro" data-borrar="${esc(g.id)}" aria-label="Borrar ${esc(g.descripcion || 'gasto')}">Borrar</button></div></li>`).join('')
+
+    const hay = G.gastos.length > 0 && G.miembros.length > 1
+    $('sec-saldar').classList.toggle('oculto', !hay)
+    if (!hay) return
+    const r = Grupo.resumen(G.miembros, G.gastos, G.liquidaciones)
+    $('saldar').innerHTML = Object.entries(r).map(([moneda, x]) => {
+      const filas = x.filas.map((f) => `<tr><td>${esc(f.nombre)}</td><td>${Grupo.monto(f.pago, moneda)}</td><td>${Grupo.monto(f.leTocaba, moneda)}</td><td class="${f.saldo < 0 ? 'neg' : ''}">${Grupo.monto(f.saldo, moneda)}</td></tr>`).join('')
+      const pasos = x.transferencias.length
+        ? x.transferencias.map((t, i) => `<div class="deuda"><span><b>${esc(nombre(t.de))}</b> le paga <b>${Grupo.monto(t.monto, moneda)}</b> a <b>${esc(nombre(t.a))}</b></span><button class="chico" data-pagado="${moneda}|${i}">Ya pagó</button></div>`).join('')
+        : '<div class="deuda">Están a mano.</div>'
+      return `<h3 style="margin:8px 0 6px;font-size:1rem">${moneda} · total ${Grupo.monto(x.total, moneda)}</h3><table><thead><tr><th>Quién</th><th>Puso</th><th>Le tocaba</th><th>Saldo</th></tr></thead><tbody>${filas}</tbody></table><div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">${pasos}</div>`
+    }).join('')
+  }
+
+  function mostrarPartes() {
+    const por = $('x-reparto').value === 'partes'
+    document.querySelectorAll('#x-entre input[data-parte]').forEach((i) => i.classList.toggle('oculto', !por || !i.closest('.chip').querySelector('input[type=checkbox]').checked))
+  }
+
+  $('g-nombre').addEventListener('input', (e) => { G.nombre = e.target.value; guardar(); $('titulo').textContent = G.nombre || 'Gastos de grupo' })
+  $('x-reparto').addEventListener('change', mostrarPartes)
+  $('x-entre').addEventListener('change', mostrarPartes)
+  $('m-agregar').addEventListener('click', () => {
+    const n = $('m-nombre').value.trim()
+    if (!n) return aviso('Escribí un nombre.')
+    if (G.miembros.some((m) => m.nombre.toLowerCase() === n.toLowerCase())) return aviso('Ya está en el grupo.')
+    G.miembros.push({ id: nuevoId(), nombre: n }); $('m-nombre').value = ''; guardar(); dibujar(); $('m-nombre').focus()
+  })
+  $('m-nombre').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('m-agregar').click() })
+  $('miembros').addEventListener('click', (e) => {
+    const id = e.target.dataset.quitar; if (!id) return
+    if (G.gastos.some((g) => g.pagador === id || g.participantes.includes(id))) return aviso('Tiene gastos cargados: borrá esos gastos primero.')
+    G.miembros = G.miembros.filter((m) => m.id !== id); guardar(); dibujar()
+  })
+  $('x-guardar').addEventListener('click', () => {
+    const monto = parseMonto($('x-monto').value)
+    const participantes = [...document.querySelectorAll('#x-entre input[type=checkbox]:checked')].map((i) => i.dataset.id)
+    const reparto = $('x-reparto').value
+    const detalle = reparto === 'partes' ? Object.fromEntries(participantes.map((id) => [id, Number(document.querySelector(`#x-entre input[data-parte="${id}"]`).value) || 1])) : undefined
+    const g = { id: nuevoId(), descripcion: $('x-desc').value.trim(), monto, moneda: $('x-moneda').value, pagador: $('x-pagador').value, participantes, reparto, detalle }
+    const p = monto === null ? 'Ingresá un monto.' : G.miembros.length < 2 ? 'Sumá al menos a dos personas.' : Grupo.problema(g, G.miembros)
+    $('x-error').textContent = p || ''
+    if (p) return
+    G.gastos.push(g); guardar(); $('x-desc').value = ''; $('x-monto').value = ''; dibujar(); aviso('Gasto guardado')
+  })
+  $('gastos').addEventListener('click', (e) => {
+    const id = e.target.dataset.borrar; if (!id) return
+    G.gastos = G.gastos.filter((g) => g.id !== id); guardar(); dibujar(); aviso('Gasto borrado')
+  })
+  $('saldar').addEventListener('click', (e) => {
+    const v = e.target.dataset.pagado; if (!v) return
+    const [moneda, i] = v.split('|')
+    const t = Grupo.resumen(G.miembros, G.gastos, G.liquidaciones)[moneda].transferencias[Number(i)]
+    G.liquidaciones.push({ de: t.de, a: t.a, monto: t.monto, moneda }); guardar(); dibujar(); aviso('Pago anotado')
+  })
+  $('copiar').addEventListener('click', async () => {
+    const texto = `${G.nombre || 'Gastos del grupo'}\n` + Grupo.frases(G.miembros, G.gastos, G.liquidaciones).join('\n')
+    try { await navigator.clipboard.writeText(texto); aviso('Copiado: pegalo en el grupo de WhatsApp') } catch (e) { aviso('No pude copiar. Seleccioná el texto a mano.') }
+  })
+  $('reiniciar').addEventListener('click', () => {
+    if (!confirm('¿Borrar el grupo y todos sus gastos? No se puede deshacer.')) return
+    G = { nombre: '', miembros: [], gastos: [], liquidaciones: [] }; guardar(); dibujar()
+  })
+  dibujar()
+})()
+</script>
+</body>
+</html>

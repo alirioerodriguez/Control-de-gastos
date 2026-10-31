@@ -17,6 +17,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="/grupo.js"></script>
 <style>
 /* ===================== Sistema visual (diseño Clara) ===================== */
 /* ===== Temas. El primero (clara) es el look original. ===== */
@@ -841,21 +842,36 @@ canvas{max-height:270px}
 .switchrow .st b{display:block;font-size:15px;font-weight:800;color:var(--ink)}
 .switchrow .st span{display:block;font-size:13px;color:var(--ink-2);margin-top:2px;line-height:1.45}
 /* el interruptor se ve de 56x32 pero el área que se toca mide 56x44 */
-.switch{position:relative;flex:none;width:56px;height:44px;border:0;background:transparent;cursor:pointer;padding:0}
-.switch::before{content:"";position:absolute;left:0;top:6px;width:56px;height:32px;border-radius:999px;
-  border:1px solid var(--line-in);background:var(--soft);transition:background .18s ease,border-color .18s ease}
-.switch::after{content:"";position:absolute;top:10px;left:4px;width:24px;height:24px;border-radius:50%;
-  background:var(--ink-2);transition:transform .18s cubic-bezier(.2,.9,.2,1),background .18s ease}
-.switch[aria-checked="true"]::before{background:var(--green);border-color:transparent}
-.switch[aria-checked="true"]::after{transform:translateX(24px);background:#fff}
-@media(prefers-reduced-motion:reduce){.switch,.switch::after{transition:none}}
+/* v7.1 · interruptores como los del iPhone: 51×31, verde iOS al activarse, perilla blanca con sombra que se ensancha al apretarla */
+:root{--sw-on:#34c759; --sw-off:rgba(120,120,128,.18); --sw-aro:rgba(120,120,128,.38)}
+[data-theme="verde-noche"],[data-theme="azul-intenso"]{--sw-on:#30d158; --sw-off:rgba(120,120,128,.32); --sw-aro:rgba(235,235,245,.28)}
+.switch{position:relative;flex:none;width:51px;height:44px;border:0;background:transparent;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent}
+.switch::before{content:"";position:absolute;left:0;top:6px;width:51px;height:31px;border-radius:999px;
+  background:var(--sw-off);box-shadow:inset 0 0 0 1px var(--sw-aro);transition:background .25s ease,box-shadow .25s ease}
+.switch::after{content:"";position:absolute;top:8px;left:2px;width:27px;height:27px;border-radius:999px;background:#fff;
+  box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16),0 3px 1px rgba(0,0,0,.1);
+  transition:transform .25s cubic-bezier(.2,.9,.2,1),width .2s ease}
+.switch[aria-checked="true"]::before{background:var(--sw-on);box-shadow:none}
+.switch[aria-checked="true"]::after{transform:translateX(20px)}
+.switch:active::after{width:33px}
+.switch[aria-checked="true"]:active::after{transform:translateX(14px)}
+.switch:focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:999px}
+@media(prefers-reduced-motion:reduce){.switch::before,.switch::after{transition:none}}
 /* v6.12 · toda casilla se ve como el interruptor de arriba (sigue siendo un checkbox: teclado y lector de pantalla igual) */
-input[type=checkbox]{-webkit-appearance:none;appearance:none;position:relative;flex:none;width:48px;height:28px;margin:0;border-radius:999px;
-  border:1px solid var(--line-in);background:var(--soft);cursor:pointer;transition:background .18s ease,border-color .18s ease}
-input[type=checkbox]::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--ink-2);
-  transition:transform .18s cubic-bezier(.2,.9,.2,1),background .18s ease}
-input[type=checkbox]:checked{background:var(--green);border-color:transparent}
-input[type=checkbox]:checked::after{transform:translateX(20px);background:#fff}
+input[type=checkbox]{-webkit-appearance:none;appearance:none;position:relative;flex:none;box-sizing:border-box;width:51px;height:31px;min-height:0;padding:0;margin:0;border-radius:999px;
+  border:0;background:var(--sw-off);box-shadow:inset 0 0 0 1px var(--sw-aro);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .25s ease,box-shadow .25s ease}
+input[type=checkbox]::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:999px;background:#fff;
+  box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16),0 3px 1px rgba(0,0,0,.1);
+  transition:transform .25s cubic-bezier(.2,.9,.2,1),width .2s ease}
+input[type=checkbox]:checked{background:var(--sw-on);box-shadow:none}
+input[type=checkbox]:checked::after{transform:translateX(20px)}
+input[type=checkbox]:active::after{width:33px}
+input[type=checkbox]:checked:active::after{transform:translateX(14px)}
+/* elegir a varias personas (grupos): una fila por persona con su interruptor (el estilo es el de todos los checkbox de arriba) */
+.grpfila{display:flex;align-items:center;gap:12px;min-height:48px;padding:4px 0;border-top:1px solid var(--line);font-size:15px;font-weight:600;cursor:pointer}
+.grpfila:first-child{border-top:0}
+.grpfila .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.grpfila input[type=number]{width:64px;min-height:40px;padding:4px 8px;border:1px solid var(--line-in);border-radius:12px;font-size:16px;background:var(--card);color:var(--ink);text-align:center}
 input[type=checkbox]:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){input[type=checkbox],input[type=checkbox]::after{transition:none}}
 .cvdmuestra{display:flex;gap:6px;margin-top:12px}
@@ -4759,6 +4775,7 @@ const MAS=[
   {k:"fijos",    n:"Gastos e ingresos fijos", s:"Alquiler, sueldo, suscripciones",ic:"fijos",     col:"green"},
   {k:"presu",    n:"Presupuesto",      s:"Un límite por categoría",               ic:"gasto",     col:"red"},
   {k:"dividir",  n:"Compartido",       s:"Lo que dividís con otra persona",       ic:"gente",     col:"violet"},
+  {k:"grupos",   n:"Grupos y viajes",  s:"Dividí gastos entre varios amigos",     ic:"gente",     col:"violet"},
   {k:"graficos", n:"Gráficos",         s:"Ingresos, gastos y categorías",         ic:"ingreso",   col:"teal"},
   {k:"exportar", n:"Exportar a CSV",   s:"Bajate todos tus movimientos",          ic:"exportar",  col:"blue",   go:()=>$("mv-export").onclick()},
   {k:"recorrido",n:"Ver el recorrido", s:"Cómo funciona la app, paso a paso",     ic:"chispa",    col:"violet", go:()=>iniciarRecorrido()},
@@ -5065,6 +5082,7 @@ function renderSub(){
   if(subView==="fijos") el.innerHTML=subFijos();
   if(subView==="presu") el.innerHTML=subPresu();
   if(subView==="dividir") el.innerHTML=subDividir();
+  if(subView==="grupos") el.innerHTML=subGrupos();
   if(subView==="graficos") el.innerHTML=subGraficos();
   if(subView==="tema") el.innerHTML=subTema();
   if(subView==="seguridad") el.innerHTML=subSeguridad();
@@ -5168,6 +5186,179 @@ function subDividir(){
     <div id="pair-wa"></div>
     <div id="pair-txns"></div></div>`;
 }
+/* --- grupos y viajes (v7.0) ---
+   Gastos entre VARIAS personas (un viaje, una casa, una salida): quién pagó, entre quiénes se reparte y quién le paga a quién.
+   Los cálculos viven en grupo.js (con pruebas); acá solo está la pantalla y el guardado.
+   Los integrantes no necesitan cuenta: son nombres. Guarda en Supabase (supabase/grupos.sql); si esas tablas todavía
+   no están creadas, lo guarda solo en este teléfono y lo avisa en pantalla. */
+let GRP={cargado:false, local:false, grupos:[], miembros:[], gastos:[], liqs:[]}, grpAbierto=null, grpMsg="";
+let grpForm={desc:"", monto:"", moneda:"ARS", pagador:"", entre:null, reparto:"igual", partes:{}};
+const GRP_TABLAS={grupos:"grupos", miembros:"grupo_miembros", gastos:"grupo_gastos", liqs:"grupo_liquidaciones"};
+const grpClaveLocal=()=>"miscuentas_grupos_"+(user?user.id:"anon");
+const grpFaltaTabla=e=>e && (e.code==="42P01" || e.code==="PGRST205" || /does not exist|schema cache|Could not find the table/i.test(e.message||""));
+function grpGuardarLocal(){ try{ localStorage.setItem(grpClaveLocal(),JSON.stringify({grupos:GRP.grupos,miembros:GRP.miembros,gastos:GRP.gastos,liqs:GRP.liqs})); }catch(e){ anotarError("No pude guardar los grupos en este teléfono",e); } }
+async function grpCargar(){
+  const q=t=>sb.from(GRP_TABLAS[t]).select("*");
+  const r=await Promise.all([q("grupos").order("creado",{ascending:true}),q("miembros"),q("gastos").order("fecha",{ascending:true}),q("liqs")]);
+  if(r.some(x=>grpFaltaTabla(x.error))){
+    let g={}; try{ g=JSON.parse(localStorage.getItem(grpClaveLocal())||"{}"); }catch(e){}
+    GRP={cargado:true, local:true, grupos:g.grupos||[], miembros:g.miembros||[], gastos:g.gastos||[], liqs:g.liqs||[]};
+    return;
+  }
+  const mal=r.find(x=>x.error); if(mal) throw mal.error;
+  const num=f=>({...f,monto:Number(f.monto)});
+  GRP={cargado:true, local:false, grupos:r[0].data||[], miembros:r[1].data||[], gastos:(r[2].data||[]).map(num), liqs:(r[3].data||[]).map(num)};
+}
+async function grpInsertar(t,fila){
+  if(GRP.local){ const f={...fila,id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2))}; if(t==="grupos") f.creado=new Date().toISOString(); GRP[t].push(f); grpGuardarLocal(); return f; }
+  const {data,error}=await sb.from(GRP_TABLAS[t]).insert(fila).select().single(); if(error) throw error;
+  const f=("monto" in data)?{...data,monto:Number(data.monto)}:data; GRP[t].push(f); return f;
+}
+async function grpBorrar(t,id){
+  if(!GRP.local){ const {error}=await sb.from(GRP_TABLAS[t]).delete().eq("id",id); if(error) throw error; }
+  GRP[t]=GRP[t].filter(x=>x.id!==id);
+  if(t==="grupos"){ GRP.miembros=GRP.miembros.filter(x=>x.grupo_id!==id); GRP.gastos=GRP.gastos.filter(x=>x.grupo_id!==id); GRP.liqs=GRP.liqs.filter(x=>x.grupo_id!==id); }
+  if(GRP.local) grpGuardarLocal();
+}
+const grpMiembros=gid=>GRP.miembros.filter(m=>m.grupo_id===gid);
+/* «cena con Sofi, Fede y Mamá 90 mil»: arma (o reusa) el grupo con esas personas y deja el gasto cargado en el formulario para revisarlo y guardarlo */
+async function grpDesdeVoz(){
+  const yo=(((PROFILE&&PROFILE.nombre)||"Yo").trim().split(/\s+/)[0])||"Yo";
+  const nombres=[V.conQuien,...(V.otrasPersonas||[])].filter(Boolean);
+  const todos=[yo,...nombres.filter(n=>n.toLowerCase()!==yo.toLowerCase())];
+  const pagaYo=(V.pagador||user.id)===user.id, quienPago=pagaYo?yo:V.conQuien;
+  const datos={desc:V.descripcion||V.comercio||"", monto:V.monto>0?String(V.monto).replace(".",","):"", moneda:V.moneda==="USD"?"USD":"ARS"};
+  cerrarVoz();
+  try{ if(!GRP.cargado) await grpCargar(); }catch(e){ avisarError(e,"No pude cargar los grupos"); return; }
+  const mismos=x=>{ const ns=grpMiembros(x.id).map(m=>m.nombre.toLowerCase()); return todos.every(n=>ns.includes(n.toLowerCase())); };
+  let g=GRP.grupos.find(mismos);
+  if(!g){
+    const r=await guardar(async()=>{ const nuevo=await grpInsertar("grupos",{nombre:"Con "+nombres.join(", ")}); for(const n of todos) await grpInsertar("miembros",{grupo_id:nuevo.id,nombre:n}); return nuevo; },{err:"No pude armar el grupo"});
+    if(r.error) return; g=r;
+  }
+  const ms=grpMiembros(g.id), idDe=n=>(ms.find(m=>m.nombre.toLowerCase()===String(n).toLowerCase())||{}).id;
+  grpForm={desc:datos.desc, monto:datos.monto, moneda:datos.moneda, pagador:idDe(quienPago)||(ms[0]&&ms[0].id)||"", entre:new Set(todos.map(idDe).filter(Boolean)), reparto:"igual", partes:{}};
+  grpAbierto=g.id; grpMsg="";
+  avisarOK("Grupo listo","Revisá el gasto y guardalo.");
+  subView="grupos"; show("sub"); renderSub(); pintarFab();
+}
+const grpNombre=(gid,id)=>(grpMiembros(gid).find(m=>m.id===id)||{nombre:"?"}).nombre;
+function subGrupos(){ return `<div id="grp-root"><div class="empty">Cargando…</div></div>`; }
+async function grpMontar(){
+  const root=$("grp-root"); if(!root) return;
+  if(!GRP.cargado){
+    try{ await grpCargar(); }
+    catch(e){ avisarError(e,"No pude cargar los grupos"); root.innerHTML=`<div class="panel pad"><div class="warn">No pude cargar los grupos. Probá de nuevo en un rato.</div></div>`; return; }
+  }
+  grpPintar();
+}
+function grpPintar(){
+  const root=$("grp-root"); if(!root) return;
+  root.innerHTML = grpAbierto && GRP.grupos.some(g=>g.id===grpAbierto) ? grpVistaGrupo(grpAbierto) : grpVistaLista();
+  pintarIconos(root);
+  grpBind(root);
+}
+const grpAviso=()=>GRP.local?`<div class="warn" style="margin-bottom:12px">Por ahora los grupos se guardan solo en este teléfono: falta crear las tablas en Supabase (archivo <b>supabase/grupos.sql</b>).</div>`:"";
+function grpVistaLista(){
+  const filas=GRP.grupos.map(g=>{ const n=grpMiembros(g.id).length, k=GRP.gastos.filter(x=>x.grupo_id===g.id).length;
+    return `<button class="cfgrow rowz" data-g-abrir="${g.id}"><div class="ri" style="background:var(--violet-bg);color:var(--violet)">${icon('gente',17)}</div>
+      <div class="rt" style="flex:1"><b>${esc(g.nombre||"Grupo sin nombre")}</b><span>${n} persona${n===1?"":"s"} · ${k} gasto${k===1?"":"s"}</span></div>
+      <span style="color:var(--ink-3)">${icon('adelante',16)}</span></button>`; }).join('<div class="sep"></div>');
+  return `${grpAviso()}<div class="hint" style="margin:0 0 12px">Para un viaje o una salida de amigos: cargás lo que paga cada uno y la app te dice quién le paga a quién. Las otras personas no necesitan la app.</div>
+    <div class="panel pad"><div class="fld"><label for="g-nuevo">Nombre del viaje o salida</label><input id="g-nuevo" placeholder="Bariloche 2026" maxlength="60" autocomplete="off"></div>
+      <button class="btn w" id="g-crear">+ Nuevo grupo</button></div>
+    <div class="panel" style="margin-top:14px">${GRP.grupos.length?filas:`<div class="empty">Todavía no tenés grupos.</div>`}</div>`;
+}
+function grpVistaGrupo(gid){
+  const g=GRP.grupos.find(x=>x.id===gid), ms=grpMiembros(gid), gs=GRP.gastos.filter(x=>x.grupo_id===gid), ls=GRP.liqs.filter(x=>x.grupo_id===gid);
+  if(!grpForm.entre) grpForm.entre=new Set(ms.map(m=>m.id));
+  grpForm.entre=new Set([...grpForm.entre].filter(id=>ms.some(m=>m.id===id)));
+  if(!ms.some(m=>m.id===grpForm.pagador)) grpForm.pagador=ms[0]?ms[0].id:"";
+  const nom=id=>esc(grpNombre(gid,id));
+  const miembros=ms.map(m=>`<span class="chip" role="listitem" style="display:inline-flex;align-items:center;gap:6px">${esc(m.nombre)}<button class="iconx" data-g-quitar="${m.id}" aria-label="Sacar a ${esc(m.nombre)}" style="min-width:32px;min-height:32px">${icon('borrar',14)}</button></span>`).join("");
+  const entre=ms.map(m=>`<label class="grpfila"><span class="nm">${esc(m.nombre)}</span>
+      ${grpForm.reparto==="partes"&&grpForm.entre.has(m.id)?`<input type="number" min="1" step="1" inputmode="numeric" data-g-parte="${m.id}" value="${grpForm.partes[m.id]||1}" aria-label="Partes de ${esc(m.nombre)}">`:""}
+      <input type="checkbox" role="switch" data-g-entre="${m.id}" ${grpForm.entre.has(m.id)?"checked":""} aria-label="${esc(m.nombre)} entra en el reparto"></label>`).join("");
+  const lista=gs.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).map(x=>`<div class="row"><div class="rt"><b>${esc(x.descripcion||"Gasto")}</b>
+      <span>Pagó ${nom(x.pagador)} · entre ${(x.participantes||[]).map(nom).join(", ")}</span></div>
+      <div class="racts" style="text-align:right"><b>${fmt(x.monto,x.moneda)}</b><button class="iconx" data-g-del-gasto="${x.id}" aria-label="Borrar ${esc(x.descripcion||"gasto")}">${icon('borrar',16)}</button></div></div>`).join('<div class="sep"></div>');
+  let saldar="";
+  if(gs.length&&ms.length>1){
+    const r=Grupo.resumen(ms,gs,ls);
+    saldar=Object.entries(r).map(([mon,x])=>{
+      const filas=x.filas.map(f=>`<tr><td>${esc(f.nombre)}</td><td>${fmt(f.pago,mon)}</td><td>${fmt(f.leTocaba,mon)}</td><td style="${f.saldo<0?"color:var(--red)":""}">${fmt(f.saldo,mon)}</td></tr>`).join("");
+      const pasos=x.transferencias.length?x.transferencias.map((t,i)=>`<div class="row"><div class="rt"><b>${nom(t.de)} le paga ${fmt(t.monto,mon)}</b><span>a ${nom(t.a)}</span></div><button class="chip" style="padding:7px 11px;font-size:13px" data-g-pagado="${mon}|${i}">Ya pagó</button></div>`).join('<div class="sep"></div>'):`<div class="empty">Están a mano.</div>`;
+      return `<div class="sec"><b>${mon} · total ${fmt(x.total,mon)}</b></div>
+        <div class="panel pad" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--ink-2);text-align:left"><th>Quién</th><th>Puso</th><th>Le tocaba</th><th>Saldo</th></tr></thead><tbody>${filas}</tbody></table></div>
+        <div class="panel" style="margin-top:10px">${pasos}</div>`; }).join("")
+      +`<button class="btn w" id="g-copiar" style="margin-top:12px">Copiar para WhatsApp</button>`;
+  }
+  return `${grpAviso()}<button class="chip" id="g-volver" style="margin-bottom:12px">← Todos los grupos</button>
+    <div class="sec" style="padding:0 0 8px"><b>${esc(g.nombre||"Grupo")}</b></div>
+    <div class="panel pad"><div class="sec" style="padding:0 0 8px"><b>Personas</b></div>
+      <div role="list" style="display:flex;flex-wrap:wrap;gap:8px">${miembros||`<span class="hint">Sumá a las personas del grupo.</span>`}</div>
+      <div style="display:flex;gap:8px;margin-top:10px"><input id="g-m-nombre" placeholder="Nombre de una persona" aria-label="Nombre de una persona" autocomplete="off" maxlength="40" style="flex:1;border:1px solid var(--line-in);border-radius:16px;padding:12px 14px;font-size:16px;min-height:48px;background:var(--card);color:var(--ink)"><button class="btn sm" id="g-m-sumar">Sumar</button></div>
+      <div class="hint" style="margin-top:6px">No hace falta que tengan la app: alcanza con el nombre.</div></div>
+    ${ms.length>1?`<div class="sec"><b>Cargar un gasto</b></div><div class="panel pad">
+      <div class="fld"><label for="g-x-desc">¿Qué fue?</label><input id="g-x-desc" value="${esc(grpForm.desc)}" placeholder="Nafta, cena, entradas…" maxlength="80" autocomplete="off"></div>
+      <div style="display:flex;gap:8px"><div class="fld" style="flex:1"><label for="g-x-monto">Monto</label><input id="g-x-monto" inputmode="decimal" value="${esc(grpForm.monto)}" placeholder="25000"></div>
+        <div class="fld" style="width:120px"><label for="g-x-moneda">Moneda</label><select id="g-x-moneda"><option ${grpForm.moneda==="ARS"?"selected":""}>ARS</option><option ${grpForm.moneda==="USD"?"selected":""}>USD</option></select></div></div>
+      <div class="fld"><label for="g-x-pagador">¿Quién pagó?</label><select id="g-x-pagador">${ms.map(m=>`<option value="${m.id}" ${m.id===grpForm.pagador?"selected":""}>${esc(m.nombre)}</option>`).join("")}</select></div>
+      <div class="fld"><label>¿Entre quiénes se reparte?</label><div>${entre}</div></div>
+      <div class="fld"><label for="g-x-reparto">Cómo se reparte</label><select id="g-x-reparto"><option value="igual" ${grpForm.reparto==="igual"?"selected":""}>En partes iguales</option><option value="partes" ${grpForm.reparto==="partes"?"selected":""}>Por partes (una pareja cuenta doble)</option></select></div>
+      <div id="g-x-error" role="alert" style="color:var(--red);font-weight:600;min-height:1.3em;margin-bottom:6px">${esc(grpMsg)}</div>
+      <button class="btn w" id="g-x-guardar">Guardar gasto</button></div>`:`<div class="hint" style="margin-top:12px">Sumá al menos a dos personas para cargar gastos.</div>`}
+    <div class="sec"><b>Gastos</b></div><div class="panel">${gs.length?lista:`<div class="empty">Todavía no cargaste ninguno.</div>`}</div>
+    ${saldar?`<div class="sec" style="margin-top:6px"><b>Saldar cuentas</b></div>${saldar}`:""}
+    <button class="btn ghost w" id="g-borrar" style="margin-top:18px">Borrar este grupo</button>`;
+}
+function grpLeerMonto(t){ const s=String(t).trim().replace(/\s/g,"").replace(/\.(?=\d{3}(\D|$))/g,"").replace(",","."); const n=Number(s); return (s!==""&&isFinite(n))?n:null; }
+function grpBind(root){
+  const gid=grpAbierto;
+  const crear=async()=>{ const n=($("g-nuevo").value||"").trim(); if(!n){ toast("Escribí un nombre"); return; }
+    const r=await guardar(()=>grpInsertar("grupos",GRP.local?{nombre:n}:{nombre:n}),{err:"No pude crear el grupo",boton:"g-crear"}); if(r.error) return;
+    grpAbierto=GRP.grupos[GRP.grupos.length-1].id; grpForm={desc:"",monto:"",moneda:"ARS",pagador:"",entre:null,reparto:"igual",partes:{}}; grpMsg=""; grpPintar(); };
+  if($("g-crear")){ $("g-crear").onclick=crear; $("g-nuevo").onkeydown=e=>{ if(e.key==="Enter") crear(); }; }
+  root.querySelectorAll("[data-g-abrir]").forEach(b=>b.onclick=()=>{ grpAbierto=b.dataset.gAbrir; grpForm={desc:"",monto:"",moneda:"ARS",pagador:"",entre:null,reparto:"igual",partes:{}}; grpMsg=""; grpPintar(); });
+  if(!gid) return;
+  $("g-volver").onclick=()=>{ grpAbierto=null; grpPintar(); };
+  const sumar=async()=>{ const n=($("g-m-nombre").value||"").trim(); if(!n){ toast("Escribí un nombre"); return; }
+    if(grpMiembros(gid).some(m=>m.nombre.toLowerCase()===n.toLowerCase())){ toast("Ya está en el grupo"); return; }
+    const r=await guardar(()=>grpInsertar("miembros",{grupo_id:gid,nombre:n}),{err:"No pude sumar a la persona"}); if(r.error) return;
+    grpForm.entre=null; grpPintar(); const i=$("g-m-nombre"); if(i) i.focus(); };
+  $("g-m-sumar").onclick=sumar; $("g-m-nombre").onkeydown=e=>{ if(e.key==="Enter") sumar(); };
+  root.querySelectorAll("[data-g-quitar]").forEach(b=>b.onclick=async()=>{ const id=b.dataset.gQuitar;
+    if(GRP.gastos.some(x=>x.grupo_id===gid&&(x.pagador===id||(x.participantes||[]).includes(id)))||GRP.liqs.some(x=>x.grupo_id===gid&&(x.de===id||x.a===id))){ toast("Tiene gastos cargados",{sub:"Borrá esos gastos primero."}); return; }
+    const r=await guardar(()=>grpBorrar("miembros",id),{err:"No pude sacar a la persona"}); if(r.error) return; grpForm.entre=null; grpPintar(); });
+  const f=grpForm;
+  if($("g-x-guardar")){
+    $("g-x-desc").oninput=e=>{ f.desc=e.target.value; }; $("g-x-monto").oninput=e=>{ f.monto=e.target.value; };
+    $("g-x-moneda").onchange=e=>{ f.moneda=e.target.value; }; $("g-x-pagador").onchange=e=>{ f.pagador=e.target.value; };
+    $("g-x-reparto").onchange=e=>{ f.reparto=e.target.value; grpPintar(); };
+    root.querySelectorAll("[data-g-entre]").forEach(c=>c.onchange=()=>{ c.checked?f.entre.add(c.dataset.gEntre):f.entre.delete(c.dataset.gEntre); if(f.reparto==="partes") grpPintar(); });
+    root.querySelectorAll("[data-g-parte]").forEach(i=>i.oninput=()=>{ f.partes[i.dataset.gParte]=Math.max(1,Number(i.value)||1); });
+    $("g-x-guardar").onclick=async()=>{
+      const monto=grpLeerMonto(f.monto), part=[...f.entre];
+      const fila={grupo_id:gid,fecha:todayISO(),descripcion:(f.desc||"").trim(),monto,moneda:f.moneda,pagador:f.pagador,participantes:part,reparto:f.reparto,
+        detalle:f.reparto==="partes"?Object.fromEntries(part.map(id=>[id,f.partes[id]||1])):null};
+      grpMsg = monto===null ? "Ingresá un monto." : Grupo.problema({...fila,id:"nuevo",detalle:fila.detalle||undefined},grpMiembros(gid));
+      if(grpMsg){ $("g-x-error").textContent=grpMsg; return; }
+      const r=await guardar(()=>grpInsertar("gastos",fila),{err:"No pude guardar el gasto",ok:"Gasto guardado",boton:"g-x-guardar"}); if(r.error) return;
+      grpForm.desc=""; grpForm.monto=""; grpMsg=""; grpPintar(); };
+  }
+  root.querySelectorAll("[data-g-del-gasto]").forEach(b=>b.onclick=async()=>{
+    if(!await confirmar({titulo:"¿Borrar este gasto?",texto:"Se recalcula quién le debe a quién.",ok:"Borrar",peligro:true})) return;
+    const r=await guardar(()=>grpBorrar("gastos",b.dataset.gDelGasto),{err:"No pude borrar el gasto"}); if(!r.error) grpPintar(); });
+  root.querySelectorAll("[data-g-pagado]").forEach(b=>b.onclick=async()=>{
+    const [mon,i]=b.dataset.gPagado.split("|"), t=Grupo.resumen(grpMiembros(gid),GRP.gastos.filter(x=>x.grupo_id===gid),GRP.liqs.filter(x=>x.grupo_id===gid))[mon].transferencias[Number(i)];
+    const r=await guardar(()=>grpInsertar("liqs",{grupo_id:gid,de:t.de,a:t.a,monto:t.monto,moneda:mon}),{err:"No pude anotar el pago",ok:"Pago anotado"}); if(!r.error) grpPintar(); });
+  if($("g-copiar")) $("g-copiar").onclick=async()=>{ const g=GRP.grupos.find(x=>x.id===gid);
+    const texto=`${g.nombre||"Gastos del grupo"}\n`+Grupo.frases(grpMiembros(gid),GRP.gastos.filter(x=>x.grupo_id===gid),GRP.liqs.filter(x=>x.grupo_id===gid)).join("\n");
+    try{ await navigator.clipboard.writeText(texto); avisarOK("Copiado","Pegalo en el grupo de WhatsApp"); }catch(e){ toast("No pude copiar",{sub:"Seleccioná el texto a mano."}); } };
+  $("g-borrar").onclick=async()=>{
+    if(!await confirmar({titulo:"¿Borrar el grupo?",texto:"Se borran sus personas y todos sus gastos. No se puede deshacer.",ok:"Borrar",peligro:true})) return;
+    const r=await guardar(()=>grpBorrar("grupos",gid),{err:"No pude borrar el grupo",ok:"Grupo borrado"}); if(!r.error){ grpAbierto=null; grpPintar(); } };
+}
 /* --- gráficos --- */
 function subGraficos(){
   return `<div class="panel pad"><div class="sec" style="padding:0 0 12px"><b>Ingresos vs. gastos por mes</b></div><canvas id="chart-flow"></canvas></div>
@@ -5199,6 +5390,7 @@ function subTema(){
 function bindSub(){
   const el=$("sub-body");
   if(subView==="honorapp") cargarHonorapp();
+  if(subView==="grupos") grpMontar();
   if(subView==="pruebas") bindPruebas();
   if(subView==="resultados") cargarResultados();
   if(subView==="diagnostico"){
@@ -7530,14 +7722,18 @@ function leerCuenta(L){
 }
 /* si nombrás a alguien con quien compartís gastos, es un gasto compartido */
 function leerPersona(L){
-  let best=null;
+  let best=null; const nombradas=[];
   PAIRS.forEach(p=>{
     const o=otherProf(otherId(p)); const nom=(o.apodo||"").trim();
     if(nom.length<3) return;
     const i=buscarNombre(L,nom);
+    if(i>=0) nombradas.push(nom);
     if(i>=0 && (!best || i>best.i)) best={pair:p.id, nombre:nom, i, len:normV(nom).length};
   });
   if(best){
+    /* "cena con Sofi y Fede": el gasto es entre dos personas a la vez, y acá se asigna a UNA (la última que nombrás).
+       Se guarda a quién más nombraste para avisarlo en la tarjeta en vez de dejarlo pasar en silencio. */
+    best.otras=nombradas.filter(n=>n!==best.nombre);
     /* "pagó Sofi", "Sofi pagó": lo puso la otra persona */
     const cerca=L.libre.slice(Math.max(0,best.i-12), best.i+best.len+10);
     best.pagoOtro=new RegExp("\\bpago\\s+(?:la\\s+|el\\s+)?"+normV(best.nombre)+"\\b|\\b"+normV(best.nombre)+"\\s+(?:lo\\s+)?pago\\b").test(cerca);
@@ -7819,6 +8015,7 @@ function leerFrase(txt){
   const ta=leerTarjeta(L);  if(ta){ r.card=ta.valor; r.auto.card=ta.texto; }
   const cc=leerCuenta(L);   if(cc && !ta){ r.cuenta=cc.valor; r.auto.cuenta=cc.texto; }
   const pe=leerPersona(L);  if(pe){ r.pair=pe.pair; r.auto.persona=normV(pe.nombre); r.conQuien=pe.nombre;
+    if(pe.otras.length) r.otrasPersonas=pe.otras;                  // nombraste a más de una: se avisa en la tarjeta
     if(pe.pagoOtro){ const pp=PAIRS.find(x=>x.id===pe.pair); if(pp) r.pagador=otherId(pp); } }
   const et=leerEtiquetas(L);                          // v5.6 · "descripción: …", "comercio: …", en cualquier orden
   const co=et.comercio ? {valor:et.comercio, texto:null} : leerComercio(L);
@@ -7862,8 +8059,10 @@ function leerConCorrecciones(txt){
 /* v5.7 · VARIOS GASTOS EN UNA FRASE
    "15.000 en el kiosco con Mercado Pago, también otros 12.000 en el chino" son dos
    movimientos. Se corta donde dice "también", "además", "aparte", "después", "y otros",
-   "y 12.000"…; un pedazo sin monto propio no es otro gasto: vuelve a pegarse al anterior. */
-const SEPARA_MOV=/\b(?:y\s+)?(?:tambien|ademas|aparte|despues|luego)\b|\by\s+otr[oa]s?\b|\botr[oa]s?\s+(?=\$?\s?\d)|\by\s+(?=\$\s?\d|\d)(?!\d{1,2}\s*(?:centavos?|centimos?))|,\s+(?=\$\s?\d|\d)|\b(?:y|[.;])\s*(?=(?:gaste|pague|compre|cobre|cargue|puse|saque|me\s+pagaron|me\s+cobraron)\b)|[.;]\s*(?=tambien\b)|,\s*y\s+(?=(?:el|la|los|las|un|una)\s)/g;
+   "y 12.000", "y el cine", "y la nafta"…; un pedazo sin monto propio no es otro gasto: vuelve a pegarse al anterior.
+   «y» + artículo corta también sin coma ("el super 30 mil y la nafta 20 mil"): los números dichos con palabras
+   nunca llevan artículo después de la «y», salvo "un/una" ("treinta y un mil"), que sólo corta con coma. */
+const SEPARA_MOV=/\b(?:y\s+)?(?:tambien|ademas|aparte|despues|luego)\b|\by\s+otr[oa]s?\b|\botr[oa]s?\s+(?=\$?\s?\d)|\by\s+(?=\$\s?\d|\d)(?!\d{1,2}\s*(?:centavos?|centimos?))|,\s+(?=\$\s?\d|\d)|\b(?:y|[.;])\s*(?=(?:gaste|pague|compre|cobre|cargue|puse|saque|me\s+pagaron|me\s+cobraron)\b)|[.;]\s*(?=tambien\b)|,\s*y\s+(?=(?:el|la|los|las|un|una)\s)|\by\s+(?=(?:el|la|los|las)\s)/g;
 function quitarSeparador(t){
   let prev; do{ prev=t;
     t=t.replace(/^\s*,?\s*(?:y\s+)?(?:tambi[eé]n|adem[aá]s|aparte|despu[eé]s|luego)\b\s*,?|^\s*(?:y\s+)?otr[oa]s?\b\s*|^\s*y\s+/i,"");
@@ -8956,6 +9155,8 @@ function renderVozFilas(){
   if(V.tipo==="compartido"){
     const p=PAIRS.find(x=>x.id===V.pair); const o=p?otherProf(otherId(p)):{apodo:"la otra persona"};
     h+=fila("Con",esc(V.conQuien||o.apodo),"pair");
+    if(V.otrasPersonas && V.otrasPersonas.length && V.conQuien && !V.manual?.pair)
+      h+=`<div class="detrow"><span class="v" style="font-size:13px;color:var(--amber);flex:1;text-align:left;line-height:1.35">Nombraste también a ${esc(V.otrasPersonas.join(" y "))}: este gasto quedó solo con ${esc(V.conQuien)}. Si fue entre todos, armá un grupo.</span><button class="chip" data-vgrupo type="button" style="padding:6px 12px;font-size:13px;flex:none">Armar grupo</button></div>`;
     const pagoYo=(V.pagador||user.id)===user.id;
     h+=`<div class="detrow"><span class="k">Pagó</span><span class="v" style="gap:6px">
       <button class="chip ${pagoYo?'on':''}" data-vp="yo" style="padding:5px 11px;font-size:13px">Vos</button>
@@ -8970,6 +9171,7 @@ function renderVozFilas(){
   $("voz-filas").querySelectorAll("[data-vf]").forEach(b=>{
     b.onmousedown=e=>e.preventDefault();          // que el clic no se pierda al desenfocar el texto
     b.onclick=()=>vozEditar(b.dataset.vf); });
+  const bg=$("voz-filas").querySelector("[data-vgrupo]"); if(bg){ bg.onmousedown=e=>e.preventDefault(); bg.onclick=()=>grpDesdeVoz(); }
   $("voz-filas").querySelectorAll("[data-vp]").forEach(b=>{
     b.onmousedown=e=>e.preventDefault();
     b.onclick=()=>{ const p=PAIRS.find(x=>x.id===V.pair);
