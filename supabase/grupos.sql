@@ -86,3 +86,11 @@ begin
     end if;
   end loop;
 end $$;
+
+-- Eventos (cumpleaños, asados): cuántos van por cada persona y quién va invitado (el homenajeado no paga).
+-- El reparto 'asistentes' lee estos dos campos al calcular, así que cambiarlos recalcula los gastos ya cargados.
+alter table grupo_miembros add column if not exists cuantos int not null default 1 check (cuantos >= 0 and cuantos <= 99);
+alter table grupo_miembros add column if not exists invitado boolean not null default false;
+alter table grupo_gastos drop constraint if exists grupo_gastos_reparto_check;
+alter table grupo_gastos add constraint grupo_gastos_reparto_check
+  check (reparto in ('igual', 'partes', 'porcentajes', 'montos', 'asistentes'));

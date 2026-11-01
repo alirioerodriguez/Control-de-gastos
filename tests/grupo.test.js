@@ -145,5 +145,53 @@ console.log('\n— Al azar: 300 viajes con gastos inventados (siempre cierran al
   ok('(control) ningún viaje necesitó más transferencias que personas − 1', peorTransferencias <= 0, peorTransferencias)
 }
 
+console.log('\n— Eventos: cuántos van por persona e invitados que no pagan')
+{
+  const cumple = [
+    { id: 'lu', nombre: 'Lu' }, // sin dato: cuenta 1
+    { id: 'mati', nombre: 'Mati', cuantos: 2 },
+    { id: 'vale', nombre: 'Vale', cuantos: 3 },
+    { id: 'juan', nombre: 'Juan', cuantos: 1, invitado: true }, // el homenajeado
+    { id: 'caro', nombre: 'Caro', cuantos: 0 }, // avisó que no va
+  ]
+  const ids = cumple.map((m) => m.id)
+  const gasto = (id, monto, pagador, extra = {}) => ({ id, monto, pagador, participantes: ids, reparto: 'asistentes', ...extra })
+  eq('según cuántos van: 1 + 2 + 3 cabezas, invitado y el que no va en 0', G.repartir(gasto('a1', 60000, 'lu'), cumple), { lu: 1000000, mati: 2000000, vale: 3000000, juan: 0, caro: 0 })
+  const r = G.repartir(gasto('a2', 100, 'lu'), cumple)
+  eq('el redondeo cuadra al centavo (100 entre 6 cabezas)', suma(r), 10000)
+  ok('el invitado no paga nada aunque pague él un gasto', G.saldos(cumple, [gasto('a3', 9000, 'juan')]).ARS.juan === 900000)
+  lanza('si entre los elegidos son todos invitados o no van, error claro', () => G.repartir({ id: 'x', monto: 10, participantes: ['juan', 'caro'], reparto: 'asistentes' }, cumple), /nadie que pague/)
+  const sinCuantos = [{ id: 'a', nombre: 'A' }, { id: 'b', nombre: 'B' }]
+  eq('sin datos de asistentes es igual que partes iguales', G.repartir({ id: 'x', monto: 10, participantes: ['a', 'b'], reparto: 'asistentes' }, sinCuantos), { a: 500, b: 500 })
+  // Lo importante del modo: si alguien avisa después que va con más gente, lo ya cargado se recalcula solo.
+  const antes = G.saldos(cumple, [gasto('a4', 60000, 'lu')]).ARS
+  const despues = G.saldos(cumple.map((m) => (m.id === 'mati' ? { ...m, cuantos: 4 } : m)), [gasto('a4', 60000, 'lu')]).ARS
+  ok('Mati avisa que van 4 en vez de 2: le toca más y a los demás menos', despues.mati < antes.mati && despues.vale > antes.vale, { antes, despues })
+  eq('peso: invitado 0, sin dato 1, valores raros 0', [G.peso({ invitado: true, cuantos: 3 }), G.peso({}), G.peso({ cuantos: -1 }), G.peso({ cuantos: 1.5 }), G.peso({ cuantos: '2' })], [0, 1, 0, 0, 2])
+  eq('problema() acepta un gasto por asistentes válido', G.problema(gasto('a5', 1000, 'mati'), cumple), null)
+  // Al azar: eventos con invitados, gente que no va y gastos entre algunos, siempre cierran en cero.
+  let semilla = 11
+  const azar = () => (semilla = (semilla * 1103515245 + 12345) % 2 ** 31) / 2 ** 31
+  let malos = 0
+  for (let v = 0; v < 1500; v++) {
+    const n = 2 + Math.floor(azar() * 10)
+    const ms = Array.from({ length: n }, (_, i) => ({ id: 'p' + i, nombre: 'P' + i, cuantos: Math.floor(azar() * 4), invitado: azar() < 0.15 }))
+    if (!ms.some((m) => G.peso(m) > 0)) Object.assign(ms[0], { cuantos: 1, invitado: false })
+    const pagan = ms.filter((m) => G.peso(m) > 0).map((m) => m.id)
+    const gs = Array.from({ length: 1 + Math.floor(azar() * 8) }, (_, k) => {
+      const algunos = ms.map((m) => m.id).filter(() => azar() < 0.6)
+      const part = algunos.some((id) => pagan.includes(id)) && azar() < 0.4 ? algunos : ms.map((m) => m.id)
+      return { id: `e${v}-${k}`, monto: Math.round(azar() * 1000000) / 100 + 0.01, pagador: ms[Math.floor(azar() * n)].id, participantes: part, reparto: 'asistentes' }
+    })
+    const s = G.saldos(ms, gs).ARS
+    const t = G.simplificar(s)
+    const d = { ...s }
+    for (const x of t) { d[x.de] += Math.round(x.monto * 100); d[x.a] -= Math.round(x.monto * 100) }
+    const invitadosPagan = ms.some((m) => G.peso(m) === 0 && G.resumen(ms, gs).ARS.filas.find((f) => f.id === m.id).leTocaba !== 0)
+    if (suma(s) !== 0 || !Object.values(d).every((c) => c === 0) || t.length > n - 1 || invitadosPagan) malos++
+  }
+  ok('1500 eventos al azar: cierran en cero, ≤ personas − 1 transferencias, invitados y ausentes nunca pagan', malos === 0, { malos })
+}
+
 console.log(`\n${total - fallas}/${total} bien`)
 process.exit(fallas ? 1 : 0)

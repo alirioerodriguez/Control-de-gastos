@@ -45,8 +45,11 @@
    *  - 'partes': detalle = partes por persona (una pareja que cuenta doble: { ana: 2, luis: 1 }).
    *  - 'porcentajes': detalle = porcentaje por persona; tiene que sumar 100.
    *  - 'montos': detalle = lo que le toca a cada uno en plata; tiene que sumar el monto.
+   *  - 'asistentes': según cuántos van por cada persona (miembro.cuantos, 1 si no está) y sin los invitados
+   *    (miembro.invitado: el homenajeado va pero no paga). Se lee de `miembros` al calcular, así que si alguien
+   *    avisa después que va con su pareja, los gastos ya cargados se recalculan solos.
    */
-  function repartir(gasto) {
+  function repartir(gasto, miembros) {
     const total = aC(gasto.monto)
     const ids = gasto.participantes || []
     if (!(total > 0)) throw new Error('El monto tiene que ser mayor a 0.')
@@ -55,6 +58,14 @@
     const modo = gasto.reparto || 'igual'
     const d = gasto.detalle || {}
     if (modo === 'igual') return prorratear(total, ids.map((id) => [id, 1]), gasto.id)
+    if (modo === 'asistentes') {
+      const porId = Object.fromEntries((miembros || []).map((m) => [m.id, m]))
+      const pesos = ids.map((id) => [id, peso(porId[id])])
+      if (!pesos.some(([, p]) => p > 0)) throw new Error('Entre los elegidos no hay nadie que pague: son invitados o no van.')
+      const out = prorratear(total, pesos.filter(([, p]) => p > 0), gasto.id)
+      for (const id of ids) if (!(id in out)) out[id] = 0
+      return out
+    }
     if (modo === 'partes') return prorratear(total, ids.map((id) => [id, Number(d[id]) > 0 ? Number(d[id]) : 0]), gasto.id)
     if (modo === 'porcentajes') {
       const suma = ids.reduce((t, id) => t + (Number(d[id]) || 0), 0)
@@ -68,6 +79,13 @@
       return out
     }
     throw new Error(`Reparto desconocido: ${modo}`)
+  }
+
+  /** Cuántas cabezas paga un miembro: 0 si es invitado o no va; si no, cuántos van por él (1 si no se dijo). */
+  function peso(m) {
+    if (!m || m.invitado) return 0
+    const n = m.cuantos === undefined || m.cuantos === null ? 1 : Number(m.cuantos)
+    return Number.isInteger(n) && n > 0 ? n : 0
   }
 
   /** Lo que puso cada uno, en centavos. `pagador` (uno solo) o `pagadores` { id: monto } si pagaron varios. */
@@ -87,7 +105,7 @@
   function problema(gasto, miembros) {
     try {
       const ids = new Set(miembros.map((m) => m.id))
-      const r = repartir(gasto)
+      const r = repartir(gasto, miembros)
       const a = aportes(gasto)
       for (const id of [...Object.keys(r), ...Object.keys(a)]) if (!ids.has(id)) return 'Hay alguien que no es del grupo.'
       return null
@@ -106,7 +124,7 @@
     for (const g of gastos) {
       const s = de(g.moneda || 'ARS')
       for (const [id, c] of Object.entries(aportes(g))) s[id] += c
-      for (const [id, c] of Object.entries(repartir(g))) s[id] -= c
+      for (const [id, c] of Object.entries(repartir(g, miembros))) s[id] -= c
     }
     for (const l of liquidaciones) {
       const s = de(l.moneda || 'ARS')
@@ -158,7 +176,7 @@
       for (const g of gastos.filter((x) => (x.moneda || 'ARS') === moneda)) {
         total += aC(g.monto)
         for (const [id, c] of Object.entries(aportes(g))) filas[id].pago += c
-        for (const [id, c] of Object.entries(repartir(g))) filas[id].leTocaba += c
+        for (const [id, c] of Object.entries(repartir(g, miembros))) filas[id].leTocaba += c
       }
       for (const f of Object.values(filas)) {
         f.pago = aP(f.pago)
@@ -203,5 +221,5 @@
     return out
   }
 
-  return { repartir, aportes, problema, saldos, simplificar, resumen, frases, monto, cuantoFalta }
+  return { repartir, aportes, problema, saldos, simplificar, resumen, frases, monto, cuantoFalta, peso }
 })
