@@ -7823,6 +7823,17 @@ function leerCuenta(L){
   return null;
 }
 /* si nombrás a alguien con quien compartís gastos, es un gasto compartido */
+/* la gente de tus grupos que no tiene la app (sin vos ni los que ya están en PAIRS) */
+function genteDeGrupos(){
+  if(typeof GRP==="undefined" || !GRP.miembros || !GRP.miembros.length) return [];
+  const yo=normV(((typeof PROFILE!=="undefined" && PROFILE && PROFILE.nombre)||"").trim().split(/\s+/)[0]||"");
+  const conApp=new Set(PAIRS.map(p=>normV((otherProf(otherId(p)).apodo||"").trim())));
+  const vistos=new Set(), out=[];
+  GRP.miembros.forEach(m=>{ const nom=String(m.nombre||"").trim(), k=normV(nom);
+    if(k.length<3 || k===yo || k==="yo" || conApp.has(k) || vistos.has(k)) return;
+    vistos.add(k); out.push(nom); });
+  return out;
+}
 function leerPersona(L){
   let best=null; const nombradas=[];
   PAIRS.forEach(p=>{
@@ -7832,13 +7843,26 @@ function leerPersona(L){
     if(i>=0) nombradas.push(nom);
     if(i>=0 && (!best || i>best.i)) best={pair:p.id, nombre:nom, i, len:normV(nom).length};
   });
+  /* «cena con Juan y Pedro»: gente de tus grupos que no tiene la app. No se puede compartir con ellos
+     como con una pareja, pero la tarjeta ofrece cargarlo en un grupo. «pagó Juan» lo marca como quien pagó. */
+  const sinApp=[]; let pagoSinApp=null;
+  genteDeGrupos().forEach(nom=>{
+    const i=buscarNombre(L,nom); if(i<0) return;
+    sinApp.push(nom);
+    const len=normV(nom).length, cerca=L.libre.slice(Math.max(0,i-12), i+len+10);
+    if(new RegExp("\\bpago\\s+(?:la\\s+|el\\s+)?"+normV(nom)+"\\b|\\b"+normV(nom)+"\\s+(?:lo\\s+)?pago\\b").test(cerca)) pagoSinApp=nom;
+    tachar(L,i,len);                                   // que «Juan» no termine como comercio
+  });
+  if(!best && sinApp.length) return {pair:null, nombre:null, otras:sinApp, pagoSinApp};
   if(best){
+    nombradas.push(...sinApp);
     /* "cena con Sofi y Fede": el gasto es entre dos personas a la vez, y acá se asigna a UNA (la última que nombrás).
        Se guarda a quién más nombraste para avisarlo en la tarjeta en vez de dejarlo pasar en silencio. */
     best.otras=nombradas.filter(n=>n!==best.nombre);
     /* "pagó Sofi", "Sofi pagó": lo puso la otra persona */
     const cerca=L.libre.slice(Math.max(0,best.i-12), best.i+best.len+10);
     best.pagoOtro=new RegExp("\\bpago\\s+(?:la\\s+|el\\s+)?"+normV(best.nombre)+"\\b|\\b"+normV(best.nombre)+"\\s+(?:lo\\s+)?pago\\b").test(cerca);
+    best.pagoSinApp=pagoSinApp;
     tachar(L,best.i,best.len); return best; }
   return null;
 }
@@ -8116,9 +8140,11 @@ function leerFrase(txt){
   }
   const ta=leerTarjeta(L);  if(ta){ r.card=ta.valor; r.auto.card=ta.texto; }
   const cc=leerCuenta(L);   if(cc && !ta){ r.cuenta=cc.valor; r.auto.cuenta=cc.texto; }
-  const pe=leerPersona(L);  if(pe){ r.pair=pe.pair; r.auto.persona=normV(pe.nombre); r.conQuien=pe.nombre;
+  const pe=leerPersona(L);  if(pe && pe.pair){ r.pair=pe.pair; r.auto.persona=normV(pe.nombre); r.conQuien=pe.nombre;
     if(pe.otras.length) r.otrasPersonas=pe.otras;                  // nombraste a más de una: se avisa en la tarjeta
     if(pe.pagoOtro){ const pp=PAIRS.find(x=>x.id===pe.pair); if(pp) r.pagador=otherId(pp); } }
+  else if(pe) r.otrasPersonas=pe.otras;                            // solo gente sin la app: la tarjeta ofrece un grupo
+  if(pe && pe.pagoSinApp) r.pagoNombre=pe.pagoSinApp;
   const et=leerEtiquetas(L);                          // v5.6 · "descripción: …", "comercio: …", en cualquier orden
   const co=et.comercio ? {valor:et.comercio, texto:null} : leerComercio(L);
   if(co){ r.comercio=co.valor; r.auto.comercio=co.texto; }
