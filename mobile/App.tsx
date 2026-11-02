@@ -9,11 +9,13 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, type WebViewProps } from 'react-native-webview';
 import type { ShouldStartLoadRequest, WebViewMessageEvent, WebViewNavigation, WebViewOpenWindowEvent } from 'react-native-webview/lib/WebViewTypes';
 import { APP } from './config';
+import { actualizarWidget } from './widget/actualizar';
+import { esValido } from './widget/datos';
 
 // La app muestra la web publicada: cada cambio que se publica llega solo, sin volver a compilar.
 // Lo que agrega: ingreso con Google (Google no lo permite dentro de una vista web), descargas de
 // Excel/PDF con el menú de compartir del teléfono, enlaces externos (WhatsApp, mail) en su app,
-// botón atrás de Android y aviso de sin conexión.
+// botón atrás de Android, aviso de sin conexión y el widget de la pantalla de inicio (carpeta widget/).
 
 type WebViewHandle = WebView<{}>;
 const RNWebView = WebView as unknown as ComponentType<WebViewProps & { ref?: Ref<WebViewHandle> }>;
@@ -55,8 +57,21 @@ async function guardarYCompartir(nombre: string, datos: string) {
   await Sharing.shareAsync(archivo.uri, { dialogTitle: nombre });
 }
 
+// El widget abre la app con miscuentas://nuevo («+ Gasto») o miscuentas://inicio.
+const accionDe = (url: string | null | undefined) => (url && /^miscuentas:\/\/nuevo/.test(url) ? 'nuevo' : null);
+
 export default function App() {
   const web = useRef<WebViewHandle>(null);
+  const cargada = useRef(false);
+  // Si la app estaba cerrada y se abrió desde «+ Gasto», la web arranca ya con ?accion=nuevo.
+  const [inicio, setInicio] = useState<string | null>(null);
+  useEffect(() => {
+    Linking.getInitialURL().then((u) => setInicio(accionDe(u) ? `${APP.sitio}?accion=nuevo` : APP.sitio)).catch(() => setInicio(APP.sitio));
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      if (accionDe(url) && cargada.current) web.current?.injectJavaScript(`window.__accionDesdeApp && window.__accionDesdeApp('nuevo'); true;`);
+    });
+    return () => sub.remove();
+  }, []);
   const [canGoBack, setCanGoBack] = useState(false);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -111,13 +126,15 @@ export default function App() {
   }, []);
 
   const onMessage = useCallback((e: WebViewMessageEvent) => {
-    let msg: { type?: string; nombre?: string; datos?: string; title?: string; text?: string; url?: string };
+    let msg: { type?: string; nombre?: string; datos?: unknown; title?: string; text?: string; url?: string };
     try { msg = JSON.parse(e.nativeEvent.data); } catch { return; }
     if (msg.type === 'google') entrarConGoogle();
-    else if (msg.type === 'archivo' && msg.nombre && msg.datos)
+    else if (msg.type === 'archivo' && msg.nombre && typeof msg.datos === 'string')
       guardarYCompartir(msg.nombre, msg.datos).catch(() => Alert.alert('No se pudo guardar el archivo', 'Probá de nuevo.'));
     else if (msg.type === 'share')
       Share.share({ title: msg.title, message: [msg.text, msg.url].filter(Boolean).join('\n') }).catch(() => {});
+    else if (msg.type === 'widget')
+      actualizarWidget(msg.datos === null ? null : esValido(msg.datos) ? msg.datos : null);
   }, [entrarConGoogle]);
 
   const retry = () => { setFailed(false); setLoading(true); web.current?.reload(); };
@@ -126,9 +143,9 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style={APP.barraClara ? 'light' : 'dark'} />
       <SafeAreaView style={[styles.root, { backgroundColor: APP.fondo }]} edges={['top', 'left', 'right']}>
-        <RNWebView
+        {inicio && <RNWebView
           ref={web}
-          source={{ uri: APP.sitio }}
+          source={{ uri: inicio }}
           style={[styles.web, { backgroundColor: APP.fondo }]}
           applicationNameForUserAgent={APP.agente}
           originWhitelist={['*']}
@@ -138,7 +155,7 @@ export default function App() {
           setSupportMultipleWindows
           onMessage={onMessage}
           onNavigationStateChange={(s: WebViewNavigation) => setCanGoBack(s.canGoBack)}
-          onLoadEnd={() => { setLoading(false); SplashScreen.hideAsync().catch(() => {}); }}
+          onLoadEnd={() => { cargada.current = true; setLoading(false); SplashScreen.hideAsync().catch(() => {}); }}
           onError={() => { setFailed(true); setLoading(false); SplashScreen.hideAsync().catch(() => {}); }}
           onContentProcessDidTerminate={() => web.current?.reload()}
           onRenderProcessGone={() => web.current?.reload()}
@@ -149,7 +166,7 @@ export default function App() {
           allowsInlineMediaPlayback
           decelerationRate="normal"
           overScrollMode="never"
-        />
+        />}
         {loading && !failed && (
           <View style={[styles.cover, { backgroundColor: APP.fondo }]} pointerEvents="none"><ActivityIndicator color={APP.acento} /></View>
         )}

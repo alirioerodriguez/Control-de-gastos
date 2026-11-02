@@ -32,6 +32,41 @@
           "resizeMode": "contain",
           "backgroundColor": "#2b2723"
         }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "Resumen",
+              "label": "Mis Cuentas",
+              "description": "Tu disponible y lo que gastaste este mes, con un botón para cargar un gasto.",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 0
+            }
+          ]
+        }
+      ],
+      [
+        "expo-widgets",
+        {
+          "groupIdentifier": "group.ar.alirio.miscuentas",
+          "widgets": [
+            {
+              "name": "Resumen",
+              "displayName": "Mis Cuentas",
+              "description": "Tu disponible y lo que gastaste este mes.",
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ]
+            }
+          ]
+        }
       ]
     ]
   }

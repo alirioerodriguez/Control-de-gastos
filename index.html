@@ -2997,6 +2997,7 @@ else{
     if(recoveryMode && event!=="SIGNED_OUT") return;
     if(event==="TOKEN_REFRESHED"||event==="USER_UPDATED") return;
     const uid=s&&s.user?s.user.id:null;
+    if(!uid) avisarWidget(null);
     if(booted && uid && uid===currentUid) return;
     onSession(s);
   });
@@ -3009,6 +3010,30 @@ else{
    sesión se le pasa a la app (miscuentas://auth#access_token=…&refresh_token=…), que la carga con
    window.__sesionDesdeApp. En esta ventana se borra (sin cerrarla en el servidor, que cerraría la de la app). */
 function enLaApp(){ return !!window.ReactNativeWebView; }
+/* Widget de la pantalla de inicio del celular: se le pasan las cifras ya escritas (la app solo las muestra).
+   Respeta «ocultar montos». Con datos:null el widget pide abrir la app (sin sesión). */
+let _widgetUlt="";
+function avisarWidget(datos){
+  if(!enLaApp()) return;
+  const txt=JSON.stringify(datos);
+  if(txt===_widgetUlt) return; _widgetUlt=txt;
+  try{ window.ReactNativeWebView.postMessage(JSON.stringify({type:"widget",datos})); }catch(e){}
+}
+function datosWidget(){
+  const mes=curMonth(), {gas}=totalesMes(mes,CUR), ocultar=!!oculto, m=n=>ocultar?"•••••":fmt(n,CUR);
+  return { disponible:m(disponibleDebito(CUR)), gastado:m(gas), mes:mesLargo(mes).split(" ")[0], oculto:ocultar,
+    actualizado:new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}) };
+}
+/* «+ Gasto» del widget: la app llama a esto (o abre con ?accion=nuevo si estaba cerrada). Si los datos todavía
+   no cargaron, queda pendiente hasta que carguen. */
+let _accionPendiente=new URLSearchParams(location.search).get("accion");
+window.__accionDesdeApp=function(a){ _accionPendiente=a; correrAccionPendiente(); };
+function correrAccionPendiente(){
+  if(!_accionPendiente||!user||!booted) return;
+  const a=_accionPendiente; _accionPendiente=null;
+  if(location.search.includes("accion=")) history.replaceState(null,"",location.pathname+location.hash);
+  if(a==="nuevo"){ show("app"); openReg(null,"gasto",null); }
+}
 function cubrir(txt){ const d=document.createElement("div"); d.textContent=txt;
   d.style.cssText="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#f1efec;color:#2b2723;font:600 17px system-ui";
   document.body.appendChild(d); }
@@ -3641,6 +3666,8 @@ function renderTodo(){
   renderInicio(); renderMovs(); renderCuentas(); renderTarjetas(); renderMetas(); renderCalendar(); renderCharts(); renderMesTxt(); renderMasMenu();
   if(vista==="meta") renderMeta();
   pintarReciente();   /* v3.7 · resalta la fila recien guardada o editada */
+  try{ avisarWidget(datosWidget()); }catch(e){}
+  correrAccionPendiente();
 }
 
 /* icono extra */
