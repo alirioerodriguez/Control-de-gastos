@@ -45,17 +45,19 @@
    *  - 'partes': detalle = partes por persona (una pareja que cuenta doble: { ana: 2, luis: 1 }).
    *  - 'porcentajes': detalle = porcentaje por persona; tiene que sumar 100.
    *  - 'montos': detalle = lo que le toca a cada uno en plata; tiene que sumar el monto.
-   *  - 'asistentes': según cuántos van por cada persona (miembro.cuantos, 1 si no está) y sin los invitados
+   *  - 'asistentes': según cuántos van por cada persona (sin `participantes` = entre todos los del grupo) (miembro.cuantos, 1 si no está) y sin los invitados
    *    (miembro.invitado: el homenajeado va pero no paga). Se lee de `miembros` al calcular, así que si alguien
    *    avisa después que va con su pareja, los gastos ya cargados se recalculan solos.
    */
   function repartir(gasto, miembros) {
     const total = aC(gasto.monto)
-    const ids = gasto.participantes || []
+    const modo = gasto.reparto || 'igual'
+    // Sin lista de participantes en un reparto por asistentes = entre todos, incluidos los que se sumen después.
+    const todos = modo === 'asistentes' && !(gasto.participantes && gasto.participantes.length)
+    const ids = todos ? (miembros || []).map((m) => m.id) : gasto.participantes || []
     if (!(total > 0)) throw new Error('El monto tiene que ser mayor a 0.')
     if (ids.length === 0) throw new Error('Elegí entre quiénes se reparte.')
     if (new Set(ids).size !== ids.length) throw new Error('Hay una persona repetida en el reparto.')
-    const modo = gasto.reparto || 'igual'
     const d = gasto.detalle || {}
     if (modo === 'igual') return prorratear(total, ids.map((id) => [id, 1]), gasto.id)
     if (modo === 'asistentes') {

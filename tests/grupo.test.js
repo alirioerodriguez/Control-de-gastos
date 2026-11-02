@@ -168,6 +168,11 @@ console.log('\n— Eventos: cuántos van por persona e invitados que no pagan')
   const despues = G.saldos(cumple.map((m) => (m.id === 'mati' ? { ...m, cuantos: 4 } : m)), [gasto('a4', 60000, 'lu')]).ARS
   ok('Mati avisa que van 4 en vez de 2: le toca más y a los demás menos', despues.mati < antes.mati && despues.vale > antes.vale, { antes, despues })
   eq('peso: invitado 0, sin dato 1, valores raros 0', [G.peso({ invitado: true, cuantos: 3 }), G.peso({}), G.peso({ cuantos: -1 }), G.peso({ cuantos: 1.5 }), G.peso({ cuantos: '2' })], [0, 1, 0, 0, 2])
+  const entreTodos = { id: 'a6', monto: 9000, pagador: 'lu', participantes: null, reparto: 'asistentes' }
+  eq('sin lista de participantes = entre todos los del grupo', G.repartir(entreTodos, cumple), { lu: 150000, mati: 300000, vale: 450000, juan: 0, caro: 0 })
+  const conPau = [...cumple, { id: 'pau', nombre: 'Pau', cuantos: 3 }]
+  eq('«entre todos» incluye a quien se suma después', G.repartir(entreTodos, conPau).pau, 300000)
+  lanza('lista vacía en otro reparto sigue siendo error', () => G.repartir({ id: 'x', monto: 10, participantes: [], reparto: 'igual' }, cumple), /Elegí entre quiénes/)
   eq('problema() acepta un gasto por asistentes válido', G.problema(gasto('a5', 1000, 'mati'), cumple), null)
   // Al azar: eventos con invitados, gente que no va y gastos entre algunos, siempre cierran en cero.
   let semilla = 11

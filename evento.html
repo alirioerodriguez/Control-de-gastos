@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2b2723">
+<meta name="robots" content="noindex">
+<title>Gastos compartidos · Mis Cuentas</title>
+<link rel="icon" type="image/svg+xml" href="/icono.svg">
+<style>
+  :root { --bg:#f1efec; --card:#fff; --ink:#1d1d1f; --muted:#5b5b62; --line:#d9d7d0; --acc:#1f6f5c; --on-acc:#fff; --bad:#a3262a; --soft:#e6f1ed; --violet:#6d4bc2; --violet-bg:#efeafb; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141414; --card:#1e1e1f; --ink:#f2f2f2; --muted:#b4b4ba; --line:#3a3a3d; --acc:#58c2a6; --on-acc:#0b1f19; --bad:#ff8f8f; --soft:#1d2e29; --violet:#b9a2ff; --violet-bg:#2a2340; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 96px; display:flex; flex-direction:column; gap:14px; }
+  h1 { font-size:1.45rem; margin:8px 0 2px; } h2 { font-size:1.05rem; margin:0 0 10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; }
+  label { display:flex; flex-direction:column; gap:6px; font-weight:600; font-size:.95rem; margin-bottom:10px; }
+  input, select { font:inherit; font-size:16px; padding:12px; border-radius:12px; border:1px solid var(--line); background:var(--bg); color:var(--ink); min-height:48px; width:100%; }
+  button { font:inherit; font-weight:600; min-height:48px; padding:0 18px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+  button.primario { background:var(--acc); color:var(--on-acc); border-color:var(--acc); }
+  button.chico { min-height:40px; padding:0 14px; font-size:.9rem; }
+  button.peligro { color:var(--bad); }
+  button:disabled { opacity:.5; cursor:default; }
+  :focus-visible { outline:3px solid var(--acc); outline-offset:2px; }
+  .fila { display:flex; gap:8px; align-items:center; } .fila > .crece { flex:1; }
+  .m { color:var(--muted); font-size:.92rem; }
+  ul { list-style:none; margin:0; padding:0; }
+  li { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--line); }
+  li:first-child { border-top:0; }
+  li .nm { font-weight:600; } li .m { display:block; }
+  .elegir { display:flex; flex-wrap:wrap; gap:8px; }
+  .elegir button { min-height:44px; }
+  .paso { display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:999px; }
+  .paso button { min-width:48px; border:0; background:none; font-size:1.3rem; }
+  .paso output { min-width:32px; text-align:center; font-weight:700; font-size:1.15rem; font-variant-numeric:tabular-nums; }
+  .yo { background:var(--soft); border-radius:14px; padding:12px; }
+  .grande { font-size:1.1rem; font-weight:700; }
+  .neg { color:var(--bad); }
+  .etq { font-size:.8rem; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--violet-bg); color:var(--violet); margin-left:6px; }
+  .error { color:var(--bad); font-weight:600; min-height:1.3em; }
+  .aviso { position:fixed; left:16px; right:16px; bottom:max(16px, env(safe-area-inset-bottom)); max-width:528px; margin:0 auto; background:var(--ink); color:var(--bg); padding:12px 16px; border-radius:14px; }
+  .oculto { display:none !important; }
+  a { color:var(--acc); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="titulo">Gastos compartidos</h1>
+    <div class="m" id="sub">Cargando…</div>
+  </header>
+
+  <section class="card oculto" id="sec-error" role="alert"><h2>No pude abrir el grupo</h2><p id="error-txt" class="m"></p>
+    <button class="chico" id="reintentar">Probar de nuevo</button></section>
+
+  <!-- 1. ¿Quién sos? -->
+  <section class="card oculto" id="sec-quien" aria-labelledby="h-quien">
+    <h2 id="h-quien">¿Quién sos?</h2>
+    <div class="elegir" id="quien-lista"></div>
+    <div class="m" id="quien-o" style="margin:12px 0 6px">¿No estás en la lista? Sumate:</div>
+    <div class="fila"><input class="crece" id="quien-nombre" placeholder="Tu nombre" aria-label="Tu nombre" maxlength="40" autocomplete="given-name">
+      <button class="primario" id="quien-sumar">Sumarme</button></div>
+    <div class="error" id="quien-error" role="alert"></div>
+  </section>
+
+  <!-- 2. Lo mío -->
+  <section class="card oculto" id="sec-yo" aria-labelledby="h-yo">
+    <div class="fila" style="justify-content:space-between"><h2 id="h-yo" style="margin:0">Hola, <span id="yo-nombre"></span></h2>
+      <button class="chico" id="no-soy">No soy yo</button></div>
+    <div id="yo-invitado" class="yo oculto" style="margin-top:12px">Estás <b>invitado</b>: no pagás nada. 🎉</div>
+    <div id="yo-asist" style="margin-top:12px">
+      <div style="font-weight:600;margin-bottom:6px">¿Cuántos van con vos? <span class="m" style="font-weight:400">(contándote)</span></div>
+      <div class="fila"><span class="paso" role="group" aria-label="Cuántos van">
+        <button id="menos" aria-label="Uno menos">−</button><output id="cuantos" aria-live="polite">1</output><button id="mas" aria-label="Uno más">+</button></span>
+        <span class="m" id="cuantos-txt"></span></div>
+    </div>
+    <div style="margin-top:16px">
+      <div style="font-weight:600;margin-bottom:6px">¿Pagaste algo?</div>
+      <label style="font-weight:500">Qué fue<input id="g-desc" placeholder="Carne, bebidas, torta…" maxlength="80" autocomplete="off"></label>
+      <div class="fila">
+        <label class="crece" style="font-weight:500;margin:0">Monto<input id="g-monto" inputmode="decimal" placeholder="25.000"></label>
+        <label style="font-weight:500;margin:0;width:110px">Moneda<select id="g-moneda"><option>ARS</option><option>USD</option></select></label>
+      </div>
+      <div class="m" style="margin:6px 0">Se reparte entre todos según cuántos van. Los invitados no pagan.</div>
+      <div class="error" id="g-error" role="alert"></div>
+      <button class="primario" id="g-guardar" style="width:100%">Agregar lo que pagué</button>
+    </div>
+    <div id="yo-cuentas" style="margin-top:16px"></div>
+  </section>
+
+  <!-- 3. El grupo -->
+  <section class="card oculto" id="sec-gente" aria-labelledby="h-gente"><h2 id="h-gente">Quiénes van</h2><ul id="gente"></ul></section>
+  <section class="card oculto" id="sec-gastos" aria-labelledby="h-gastos"><h2 id="h-gastos">Lo que se gastó</h2><ul id="gastos"></ul></section>
+  <section class="card oculto" id="sec-saldar" aria-labelledby="h-saldar"><h2 id="h-saldar">Quién le paga a quién</h2><div id="saldar"></div></section>
+
+  <p class="m oculto" id="pie">Se actualiza solo. Lo armó alguien con <a href="/" id="pie-app">Mis Cuentas</a>: no necesitás la app ni cuenta para usar esta página.</p>
+</main>
+<div class="aviso oculto" id="aviso" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/grupo.js"></script>
+<script>
+(function () {
+  const SUPABASE_URL = 'https://qrtypgsyyxioakqibwmz.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0'
+  const $ = (id) => document.getElementById(id)
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  const ver = (id, si) => $(id).classList.toggle('oculto', !si)
+  const aviso = (t) => { const a = $('aviso'); a.textContent = t; a.classList.remove('oculto'); clearTimeout(aviso.t); aviso.t = setTimeout(() => a.classList.add('oculto'), 2600) }
+  const leerMonto = (t) => { const s = String(t).trim().replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'); const n = Number(s); return s !== '' && isFinite(n) ? n : null }
+  const plata = (n, mon) => Grupo.monto(n, mon)
+  // El enlace va después de # para que no quede en los registros del servidor.
+  const enlace = decodeURIComponent((location.hash || '').slice(1)).trim()
+  const CLAVE = 'evento_yo_' + enlace
+  const recordar = (id) => { try { id ? localStorage.setItem(CLAVE, id) : localStorage.removeItem(CLAVE) } catch (e) { /* sin almacenamiento: hay que elegir de nuevo */ } }
+  const recordado = () => { try { return localStorage.getItem(CLAVE) } catch (e) { return null } }
+
+  let sb = null
+  let D = null // { grupo, miembros, gastos, liqs }
+  let yo = null
+  let ocupado = false
+
+  function textoError(e) {
+    const m = (e && (e.message || e.error_description)) || ''
+    if (/Failed to fetch|NetworkError|network/i.test(m)) return 'Parece que no hay conexión. Revisá internet y probá de nuevo.'
+    return m || 'Algo salió mal. Probá de nuevo en un rato.'
+  }
+  async function rpc(nombre, args) {
+    const { data, error } = await sb.rpc(nombre, args)
+    if (error) throw error
+    return data
+  }
+
+  async function cargar() {
+    if (!enlace) throw new Error('Al enlace le falta una parte. Pedile a quien armó el grupo que te lo mande de nuevo.')
+    const d = await rpc('grupo_por_enlace', { p_enlace: enlace })
+    D = { grupo: d.grupo, miembros: d.miembros || [], gastos: (d.gastos || []).map((g) => ({ ...g, monto: Number(g.monto) })), liqs: (d.liqs || []).map((l) => ({ ...l, monto: Number(l.monto) })) }
+    const conCuenta = D.miembros.find((m) => m.soyYo)
+    const id = (conCuenta && conCuenta.id) || recordado()
+    yo = D.miembros.find((m) => m.id === id) || null
+    if (!yo && id) recordar(null)
+  }
+
+  function nombre(id) { return (D.miembros.find((m) => m.id === id) || { nombre: '?' }).nombre }
+
+  function dibujar() {
+    ver('sec-error', false)
+    document.title = (D.grupo.nombre || 'Gastos compartidos') + ' · Mis Cuentas'
+    $('titulo').textContent = D.grupo.nombre || 'Gastos compartidos'
+    const cabezas = D.miembros.reduce((t, m) => t + Grupo.peso(m), 0)
+    $('sub').textContent = `${D.miembros.length} persona${D.miembros.length === 1 ? '' : 's'} · ${cabezas} pagan`
+    ver('pie', true)
+
+    // ¿Quién sos?
+    ver('sec-quien', !yo)
+    $('quien-lista').innerHTML = D.miembros.map((m) => `<button data-soy="${esc(m.id)}">${esc(m.nombre)}</button>`).join('')
+    ver('quien-o', D.miembros.length > 0)
+
+    // Lo mío
+    ver('sec-yo', !!yo)
+    if (yo) {
+      $('yo-nombre').textContent = yo.nombre
+      ver('yo-invitado', !!yo.invitado)
+      ver('yo-asist', !yo.invitado)
+      const n = yo.cuantos ?? 1
+      $('cuantos').textContent = n
+      $('menos').disabled = n <= 0; $('mas').disabled = n >= 99
+      $('cuantos-txt').textContent = n === 0 ? 'No vas' : n === 1 ? 'Vas solo' : `Vos y ${n - 1} más`
+    }
+
+    // Gente
+    ver('sec-gente', D.miembros.length > 0)
+    $('gente').innerHTML = D.miembros.map((m) => {
+      const n = m.cuantos ?? 1
+      const estado = m.invitado ? '<span class="etq">invitado</span>' : n === 0 ? '<span class="m">No va</span>' : `<span class="m">${n === 1 ? 'Va solo' : `Va con ${n - 1} más`}</span>`
+      return `<li><span><span class="nm">${esc(m.nombre)}</span>${m.id === (yo && yo.id) ? ' <span class="m" style="display:inline">(vos)</span>' : ''}</span>${estado}</li>`
+    }).join('')
+
+    // Gastos
+    ver('sec-gastos', D.gastos.length > 0)
+    $('gastos').innerHTML = D.gastos.slice().reverse().map((g) => {
+      const mio = yo && g.cargado_por === yo.id
+      const entre = g.participantes && g.participantes.length ? 'entre ' + g.participantes.map((p) => esc(nombre(p))).join(', ') : 'entre todos'
+      return `<li><span><span class="nm">${esc(g.descripcion || 'Gasto')}</span><span class="m">Pagó ${esc(nombre(g.pagador))} · ${entre}</span></span>
+        <span style="text-align:right"><b>${plata(g.monto, g.moneda)}</b>${mio ? `<br><button class="chico peligro" data-borrar="${esc(g.id)}" aria-label="Borrar ${esc(g.descripcion || 'gasto')}">Borrar</button>` : ''}</span></li>`
+    }).join('')
+
+    // Cuentas
+    let r = {}
+    try { r = D.gastos.length ? Grupo.resumen(D.miembros, D.gastos, D.liqs) : {} } catch (e) { r = {} }
+    const monedas = Object.entries(r)
+    ver('sec-saldar', monedas.length > 0)
+    $('saldar').innerHTML = monedas.map(([mon, x]) => {
+      const pasos = x.transferencias.length
+        ? '<ul>' + x.transferencias.map((t) => `<li><span><b>${esc(nombre(t.de))}</b> le paga <b>${plata(t.monto, mon)}</b> a <b>${esc(nombre(t.a))}</b></span></li>`).join('') + '</ul>'
+        : '<p class="m">Están a mano.</p>'
+      return `<div class="m" style="margin-bottom:6px">${monedas.length > 1 ? mon + ' · ' : ''}Total gastado: <b>${plata(x.total, mon)}</b></div>${pasos}`
+    }).join('<hr style="border:0;border-top:1px solid var(--line);margin:12px 0">')
+
+    // Mi situación
+    let mio = ''
+    if (yo) {
+      for (const [mon, x] of monedas) {
+        const f = x.filas.find((y) => y.id === yo.id)
+        if (!f) continue
+        const debo = x.transferencias.filter((t) => t.de === yo.id)
+        const meDeben = x.transferencias.filter((t) => t.a === yo.id)
+        mio += `<div class="yo" style="margin-top:10px"><div class="m">${monedas.length > 1 ? mon + ' · ' : ''}Pusiste ${plata(f.pago, mon)} · te tocaba ${plata(f.leTocaba, mon)}</div>`
+        if (!debo.length && !meDeben.length) mio += '<div class="grande">Estás a mano ✓</div>'
+        for (const t of debo) mio += `<div class="fila" style="justify-content:space-between;margin-top:8px"><span class="grande">Le pagás ${plata(t.monto, mon)} a ${esc(nombre(t.a))}</span>
+          <button class="chico primario" data-pague="${esc(t.a)}|${t.monto}|${mon}">Ya le pagué</button></div>`
+        for (const t of meDeben) mio += `<div class="grande" style="margin-top:8px">${esc(nombre(t.de))} te paga ${plata(t.monto, mon)}</div>`
+        mio += '</div>'
+      }
+      const misPagos = D.liqs.filter((l) => l.de === yo.id)
+      if (misPagos.length) mio += '<div style="margin-top:10px"><div class="m">Pagos que anotaste:</div><ul>' + misPagos.map((l) => `<li><span>A ${esc(nombre(l.a))}: ${plata(l.monto, l.moneda)}</span><button class="chico" data-deshacer="${esc(l.id)}">Deshacer</button></li>`).join('') + '</ul></div>'
+    }
+    $('yo-cuentas').innerHTML = mio
+  }
+
+  function mostrarError(e) {
+    ['sec-quien', 'sec-yo', 'sec-gente', 'sec-gastos', 'sec-saldar'].forEach((id) => ver(id, false))
+    $('sub').textContent = ''
+    $('error-txt').textContent = textoError(e)
+    ver('sec-error', true)
+  }
+
+  // Hace una acción, recarga y redibuja. Evita dobles toques.
+  async function hacer(boton, accion, ok) {
+    if (ocupado) return
+    ocupado = true
+    if (boton) boton.disabled = true
+    try { await accion(); await cargar(); dibujar(); if (ok) aviso(ok); return true }
+    catch (e) { aviso(textoError(e)); return false }
+    finally { ocupado = false; if (boton) boton.disabled = false }
+  }
+
+  async function refrescar() {
+    if (ocupado || document.hidden || !sb) return
+    try { await cargar(); if (!ocupado && !document.activeElement.matches('input')) dibujar() } catch (e) { /* se intenta en la próxima */ }
+  }
+
+  // ---- eventos ----
+  $('quien-lista').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-soy]'); if (!b) return
+    recordar(b.dataset.soy)
+    hacer(b, () => rpc('grupo_enlace_soy', { p_enlace: enlace, p_miembro: b.dataset.soy }))
+  })
+  const sumarme = async () => {
+    const n = $('quien-nombre').value.trim()
+    $('quien-error').textContent = n ? '' : 'Escribí tu nombre.'
+    if (!n) return
+    await hacer($('quien-sumar'), async () => { recordar(await rpc('grupo_enlace_sumarme', { p_enlace: enlace, p_nombre: n })) }, '¡Listo, te sumaste!')
+  }
+  $('quien-sumar').addEventListener('click', sumarme)
+  $('quien-nombre').addEventListener('keydown', (e) => { if (e.key === 'Enter') sumarme() })
+  $('no-soy').addEventListener('click', () => { recordar(null); yo = null; dibujar() })
+  const cambiar = (d) => { if (!yo) return; const n = Math.min(99, Math.max(0, (yo.cuantos ?? 1) + d)); hacer(null, () => rpc('grupo_enlace_asistencia', { p_enlace: enlace, p_miembro: yo.id, p_cuantos: n })) }
+  $('menos').addEventListener('click', () => cambiar(-1))
+  $('mas').addEventListener('click', () => cambiar(1))
+  $('g-guardar').addEventListener('click', async () => {
+    const monto = leerMonto($('g-monto').value)
+    $('g-error').textContent = monto && monto > 0 ? '' : 'Poné cuánto pagaste.'
+    if (!(monto > 0)) return
+    const ok = await hacer($('g-guardar'), () => rpc('grupo_enlace_gasto', { p_enlace: enlace, p_miembro: yo.id, p_descripcion: $('g-desc').value.trim(), p_monto: monto, p_moneda: $('g-moneda').value }), 'Agregado')
+    if (ok) { $('g-desc').value = ''; $('g-monto').value = '' }
+  })
+  $('gastos').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-borrar]'); if (!b) return
+    if (!confirm('¿Borrar este gasto? Se recalcula quién le paga a quién.')) return
+    hacer(b, () => rpc('grupo_enlace_borrar_gasto', { p_enlace: enlace, p_miembro: yo.id, p_gasto: b.dataset.borrar }), 'Borrado')
+  })
+  $('yo-cuentas').addEventListener('click', (e) => {
+    const p = e.target.closest('[data-pague]')
+    if (p) { const [a, monto, mon] = p.dataset.pague.split('|'); return hacer(p, () => rpc('grupo_enlace_pague', { p_enlace: enlace, p_miembro: yo.id, p_a: a, p_monto: Number(monto), p_moneda: mon }), 'Pago anotado') }
+    const d = e.target.closest('[data-deshacer]')
+    if (d) hacer(d, () => rpc('grupo_enlace_borrar_pago', { p_enlace: enlace, p_miembro: yo.id, p_pago: d.dataset.deshacer }), 'Pago deshecho')
+  })
+  $('reintentar').addEventListener('click', () => iniciar())
+  document.addEventListener('visibilitychange', refrescar)
+  setInterval(refrescar, 20000)
+  window.addEventListener('hashchange', () => location.reload())
+
+  async function iniciar() {
+    try {
+      if (!window.supabase) throw new Error('No pude cargar la página. Revisá la conexión y probá de nuevo.')
+      // Con la misma sesión de Mis Cuentas (si estás logueado en este navegador), tu persona queda vinculada a tu cuenta.
+      sb = sb || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } })
+      await cargar(); dibujar()
+    } catch (e) { mostrarError(e) }
+  }
+  iniciar()
+})()
+</script>
+</body>
+</html>
