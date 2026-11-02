@@ -28,6 +28,9 @@ global.cardTitulo = (c) => c.marca + ' ' + c.banco
 const GENTE = { u2: 'Sofi', u3: 'Fede', u4: 'Mamá', u5: 'Ana' }
 global.otherId = (p) => ({ p1: 'u2', p2: 'u3', p3: 'u4', p4: 'u5' })[p.id]
 global.otherProf = (id) => ({ apodo: GENTE[id] || 'usuario' })
+// Grupos: Juan y Pedro no tienen la app; Sofi sí (no se duplica); «Alirio» sos vos; «Lu» es muy corto para buscarlo
+global.PROFILE = { nombre: 'Alirio Rodríguez' }
+global.GRP = { cargado: true, miembros: ['Alirio', 'Juan', 'Pedro', 'Sofi', 'Lu', 'juan'].map((nombre, i) => ({ id: 'm' + i, nombre })) }
 eval(codigo + ';global.planCuotas=planCuotas;global.mesSuma=mesSuma;global.interpretarLocal=interpretarLocal;global.movimientos=()=>VS;global.resetVoz=()=>{VS=[];vozSel=0;APRENDE={categoria:{},comercio:{}};};global.aprender=(a)=>{APRENDE=a;};')
 
 const hoy = diasAtras(0)
@@ -84,6 +87,17 @@ const CASOS = [
   ['cena con Fede 24 mil a medias', [{ tipo: 'compartido', pair: 'p2', otrasPersonas: undefined }]],      // una sola persona: nada que avisar
   ['el super 30 mil', [{ tipo: 'gasto', otrasPersonas: undefined }]],
   ['cena con Fede 24 mil a medias y el cine con Sofi 10 mil a medias', [{ pair: 'p2', otrasPersonas: undefined }, { pair: 'p1', otrasPersonas: undefined }]], // una persona por gasto
+
+  'Gente de tus grupos que no tiene la app: el gasto queda tuyo y la tarjeta ofrece cargarlo en un grupo',
+  ['cena con Juan y Pedro 30 mil', [{ tipo: 'gasto', monto: 30000, conQuien: null, otrasPersonas: ['Juan', 'Pedro'], pagoNombre: undefined }]],
+  ['pagó Juan la cena 30 mil con Pedro', [{ tipo: 'gasto', monto: 30000, otrasPersonas: ['Juan', 'Pedro'], pagoNombre: 'Juan' }]],
+  ['Pedro pagó el asado 25 mil', [{ tipo: 'gasto', otrasPersonas: ['Pedro'], pagoNombre: 'Pedro' }]],
+  ['cena con Juan 18 mil', [{ tipo: 'gasto', otrasPersonas: ['Juan'], comercio: null }]],               // «Juan» no queda como comercio
+  ['cena con Sofi y Juan 40 mil a medias', [{ tipo: 'compartido', pair: 'p1', otrasPersonas: ['Juan'] }]], // Sofi tiene la app, Juan no
+  ['cena con Alirio y Juan 20 mil', [{ tipo: 'gasto', otrasPersonas: ['Juan'] }]],                       // vos no contás
+  ['cena con Sofi 20 mil a medias', [{ tipo: 'compartido', pair: 'p1', otrasPersonas: undefined }]],      // Sofi está en un grupo y tiene la app: no se duplica
+  ['el asado de Juancito 5 mil', [{ tipo: 'gasto', otrasPersonas: undefined }]],                         // «Juan» está dentro de «Juancito»
+  ['un café con Lu 3 mil', [{ tipo: 'gasto', otrasPersonas: undefined }]],                               // nombres de menos de 3 letras no se buscan
 ]
 
 let fallas = 0

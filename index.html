@@ -5287,7 +5287,7 @@ async function grpDesdeVoz(){
   const yo=(((PROFILE&&PROFILE.nombre)||"Yo").trim().split(/\s+/)[0])||"Yo";
   const nombres=[V.conQuien,...(V.otrasPersonas||[])].filter(Boolean);
   const todos=[yo,...nombres.filter(n=>n.toLowerCase()!==yo.toLowerCase())];
-  const pagaYo=(V.pagador||user.id)===user.id, quienPago=pagaYo?yo:V.conQuien;
+  const pagaYo=(V.pagador||user.id)===user.id, quienPago=V.pagoNombre||(pagaYo?yo:V.conQuien);   // «pagó Juan»: alguien sin la app
   const datos={desc:V.descripcion||V.comercio||"", monto:V.monto>0?String(V.monto).replace(".",","):"", moneda:V.moneda==="USD"?"USD":"ARS"};
   cerrarVoz();
   try{ if(!GRP.cargado) await grpCargar(); }catch(e){ avisarError(e,"No pude cargar los grupos"); return; }
@@ -7413,6 +7413,8 @@ function openVoz(pre){
   /* v3 · la hoja hereda el tipo que esté eligiendo la calculadora */
   if(typeof R==="object" && R && R.tipo){ V.tipo=R.tipo; VOZ_TIPO_BASE=R.tipo; }
   if(pre){ V.texto=pre; interpretarLocal(); setTimeout(()=>reforzarIA(),0); }
+  /* la voz reconoce a la gente de tus grupos: si todavía no se cargaron, se cargan ahora y se vuelve a leer la frase */
+  if(!GRP.cargado) grpCargar().then(()=>{ if(!$("voz-ov").classList.contains("hidden") && V.texto){ interpretarLocal(); renderVoz(); } }).catch(()=>{});
   $("voz-ov").classList.remove("hidden");
   renderVoz(); pintarBotonMic();
   setTimeout(()=>{ const t=$("voz-texto"); if(t){ t.focus();
@@ -9284,7 +9286,7 @@ function renderVozFilas(){
     const p=PAIRS.find(x=>x.id===V.pair); const o=p?otherProf(otherId(p)):{apodo:"la otra persona"};
     h+=fila("Con",esc(V.conQuien||o.apodo),"pair");
     if(V.otrasPersonas && V.otrasPersonas.length && V.conQuien && !V.manual?.pair)
-      h+=`<div class="detrow"><span class="v" style="font-size:13px;color:var(--amber);flex:1;text-align:left;line-height:1.35">Nombraste también a ${esc(V.otrasPersonas.join(" y "))}: este gasto quedó solo con ${esc(V.conQuien)}. Si fue entre todos, armá un grupo.</span><button class="chip" data-vgrupo type="button" style="padding:6px 12px;font-size:13px;flex:none">Armar grupo</button></div>`;
+      h+=`<div class="detrow"><span class="v" style="font-size:13px;color:var(--amber);flex:1;text-align:left;line-height:1.35;white-space:normal;justify-content:flex-start">Nombraste también a ${esc(V.otrasPersonas.join(" y "))}: este gasto quedó solo con ${esc(V.conQuien)}. Si fue entre todos, armá un grupo.</span><button class="chip" data-vgrupo type="button" style="padding:6px 12px;font-size:13px;flex:none">Armar grupo</button></div>`;
     const pagoYo=(V.pagador||user.id)===user.id;
     h+=`<div class="detrow"><span class="k">Pagó</span><span class="v" style="gap:6px">
       <button class="chip ${pagoYo?'on':''}" data-vp="yo" style="padding:5px 11px;font-size:13px">Vos</button>
@@ -9292,6 +9294,10 @@ function renderVozFilas(){
       </span></div>`;
     h+=fila("Reparto", V.split==="solo_otro"?"Lo debe entero":"Mitad y mitad","split");
   }
+  /* «cena con Juan y Pedro»: gente de tus grupos que no tiene la app. Como gasto común queda solo tuyo;
+     la tarjeta ofrece pasarlo a un grupo, donde se reparte entre todos. */
+  else if(V.otrasPersonas && V.otrasPersonas.length)
+    h+=`<div class="detrow"><span class="v" style="font-size:13px;color:var(--amber);flex:1;text-align:left;line-height:1.35;white-space:normal;justify-content:flex-start">Nombraste a ${esc(V.otrasPersonas.join(" y "))}${V.pagoNombre?` (pagó ${esc(V.pagoNombre)})`:""}. Si fue entre todos, cargalo en un grupo.</span><button class="chip" data-vgrupo type="button" style="padding:6px 12px;font-size:13px;flex:none">Armar grupo</button></div>`;
   h+=fila("Comercio",V.comercio?esc(V.comercio):`<span style="color:var(--ink-3)">—</span>`,"comercio");
   h+=fila("Descripción",V.descripcion?esc(V.descripcion):`<span style="color:var(--ink-3)">—</span>`,"descripcion");
   $("voz-filas").innerHTML=h;
