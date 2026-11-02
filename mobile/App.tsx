@@ -11,6 +11,7 @@ import type { ShouldStartLoadRequest, WebViewMessageEvent, WebViewNavigation, We
 import { APP } from './config';
 import { actualizarWidget } from './widget/actualizar';
 import { esValido } from './widget/datos';
+import { POLYFILL_VOZ, pedidoVoz, useVozNativa } from './voz';
 
 // La app muestra la web publicada: cada cambio que se publica llega solo, sin volver a compilar.
 // Lo que agrega: ingreso con Google (Google no lo permite dentro de una vista web), descargas de
@@ -57,8 +58,10 @@ async function guardarYCompartir(nombre: string, datos: string) {
   await Sharing.shareAsync(archivo.uri, { dialogTitle: nombre });
 }
 
-// El widget abre la app con miscuentas://nuevo («+ Gasto») o miscuentas://inicio.
+// El widget abre la app con miscuentas://nuevo («+ Gasto») o miscuentas://inicio. Los enlaces del sitio
+// (por ejemplo, el de un evento que llega por WhatsApp) también abren la app, en esa página.
 const accionDe = (url: string | null | undefined) => (url && /^miscuentas:\/\/nuevo/.test(url) ? 'nuevo' : null);
+const delSitio = (url: string | null | undefined) => (url && url.startsWith(ORIGEN + '/') ? url : null);
 
 export default function App() {
   const web = useRef<WebViewHandle>(null);
@@ -66,9 +69,12 @@ export default function App() {
   // Si la app estaba cerrada y se abrió desde «+ Gasto», la web arranca ya con ?accion=nuevo.
   const [inicio, setInicio] = useState<string | null>(null);
   useEffect(() => {
-    Linking.getInitialURL().then((u) => setInicio(accionDe(u) ? `${APP.sitio}?accion=nuevo` : APP.sitio)).catch(() => setInicio(APP.sitio));
+    Linking.getInitialURL()
+      .then((u) => setInicio(accionDe(u) ? `${APP.sitio}?accion=nuevo` : delSitio(u) || APP.sitio))
+      .catch(() => setInicio(APP.sitio));
     const sub = Linking.addEventListener('url', ({ url }) => {
       if (accionDe(url) && cargada.current) web.current?.injectJavaScript(`window.__accionDesdeApp && window.__accionDesdeApp('nuevo'); true;`);
+      else if (delSitio(url)) web.current?.injectJavaScript(`location.href = ${JSON.stringify(url)}; true;`);
     });
     return () => sub.remove();
   }, []);
@@ -76,6 +82,7 @@ export default function App() {
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const enGoogle = useRef(false);
+  useVozNativa(web);
 
   useEffect(() => {
     const t = setTimeout(() => { setLoading(false); SplashScreen.hideAsync().catch(() => {}); }, 8000);
@@ -133,6 +140,8 @@ export default function App() {
       guardarYCompartir(msg.nombre, msg.datos).catch(() => Alert.alert('No se pudo guardar el archivo', 'Probá de nuevo.'));
     else if (msg.type === 'share')
       Share.share({ title: msg.title, message: [msg.text, msg.url].filter(Boolean).join('\n') }).catch(() => {});
+    else if (msg.type === 'voz')
+      pedidoVoz(web, msg as Parameters<typeof pedidoVoz>[1]);
     else if (msg.type === 'widget')
       actualizarWidget(msg.datos === null ? null : esValido(msg.datos) ? msg.datos : null);
   }, [entrarConGoogle]);
@@ -149,7 +158,7 @@ export default function App() {
           style={[styles.web, { backgroundColor: APP.fondo }]}
           applicationNameForUserAgent={APP.agente}
           originWhitelist={['*']}
-          injectedJavaScriptBeforeContentLoaded={PUENTE}
+          injectedJavaScriptBeforeContentLoaded={PUENTE + POLYFILL_VOZ}
           onShouldStartLoadWithRequest={onShouldStart}
           onOpenWindow={onOpenWindow}
           setSupportMultipleWindows
