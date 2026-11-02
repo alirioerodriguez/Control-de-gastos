@@ -4,8 +4,8 @@
 const fs = require('fs')
 const path = require('path')
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')
-const tramo = (desde, hasta) => { const i = html.indexOf(desde); return html.slice(i, html.indexOf(hasta, i)) }
-eval(html.match(/function fechaCorta\(.*\n/)[0] + tramo('function resumenCompartido', 'function bindDividir') +
+const tramo = (nombre) => require('./tramo')(html, nombre)
+eval(html.match(/function fechaCorta\(.*\n/)[0] + tramo('compartido') +
   ';global.resumenCompartido=resumenCompartido;')
 
 const f = (n) => '$ ' + n.toLocaleString('es-AR')

@@ -4,9 +4,9 @@
 const fs = require('fs')
 const path = require('path')
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')
-const tramo = (desde, hasta) => { const i = html.indexOf(desde); return html.slice(i, html.indexOf(hasta, i)) }
+const tramo = (nombre) => require('./tramo')(html, nombre)
 global.round2 = (n) => Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100
-eval(tramo('const MESES_ABR=', '/* fin cuotas del resumen (puro) */') + ';global.cuotasDelResumen=cuotasDelResumen;global.fechaResumen=fechaResumen;global.cargosDelResumen=cargosDelResumen;')
+eval(tramo('resumen') + ';global.cuotasDelResumen=cuotasDelResumen;global.fechaResumen=fechaResumen;global.cargosDelResumen=cargosDelResumen;')
 
 const CASOS = [
   ['Visa (Galicia): "C.07/12" y columnas de pesos y dólares', `

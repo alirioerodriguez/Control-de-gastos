@@ -5,14 +5,14 @@ const fs = require('fs')
 const path = require('path')
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')
-const tramo = (desde, hasta) => { const i = html.indexOf(desde); return html.slice(i, html.indexOf(hasta, i)) }
+const tramo = (nombre) => require('./tramo')(html, nombre)
 const codigo = [
   html.match(/function diasAtras\(.*?\n/)[0],
-  tramo('const round2 =', '/* ---------- fechas locales'),
-  tramo('const p2 =', 'function mesSuma'),
+  tramo('redondeo'),
+  tramo('fechas'),
   html.match(/function mesSuma\(.*?\n/)[0],
-  tramo('function primeraCuotaMes', 'function cuotasDeTarjetaMes'),
-  tramo('const NUM_PAL=', '/* ---------------- Gemini'),
+  tramo('cuotas-tarjeta'),
+  tramo('voz'),
 ].join('\n')
 
 // lo mínimo de la app que el intérprete necesita

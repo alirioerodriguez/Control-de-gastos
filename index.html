@@ -2380,6 +2380,7 @@ const fmt2=fmt;
 function fmtCompact(n,cur){ const m=monInfo(cur||CUR);
   return (m.cripto?m.sym:"$")+new Intl.NumberFormat('es-AR',{notation:'compact',maximumFractionDigits:1}).format(Number(n)||0); }
 function money(n,cur){ return oculto ? "•••••" : fmt(n,cur); }
+/* @prueba:redondeo */
 const round2 = n => Math.round(((Number(n)||0)+Number.EPSILON)*100)/100;
 function parseMonto(v){
   if(typeof v==="number") return v;
@@ -2392,11 +2393,14 @@ function parseMonto(v){
   return parseFloat(s);
 }
 
+/* @fin:redondeo */
 /* ---------- fechas locales (no UTC) ---------- */
+/* @prueba:fechas */
 const p2 = n => String(n).padStart(2,"0");
 const isoLocal = d => `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 const todayISO = () => isoLocal(new Date());
 const curMonth = () => todayISO().slice(0,7);
+/* @fin:fechas */
 function mesSuma(mes,k){ const [y,m]=mes.split("-").map(Number); const d=new Date(y,m-1+k,1); return isoLocal(d).slice(0,7); }
 function mesAnterior(m){ return mesSuma(m,-1); }
 function addMonths(iso,k){ const d=new Date(iso+"T00:00:00"); d.setDate(1); d.setMonth(d.getMonth()+k); return isoLocal(d); }
@@ -2427,8 +2431,31 @@ function anunciar(txt){
     _vivo.style.cssText="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;font-size:11px";
     document.body.appendChild(_vivo);
   }
+  if(_vivosApagados){ _anuncioPendiente=txt; return; }
   _vivo.textContent="";
   setTimeout(()=>{ _vivo.textContent=txt; },60);
+}
+
+/* --- mientras se dicta, el lector de pantalla se calla (C8) ---
+   si TalkBack o VoiceOver leen un aviso en voz alta, su voz entra en la grabación.
+   Se apagan las regiones vivas y lo que haya que anunciar se dice al terminar. */
+let _vivosApagados=null, _anuncioPendiente="", _vivosTimer=null;
+function _apagarVivo(n){ _vivosApagados.push([n,n.getAttribute("aria-live")]); n.setAttribute("aria-live","off"); }
+function silenciarVivos(){
+  clearTimeout(_vivosTimer);
+  if(_vivosApagados) return;
+  _vivosApagados=[];
+  document.querySelectorAll("[aria-live],[role=status],[role=alert],[role=log]").forEach(_apagarVivo);
+}
+function devolverVivos(){
+  clearTimeout(_vivosTimer);
+  /* un ratito después de parar: el micrófono tarda en cerrarse del todo */
+  _vivosTimer=setTimeout(()=>{
+    if(!_vivosApagados) return;
+    _vivosApagados.forEach(([n,v])=>v===null?n.removeAttribute("aria-live"):n.setAttribute("aria-live",v));
+    _vivosApagados=null;
+    if(_anuncioPendiente){ const t=_anuncioPendiente; _anuncioPendiente=""; anunciar(t); }
+  },300);
 }
 
 /* --- contenedor de avisos --- */
@@ -2452,6 +2479,7 @@ function toast(texto, o){
     + `<div class="tx">${esc(texto)}${o.sub?`<small>${esc(o.sub)}</small>`:""}</div>`
     + (o.accion?`<button class="ac" type="button">${esc(o.accion.txt)}</button>`:"")
     + `<button class="cl" type="button" aria-label="Cerrar aviso">${icon("cerrar",16)||"×"}</button>`;
+  if(_vivosApagados) _apagarVivo(el);
   box.appendChild(el);
   anunciar(texto+(o.sub?". "+o.sub:""));
 
@@ -3548,6 +3576,7 @@ function cardLabel(c){
 function cardTitulo(c){ if(!c) return "Otra"; return c.alias ? c.alias : cardMarca(c)+(c.banco?" "+c.banco:""); }
 function cardSub(c){ if(!c) return ""; return c.alias ? cardMarca(c)+(c.banco?" "+c.banco:"") : ""; }
 // Compra antes del cierre -> primera cuota el mes siguiente. Después del cierre -> un mes más.
+/* @prueba:cuotas-tarjeta */
 function primeraCuotaMes(fechaCompra, card){
   const mes=fechaCompra.slice(0,7);
   const dia=Number(fechaCompra.slice(8,10));
@@ -3580,6 +3609,7 @@ function textoPlanCuotas(plan,total,cur){
     + `la ${plan.pagadas+1} entra en el resumen de <b>${mesLargo(plan.proxima)}</b>`
     + (quedan>1?` y la última en ${mesLargo(mesSuma(plan.primera,plan.n-1))}.`:".");
 }
+/* @fin:cuotas-tarjeta */
 function cuotasDeTarjetaMes(cardId,mes){
   const pM=Object.fromEntries(PURCH.map(p=>[p.id,p]));
   return INST.filter(x=>{ const p=pM[x.purchase_id]; return p && p.card_id===cardId && x.mes.slice(0,7)===mes; });
@@ -5846,6 +5876,7 @@ function sharedTxt(t){ return t.dividido==="pct"?`${Number(t.porcentaje)||50}/${
 function pairTxns(id){ return STXN.filter(t=>t.pair_id===id); }
 /* v6.9 · resumen de la deuda compartida para mandar por WhatsApp. `f` formatea montos (fmt con la moneda).
    movs: [{fecha, titulo, monto, pagueYo, reparto}] · bal > 0: te debe; < 0: le debés. */
+/* @prueba:compartido */
 function resumenCompartido(otro, movs, bal, alias, f){
   const nom=String(otro||"").split(" ")[0]||"";
   const ult=movs.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,15).reverse();
@@ -5855,6 +5886,7 @@ function resumenCompartido(otro, movs, bal, alias, f){
   return [`Hola ${nom}! Así vamos con los gastos compartidos:`, ...lineas, "", saldo,
     ...(bal>0 && alias ? [`Mi alias para transferir: ${alias}`] : [])].join("\n");
 }
+/* @fin:compartido */
 function bindDividir(){
   const el=$("sub-body");
   $("link-search").onclick=async()=>{ const email=$("link-email").value.trim(), box=$("link-result");
@@ -7487,6 +7519,7 @@ function openVoz(pre){
      lo anterior y sólo cuenta lo que dijiste después.
    · Lo que sobra al final es la descripción.                              */
 
+/* @prueba:voz */
 const NUM_PAL={cero:0,un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,
   nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,dieciseis:16,diecisiete:17,
   dieciocho:18,diecinueve:19,veinte:20,veintiuno:21,veintidos:22,veintitres:23,veinticuatro:24,
@@ -8340,6 +8373,7 @@ function interpretarLocal(){
 
 function vozCompleto(){ return !!(VS.length ? VS.every(x=>x.monto>0) : (V && V.monto>0)); }
 
+/* @fin:voz */
 /* ---------------- Gemini ----------------
    v5.5 · LA IA PASA A SER LA QUE DECIDE
    Antes la IA entraba sólo si el intérprete local no encontraba NINGÚN monto. Como casi
@@ -8503,6 +8537,7 @@ function iaAplicar_(d, cx){
    viejas) con un JSON en Base64 que trae el TOTAL, la fecha, el tipo de comprobante y
    el CUIT del que la emitió. Si se lee el QR, el monto y la fecha salen exactos, sin
    adivinar y sin IA. La IA (si está) completa comercio, categoría y descripción. */
+/* @prueba:factura-tipos */
 const TIPO_CMP={1:"Factura A",2:"Nota de débito A",3:"Nota de crédito A",4:"Recibo A",
   6:"Factura B",7:"Nota de débito B",8:"Nota de crédito B",9:"Recibo B",
   11:"Factura C",12:"Nota de débito C",13:"Nota de crédito C",15:"Recibo C",
@@ -8528,11 +8563,13 @@ function datosQRFactura(texto){
       cuit:String(j.cuit||""), ptoVta:j.ptoVta, nroCmp:j.nroCmp};
   }catch(e){ return null; }
 }
+/* @fin:factura-tipos */
 /* v6.7 · EL QR PARA PAGAR (EMVCo, el interoperable del BCRA)
    Las facturas de luz y gas (Edenor, Edesur, Metrogas) traen un QR para pagar con
    MODO, Mercado Pago o Cuenta DNI. Sigue el estándar EMVCo: campos "ID(2) LARGO(2) VALOR".
    Si es de monto cerrado, el campo 54 es el monto y el 59 el nombre de quien cobra.
    El 63 es un código de control (CRC16): si no coincide, la lectura salió mal y se descarta. */
+/* @prueba:factura-qr */
 function crc16EMV(t){
   let c=0xFFFF;
   for(let i=0;i<t.length;i++){ c^=t.charCodeAt(i)<<8; for(let k=0;k<8;k++) c=(c&0x8000)?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF; }
@@ -8550,6 +8587,7 @@ function datosQRPago(texto){
   const nombre=(campos["59"]||"").trim().replace(/\s+(S\.?A\.?|S\.?R\.?L\.?)$/i,"");
   return {importe:round2(monto), moneda:campos["53"]==="840"?"DOL":"PES", nombre:nombre||null};
 }
+/* @fin:factura-qr */
 let _jsQR=null;
 function cargarJsQR(){
   if(window.jsQR) return Promise.resolve(window.jsQR);
@@ -8827,6 +8865,7 @@ HISTORIAL (cómo categorizó esta persona sus últimos movimientos): ${JSON.stri
    una por una ("voy por la 7 de 12"), sube el resumen: cada renglón con "C.07/12" o "Cuota 7 de 12"
    es una compra en cuotas. Del resumen salen la cuota en la que va, cuántas son y el monto de
    cada una; el mes es el del vencimiento del resumen. */
+/* @prueba:resumen */
 const MESES_ABR={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,set:9,oct:10,nov:11,dic:12,
   jan:1,apr:4,aug:8,dec:12};
 function fechaResumen(t){
@@ -8897,6 +8936,7 @@ function cargosDelResumen(texto){
   });
   return {items, total};
 }
+/* @fin:resumen */
 /* fin cuotas del resumen (puro) */
 
 /* Lo que pasa en la app con lo leído */
@@ -9171,7 +9211,7 @@ function pararDictado(){
   quiereEscuchar=false;
   clearInterval(dictTimer); dictTimer=null;
   try{ rec && rec.stop(); }catch(e){}
-  escuchando=false; pintarBotonMic();
+  escuchando=false; pintarBotonMic(); devolverVivos();
   $("voz-estado").textContent="";
 }
 function toggleDictado(){
@@ -9179,7 +9219,7 @@ function toggleDictado(){
   ocultarAyudaTeclado();
   if(quiereEscuchar){ pararDictado(); interpretarLocal(); pintarDictado();
     reforzarIA(); return; }
-  quiereEscuchar=true; dictCortes=0;
+  quiereEscuchar=true; dictCortes=0; silenciarVivos();
   dictBase = V.texto ? V.texto+" " : "";
   dictFirme = "";
   dictDesde = performance.now();

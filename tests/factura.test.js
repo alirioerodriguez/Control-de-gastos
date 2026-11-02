@@ -4,9 +4,9 @@
 const fs = require('fs')
 const path = require('path')
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')
-const tramo = (desde, hasta) => { const i = html.indexOf(desde); return html.slice(i, html.indexOf(hasta, i)) }
+const tramo = (nombre) => require('./tramo')(html, nombre)
 global.round2 = (n) => Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100
-eval(tramo('const TIPO_CMP=', '/* v6.7 · EL QR PARA PAGAR') + tramo('function crc16EMV', 'let _jsQR=null;') + html.match(/const esQRDelComercio=.*\n/)[0] + ';global.datosQRFactura=datosQRFactura;global.datosQRPago=datosQRPago;global.crc16EMV=crc16EMV;global.esQRDelComercio=esQRDelComercio;')
+eval(tramo('factura-tipos') + tramo('factura-qr') + html.match(/const esQRDelComercio=.*\n/)[0] + ';global.datosQRFactura=datosQRFactura;global.datosQRPago=datosQRPago;global.crc16EMV=crc16EMV;global.esQRDelComercio=esQRDelComercio;')
 
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64')
 const base = { ver: 1, fecha: '2026-10-15', cuit: 30500000001, ptoVta: 4, tipoCmp: 6, nroCmp: 1532, importe: 33250.5,
