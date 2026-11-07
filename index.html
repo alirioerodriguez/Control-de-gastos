@@ -8879,6 +8879,25 @@ function fechaResumen(t){
 const RE_CUOTA=/(?:^|[^a-z0-9])(?:cuotas?|cta\.?|c\.|c(?=\s*\d))\s*(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})(?!\d)/i;
 const RE_IMPORTE=/-?\d{1,3}(?:\.\d{3})*,\d{2}(?!\d)/g;
 function importeAR(t){ return Number(String(t).replace(/\./g,"").replace(",",".")); }
+/* v6.12 · BBVA y Macro ponen la cuota sin «C.»: "12/04/26 COMERCIO 07/12 45.000,00". Solo vale si el renglón
+   empieza con una fecha y el «NN/NN» va justo antes de un importe (así «Período 12/24 consumos» no cuenta). */
+const RE_FECHA_INICIO=/^\s*\d{1,2}\s*[-./]\s*\d{1,2}(?:\s*[-./]\s*\d{2,4})?/;
+function cuotaSinPrefijo(l){
+  const ini=l.match(RE_FECHA_INICIO); if(!ini) return null;
+  const resto=l.slice(ini[0].length);
+  const m=resto.match(/\s(\d{1,2})\/(\d{1,2})(?=\s+(?:\$\s*)?-?\d{1,3}(?:\.\d{3})*,\d{2}(?!\d))/);
+  if(!m) return null;
+  return {0:m[0], 1:m[1], 2:m[2], index:ini[0].length+m.index};
+}
+/* v6.12 · fecha sin año ("18/11"): toma el año del resumen; si el mes es posterior al del resumen (compra de
+   noviembre en el resumen de enero), es del año anterior */
+function fechaSinAnio(t, ref){
+  const m=String(t||"").match(/^\s*(\d{1,2})\s*[-./]\s*(\d{1,2})(?!\s*[-./]\s*\d)/);
+  if(!m || !ref) return null;
+  const d=Number(m[1]), mes=Number(m[2]), refY=Number(ref.slice(0,4)), refM=Number(ref.slice(5,7));
+  if(mes<1 || mes>12 || d<1 || d>31) return null;
+  return `${mes>refM?refY-1:refY}-${String(mes).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+}
 function cuotasDelResumen(texto){
   const lineas=String(texto||"").split(/\n+/).map(l=>l.replace(/\s+/g," ").trim()).filter(Boolean);
   const out=[];
@@ -8891,7 +8910,7 @@ function cuotasDelResumen(texto){
   }
   if(!vence) for(const l of lineas) if(/venc|vto\b/i.test(l) && !/pr[oó]x|anterior|cae/i.test(l)){ const v=l.match(/(?:venc\w*|vto)\.?(.*)/i); vence=fechaResumen(v[1]); if(vence) break; }
   for(const l of lineas){
-    const c=l.match(RE_CUOTA); if(!c) continue;
+    const c=l.match(RE_CUOTA) || cuotaSinPrefijo(l); if(!c) continue;
     const actual=Number(c[1]), total=Number(c[2]);
     if(!(total>=2 && total<=60 && actual>=1 && actual<=total)) continue;
     const resto=l.slice(c.index+c[0].length), montos=resto.match(RE_IMPORTE);
@@ -8899,8 +8918,8 @@ function cuotasDelResumen(texto){
     const monto=importeAR(montos[0]);
     if(!(monto>0)) continue;                                   // bonificaciones y devoluciones van en negativo
     let antes=l.slice(0,c.index);
-    const f=fechaResumen(antes.slice(0,14));
-    antes=antes.replace(/^\s*\d{1,2}\s*[-./ ]\s*(\d{1,2}|[a-zA-Z]{3})[a-zA-Z]*\.?\s*[-./ ]\s*\d{2,4}/,"")
+    const f=fechaResumen(antes.slice(0,14)) || fechaSinAnio(antes, vence||cierre);
+    antes=antes.replace(/^\s*\d{1,2}\s*[-./ ]\s*(\d{1,2}|[a-zA-Z]{3})[a-zA-Z]*\.?\s*[-./ ]\s*\d{2,4}/,"").replace(RE_FECHA_INICIO,"")
       .replace(/\b\d{5,}\b/g," ").replace(/[*#]+/g," ").replace(/\s+/g," ").trim();
     const desc=antes.replace(/^[KkFf]\s+/,"").slice(0,40) || "Compra en cuotas";
     out.push({descripcion:desc, fecha:f, actual, total, monto, moneda:/u\$s|us\$|usd|d[oó]lar/i.test(l)?"USD":"ARS"});

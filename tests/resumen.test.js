@@ -62,6 +62,20 @@ Período 12/24 consumos
 Pago mínimo
 01-01-26 RARO C.13/12 1.000,00`,
     { cuotas: [] }],
+  ['BBVA: cuota sin «C.» ("07/12")', `
+Resumen de tarjeta BBVA
+Vencimiento actual 05/11/2026
+12/04/26 COMERCIO NUEVO 07/12 45.000,00
+15/10/26 FARMACIA 12.300,00`,
+    { vence: '2026-11-05', cuotas: [{ descripcion: 'COMERCIO NUEVO', actual: 7, total: 12, monto: 45000, fecha: '2026-04-12' }] }],
+  ['Resumen de enero con compras de noviembre sin año', `
+Resumen de tarjeta BBVA
+Vencimiento actual 08/01/2027
+18/11 TIENDA DEPORTES 03/03 28.500,00
+20/12 HELADERA 02/12 40.000,00`,
+    { vence: '2027-01-08', cuotas: [
+      { descripcion: 'TIENDA DEPORTES', actual: 3, total: 3, monto: 28500, fecha: '2026-11-18' },
+      { descripcion: 'HELADERA', actual: 2, total: 12, monto: 40000, fecha: '2026-12-20' }] }],
   ['Una factura común no es un resumen', `
 FACTURA B Nº 0003-00001234
 Total $ 54.231,80`,
