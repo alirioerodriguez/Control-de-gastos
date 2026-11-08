@@ -2054,8 +2054,10 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
   <div class="fld"><label>Monto</label><input id="se-monto" type="text" inputmode="decimal" placeholder="0,00"></div>
   <div class="g2">
     <div class="fld"><label>Quién pagó</label><select id="se-pagador"></select></div>
-    <div class="fld"><label>Cómo se divide</label><select id="se-dividido"><option value="ambos">Mitad y mitad</option><option value="solo_otro">Entero</option></select></div>
+    <div class="fld"><label>Cómo se divide</label><select id="se-dividido"><option value="ambos">Mitad y mitad</option><option value="pct">Por porcentaje</option><option value="solo_otro">Entero (lo debe quien no pagó)</option></select></div>
   </div>
+  <div class="fld hidden" id="se-pct-fld"><label for="se-pct">Tu parte (%)</label><input id="se-pct" type="text" inputmode="decimal" placeholder="50"></div>
+  <div class="fld" id="se-cuenta-fld"><label for="se-cuenta">De qué cuenta salió</label><select id="se-cuenta"></select></div>
   <div class="fld"><label>Fecha</label><input id="se-fecha" type="date"></div>
   <div class="hint" id="se-hint"></div>
   <div class="r2"><button class="btn ghost" style="flex:1" id="se-cancel">Cancelar</button><button class="btn" style="flex:1" id="se-save">Guardar</button></div>
@@ -2345,7 +2347,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.10.25-v6.12-switches-donde-la-veo";
+const APP_VERSION = "2026.11.08-v7.1-compartidos-en-tus-cuentas";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -3497,6 +3499,7 @@ function accountBalance(key){
   let v=0;
   TX.forEach(t=>{ if(t.cuenta===key) v+= t.tipo==="ingreso"?Number(t.monto):-Number(t.monto); });
   TRF.forEach(t=>{ if(t.origen===key) v-=Number(t.monto); if(t.destino===key) v+=Number(t.monto); });
+  v-=compartidoDeCuenta(key);
   return round2(v);
 }
 function reservado(key){ return round2(SENT.filter(s=>s.cuenta===key).reduce((a,s)=>a+Number(s.monto),0)); }
@@ -3561,6 +3564,7 @@ function totalesMes(m,cur){
   let ing=0,gas=0;
   TX.forEach(t=>{ if(t.fecha.slice(0,7)!==m) return; if(cur && (CTA_MON[t.cuenta]||"ARS")!==cur) return; if(esSaldoInicial(t)) return;
     if(t.tipo==="ingreso") ing+=Number(t.monto); else gas+=Number(t.monto); });
+  gas+=compartidoMes(m,cur||CUR).total;
   return {ing:round2(ing),gas:round2(gas)};
 }
 function ahorroMes(m,cur){ return round2(SENT.filter(s=>s.fecha.slice(0,7)===m && (!cur||(CTA_MON[s.cuenta]||"ARS")===cur)).reduce((a,s)=>a+Number(s.monto),0)); }
@@ -3850,6 +3854,7 @@ function renderAlertas(){
   /* v3.9 · presupuestos: aviso al 85% y al pasarse (mismo cálculo que la pantalla de Presupuesto) */
   if(VMONTH===mesAct){
     const sp={}; TX.forEach(t=>{ if(t.tipo==="gasto"&&t.fecha.slice(0,7)===mesAct) sp[t.categoria]=(sp[t.categoria]||0)+Number(t.monto); });
+    Object.entries(compartidoMes(mesAct,CUR).cats).forEach(([c,v])=>{ sp[c]=(sp[c]||0)+v; });
     const presu=BUD.map(b=>({cat:b.categoria,lim:Number(b.monto),g:round2(sp[b.categoria]||0)})).filter(x=>x.lim>0 && x.g>=x.lim*0.85)
       .sort((a,b)=>(b.g/b.lim)-(a.g/a.lim));
     presu.forEach(x=>{ const pct=Math.round(x.g/x.lim*100);
@@ -5253,6 +5258,7 @@ function subFijos(){
 /* --- presupuesto --- */
 function subPresu(){
   const spent={}; TX.forEach(t=>{ if(t.tipo==="gasto"&&t.fecha.slice(0,7)===VMONTH) spent[t.categoria]=(spent[t.categoria]||0)+Number(t.monto); });
+  Object.entries(compartidoMes(VMONTH,CUR).cats).forEach(([c,v])=>{ spent[c]=(spent[c]||0)+v; });
   const bm=Object.fromEntries(BUD.map(b=>[b.categoria,Number(b.monto)]));
   const cats=CATS.filter(c=>c.tipo!=="ingreso");
   return `<div class="panel pad"><div class="hint" style="margin:0 0 8px">Límites de ${mesLargo(VMONTH)}.</div>
@@ -5874,6 +5880,21 @@ function sharedOwed(t){ const m=Number(t.monto);
 function sharedDelta(t){ const owed=sharedOwed(t); return round2(t.pagado_por===user.id?owed:-round2(Number(t.monto)-owed)); }
 function sharedTxt(t){ return t.dividido==="pct"?`${Number(t.porcentaje)||50}/${100-(Number(t.porcentaje)||50)}`:(t.dividido==="ambos"?"mitad":"entero"); }
 function pairTxns(id){ return STXN.filter(t=>t.pair_id===id); }
+/* v7.1 · lo compartido entra en tus cuentas: tu parte cuenta como gasto del mes y de su categoría, y lo que pagaste
+   de una cuenta tuya sale de esa cuenta. Los pagos para saldar no son gasto: solo mueven plata y la deuda. */
+/* @prueba:compartido-cuentas */
+const SALDO_TITULO="Pago para saldar cuentas";
+function esPagoSaldo(t){ return t.titulo===SALDO_TITULO && t.dividido==="solo_otro"; }
+/* lo que le toca a quien NO pagó es sharedOwed; quien pagó pone el resto */
+function parteMia(t){ if(esPagoSaldo(t)) return 0; const owed=sharedOwed(t); return round2(t.pagado_por===user.id?Number(t.monto)-owed:owed); }
+function monedaCompartido(t){ return t.cuenta&&t.created_by===user.id ? (CTA_MON[t.cuenta]||"ARS") : "ARS"; }
+function compartidoMes(m,cur){ const cats={}; let total=0;
+  STXN.forEach(t=>{ if(String(t.fecha).slice(0,7)!==m || monedaCompartido(t)!==cur) return; const v=parteMia(t); if(!(v>0)) return;
+    total+=v; const c=t.categoria||"Compartido"; cats[c]=(cats[c]||0)+v; });
+  return {total:round2(total),cats}; }
+/* lo que salió de una cuenta tuya por gastos compartidos que pagaste vos (y por los pagos para saldar que hiciste) */
+function compartidoDeCuenta(key){ return round2(STXN.filter(t=>t.cuenta===key&&t.created_by===user.id&&t.pagado_por===user.id).reduce((a,t)=>a+Number(t.monto),0)); }
+/* @fin:compartido-cuentas */
 /* v6.9 · resumen de la deuda compartida para mandar por WhatsApp. `f` formatea montos (fmt con la moneda).
    movs: [{fecha, titulo, monto, pagueYo, reparto}] · bal > 0: te debe; < 0: le debés. */
 /* @prueba:compartido */
@@ -5938,6 +5959,20 @@ function renderPairDetail(){
   const op=otherProf(otherId(p)); box.classList.remove("hidden"); $("pair-title").textContent="Con "+op.apodo;
   const txns=pairTxns(p.id), bal=round2(txns.reduce((a,t)=>a+sharedDelta(t),0));
   $("pair-balance").textContent = bal>0?`${op.apodo} te debe ${fmt(bal,CUR)}`:(bal<0?`Le debés ${fmt(-bal,CUR)} a ${op.apodo}`:"Están al día");
+  /* v7.1 · saldar: anota el pago que cierra la deuda (no es un gasto nuevo) */
+  let sal=$("pair-saldar"); if(!sal){ $("pair-balance").insertAdjacentHTML("afterend",'<div id="pair-saldar"></div>'); sal=$("pair-saldar"); }
+  sal.innerHTML = bal ? `<button class="btn sm" id="pair-saldar-btn" style="margin:6px 0 4px">${bal<0?`Ya le pagué ${fmt(-bal,CUR)}`:`Ya me pagó ${fmt(bal,CUR)}`}</button>` : "";
+  if($("pair-saldar-btn")) $("pair-saldar-btn").onclick=async()=>{
+    const yoPago=bal<0, monto=Math.abs(bal);
+    if(!await confirmar({titulo:yoPago?`¿Le pagaste ${fmt(monto,CUR)} a ${op.apodo}?`:`¿${op.apodo} te pagó ${fmt(monto,CUR)}?`,
+      texto:"Queda anotado como pago para saldar: no suma a tus gastos y deja la cuenta en cero.",ok:"Sí, quedamos a mano"})) return;
+    const base={pair_id:p.id,fecha:todayISO(),titulo:SALDO_TITULO,monto,pagado_por:yoPago?user.id:otherId(p),dividido:"solo_otro",created_by:user.id};
+    const cuenta=yoPago?(ultimaCuenta("gasto")||null):null;
+    let {error}=await sb.from("shared_txns").insert(cuenta?{...base,cuenta}:base);
+    if(error && cuenta && /column|schema cache/i.test(error.message||"")) ({error}=await sb.from("shared_txns").insert(base));
+    if(error){ avisarError(error,"No pude anotar el pago"); return; }
+    await loadAll(); renderSub(); avisarOK("Quedaron a mano",`Con ${op.apodo} ya no hay deuda.`);
+  };
   /* v6.9 · el resumen para mandarle por WhatsApp, con tu alias si te tiene que transferir */
   const wa=$("pair-wa");
   if(wa){
@@ -5962,24 +5997,34 @@ function renderPairDetail(){
 }
 function fillPagador(sel){ const p=PAIRS.find(x=>x.id===activePairId); if(!p) return; const op=otherProf(otherId(p));
   $(sel).innerHTML=`<option value="${user.id}">${esc(myName())}</option><option value="${otherId(p)}">${esc(op.apodo)}</option>`; }
+/* el % que se escribe es TU parte; en la base, `porcentaje` es la parte de quien pagó */
+function sePctPagador(){ const mio=Math.min(100,Math.max(0,parseMonto($("se-pct").value)||50)); return $("se-pagador").value===user.id?mio:100-mio; }
 function seHint(){ const m=parseMonto($("se-monto").value)||0; const p=PAIRS.find(x=>x.id===activePairId); if(!p) return; const op=otherProf(otherId(p));
-  const d=sharedDelta({monto:m,pagado_por:$("se-pagador").value,dividido:$("se-dividido").value});
+  const pct=$("se-dividido").value==="pct";
+  $("se-pct-fld").classList.toggle("hidden",!pct);
+  $("se-cuenta-fld").classList.toggle("hidden",$("se-pagador").value!==user.id);
+  const d=sharedDelta({monto:m,pagado_por:$("se-pagador").value,dividido:$("se-dividido").value,porcentaje:pct?sePctPagador():null});
   $("se-hint").textContent = d>0?`${op.apodo} te va a deber ${fmt(d,CUR)}`:(d<0?`Le vas a deber ${fmt(-d,CUR)} a ${op.apodo}`:"No genera deuda"); }
 function openShared(id){ if(!activePairId){ toast("Elegí primero con quién",{sub:"Tocá una persona de la lista y después agregá el gasto."}); return; }
   fillPagador("se-pagador"); editingShared=id||null;
+  $("se-cuenta").innerHTML='<option value="">Ninguna (no lo descuento de una cuenta)</option>'+ACCOUNTS.map(a=>`<option value="${esc(a.key)}">${esc(a.nombre||a.key)}</option>`).join("");
   if(id){ const t=STXN.find(x=>x.id===id); if(!t) return; $("se-title").textContent="Editar gasto compartido";
     $("se-titulo").value=t.titulo; $("se-monto").value=String(t.monto).replace(".",","); $("se-pagador").value=t.pagado_por; $("se-dividido").value=t.dividido; $("se-fecha").value=t.fecha;
-  } else { $("se-title").textContent="Gasto compartido"; $("se-titulo").value=""; $("se-monto").value=""; $("se-dividido").value="ambos"; $("se-fecha").value=todayISO(); $("se-pagador").value=user.id; }
+    $("se-pct").value=t.dividido==="pct"?String(t.pagado_por===user.id?Number(t.porcentaje)||50:100-(Number(t.porcentaje)||50)):""; $("se-cuenta").value=t.created_by===user.id?(t.cuenta||""):"";
+  } else { $("se-title").textContent="Gasto compartido"; $("se-titulo").value=""; $("se-monto").value=""; $("se-dividido").value="ambos"; $("se-fecha").value=todayISO(); $("se-pagador").value=user.id; $("se-pct").value=""; $("se-cuenta").value=ultimaCuenta("gasto")||""; }
   seHint(); $("shared-ov").classList.remove("hidden"); }
 $("se-cancel").onclick=()=>$("shared-ov").classList.add("hidden");
 $("shared-ov").onclick=e=>{ if(e.target.id==="shared-ov") $("shared-ov").classList.add("hidden"); };
-["se-monto","se-pagador","se-dividido"].forEach(id=>$(id).addEventListener("input",seHint));
+["se-monto","se-pagador","se-dividido","se-pct"].forEach(id=>$(id).addEventListener("input",seHint));
 $("se-save").onclick=async()=>{ const titulo=$("se-titulo").value.trim(), monto=round2(parseMonto($("se-monto").value));
   if(!titulo){ marcarMal("se-titulo","Escribí de qué fue el gasto, por ejemplo Super o Cena."); return; } if(!(monto>0)){ marcarMal("se-monto","Escribí cuánto fue, con números. Por ejemplo 8400."); return; } botonOcupado($("se-save"),true);
+  const pct=$("se-dividido").value==="pct", pagueYo=$("se-pagador").value===user.id;
   const payload={fecha:$("se-fecha").value||todayISO(),titulo,monto,pagado_por:$("se-pagador").value,dividido:$("se-dividido").value};
-  let error;
-  if(editingShared) ({error}=await sb.from("shared_txns").update(payload).eq("id",editingShared));
-  else ({error}=await sb.from("shared_txns").insert({...payload,pair_id:activePairId,created_by:user.id}));
+  const extra={porcentaje:pct?sePctPagador():null, cuenta:pagueYo?($("se-cuenta").value||null):null};
+  const guardar=p=> editingShared ? sb.from("shared_txns").update(p).eq("id",editingShared) : sb.from("shared_txns").insert({...p,pair_id:activePairId,created_by:user.id});
+  let {error}=await guardar({...payload,...extra});
+  /* si la base todavía no tiene `cuenta` y `porcentaje`, se guarda como antes (el porcentaje queda en mitad) */
+  if(error && /column|schema cache/i.test(error.message||"")) ({error}=await guardar(pct?{...payload,dividido:"ambos"}:payload));
   botonOcupado($("se-save"),false); if(error){ avisarError(error); return; }
   $("shared-ov").classList.add("hidden"); editingShared=null; await loadAll(); if(subView==="dividir") renderSub(); };
 
@@ -6442,6 +6487,7 @@ function renderCharts(){
   if($("chart-cat")){
     const cats={}; TX.filter(t=>t.tipo==="gasto"&&t.fecha.slice(0,7)===VMONTH&&(CTA_MON[t.cuenta]||"ARS")===CUR&&!esSaldoInicial(t))
       .forEach(t=>{ const c=t.categoria||"Otros"; cats[c]=(cats[c]||0)+Number(t.monto); });
+    Object.entries(compartidoMes(VMONTH,CUR).cats).forEach(([c,v])=>{ cats[c]=(cats[c]||0)+v; });
     const ck=Object.keys(cats).sort((a,b)=>cats[b]-cats[a]); const tot=round2(ck.reduce((a,c)=>a+cats[c],0));
     if(chartCat) chartCat.destroy();
     if(ck.length){
@@ -6982,7 +7028,9 @@ $("reg-listo").onclick=async()=>{
     else if(R.tipo==="compartido"){
       const base={id:idPara("compartido"),pair_id:R.pair,fecha:R.fecha,titulo:desc||"Gasto compartido",
         monto:total,pagado_por:R.pagador||user.id,dividido:R.split,categoria:R.cat,created_by:user.id};
-      let {data:_sh,error}=await insertarUna("shared_txns",{...base,cuenta:R.cuenta,porcentaje:R.split==="pct"?R.pct:null},"id");
+      let {data:_sh,error}=await insertarUna("shared_txns",{...base,cuenta:base.pagado_por===user.id?R.cuenta:null,
+        /* en la base, `porcentaje` es la parte de quien pagó; R.pct es la tuya */
+        porcentaje:R.split==="pct"?(base.pagado_por===user.id?R.pct:100-R.pct):null},"id");
       /* si todavía no corriste el SQL nuevo, guardo igual sin esas dos columnas */
       if(error && /column|schema cache/i.test(error.message||"")){
         ({data:_sh,error}=await insertarUna("shared_txns",R.split==="pct"?{...base,dividido:"ambos"}:base,"id"));
