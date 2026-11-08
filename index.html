@@ -8405,6 +8405,7 @@ function iaContexto(){
   };
 }
 /* esquema de respuesta: el modelo no puede inventar categorías, cuentas ni tarjetas */
+/* @prueba:ia-esquema */
 function iaEnum(lista){ return lista.length ? {enum:lista} : {}; }
 function esquemaFrase(cx){
   return {type:"OBJECT", properties:{movimientos:{type:"ARRAY", items:esquemaMov(cx)}}, required:["movimientos"]};
@@ -8431,10 +8432,12 @@ const IA_REGLAS_CAT=`CATEGORÍA (lo más importante):
 - Primero mirá el HISTORIAL: si el comercio o algo parecido ya está ahí, usá esa misma categoría.
 - Si no, pensá qué es lo que se pagó (nafta → auto/transporte, farmacia → salud, Rappi → comida/salidas, Netflix → suscripciones/ocio).
 - No pongas una categoría "por las dudas": null es mejor que una equivocada.`;
+/* @fin:ia-esquema */
 async function interpretarIA(texto){
   if(!iaActiva()) return {ok:false,motivo:"sin-key"};
   const cx=iaContexto();
   const hoy=new Date();
+  /* @prueba:ia-prompt */
   const prompt=`Sos el asistente de carga de una app de finanzas personales de Argentina. La persona dictó (o escribió) un movimiento de plata y vos tenés que pasarlo a datos.
 ORDEN LIBRE: los datos pueden venir en cualquier orden (primero la categoría y después el monto, o al revés, o la fecha primero), con o sin etiquetas ("categoría: comida, monto: 5000, descripción: almuerzo"). Si dice "categoría X", usá la de la lista que corresponda a X. Lo que va detrás de "descripción" o "comercio" es ese dato, tal cual.
 El texto viene de un reconocimiento de voz: puede tener errores ("cotó" = Coto, "y pe efe" = YPF, "mercado pago" bien escrito, números pegados). Corregilos con sentido común.
@@ -8482,6 +8485,7 @@ Respondé {"movimientos":[ ... ]}. Ejemplos (con otras listas; cada flecha muest
 "me pagaron el sueldo, un millón doscientos mil" → {"tipo":"ingreso","monto":1200000,"categoria":"Sueldo","comercio":null,"descripcion":"Sueldo","cuotas":1}
 
 Frase: ${JSON.stringify(texto)}`;
+  /* @fin:ia-prompt */
   const body={contents:[{role:"user",parts:[{text:prompt}]}], generationConfig:iaConfig(esquemaFrase(cx))};
   let d;
   try{

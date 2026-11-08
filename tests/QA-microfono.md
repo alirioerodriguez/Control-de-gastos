@@ -61,6 +61,8 @@ revisá la ficha **después** de "Revisado con IA".
 
 Si la IA falla en uno, anotá la frase exacta y qué salió: con eso se ajusta el prompt.
 
+**Automático:** `GEMINI_API_KEY=... node tests/lista-b.ia.js` corre los 27 con el mismo prompt de la app, guarda las respuestas en `tests/lista-b/` y marca «CAMBIÓ» en los que dan distinto que la corrida anterior. Se puede pasar solo algunos: `node tests/lista-b.ia.js B21 B26`. Sin la clave no hace nada.
+
 ---
 
 ## C. Pruebas manuales del micrófono y la pantalla
