@@ -18,6 +18,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="/grupo.js"></script>
+<script src="/impuestos.js"></script>
 <style>
 /* ===================== Sistema visual (diseño Clara) ===================== */
 /* ===== Temas. El primero (clara) es el look original. ===== */
@@ -541,6 +542,7 @@ button.row{background:transparent;border:0;color:inherit;font:inherit;text-align
 /* título y monto en la misma línea; el detalle abajo, a todo lo ancho */
 .row .rtop{display:flex;align-items:baseline;gap:8px}
 .row .rt b{display:block;flex:1;min-width:0;font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.imp-row .rt span{white-space:normal;overflow:visible}
 .row .rt span{display:block;font-size:11px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .rv{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;flex:none}
 .row .racts{display:flex;align-items:center;gap:0;flex:none;margin-left:2px}
@@ -2347,7 +2349,7 @@ Object.assign(ICON_D,{
 const SUPABASE_URL = "https://qrtypgsyyxioakqibwmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydHlwZ3N5eXhpb2FrcWlid216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxODEzNDUsImV4cCI6MjEwMDc1NzM0NX0.94E08LS2v-j9iVC7sslj4mSr6IcqvrkmXksaz0YksX0";
 // ============================================================
-const APP_VERSION = "2026.11.08-v7.1-compartidos-en-tus-cuentas";
+const APP_VERSION = "2026.11.08-v7.2-impuestos-en-dolares";
 
 /* ---------- monedas ---------- */
 const MONEDAS=[
@@ -4891,6 +4893,7 @@ const MAS=[
   {k:"dividir",  n:"Compartido",       s:"Lo que dividís con otra persona",       ic:"gente",     col:"violet"},
   {k:"grupos",   n:"Grupos y viajes",  s:"Dividí gastos entre varios amigos",     ic:"gente",     col:"violet"},
   {k:"graficos", n:"Gráficos",         s:"Ingresos, gastos y categorías",         ic:"ingreso",   col:"teal"},
+  {k:"impuestos",n:"Impuestos en dólares", s:"Cuánto sale de verdad con tarjeta o al importar", ic:"porcentaje", col:"amber"},
   {k:"exportar", n:"Exportar a CSV",   s:"Bajate todos tus movimientos",          ic:"exportar",  col:"blue",   go:()=>$("mv-export").onclick()},
   {k:"recorrido",n:"Ver el recorrido", s:"Cómo funciona la app, paso a paso",     ic:"chispa",    col:"violet", go:()=>iniciarRecorrido()},
   {k:"pruebas",  n:"Probar la app",    s:"Ejercicios cortos para ayudarnos a mejorarla", ic:"lista", col:"violet"}
@@ -5197,6 +5200,7 @@ function renderSub(){
   if(subView==="presu") el.innerHTML=subPresu();
   if(subView==="dividir") el.innerHTML=subDividir();
   if(subView==="grupos") el.innerHTML=subGrupos();
+  if(subView==="impuestos") el.innerHTML=subImpuestos();
   if(subView==="graficos") el.innerHTML=subGraficos();
   if(subView==="tema") el.innerHTML=subTema();
   if(subView==="seguridad") el.innerHTML=subSeguridad();
@@ -5370,6 +5374,69 @@ async function grpDesdeVoz(){
   subView="grupos"; show("sub"); renderSub(); pintarFab();
 }
 const grpNombre=(gid,id)=>(grpMiembros(gid).find(m=>m.id===id)||{nombre:"?"}).nombre;
+/* --- impuestos en dólares (v7.2) ---
+   Calculadora propia con las normas de ARCA (detalle y fuentes en impuestos.js). El dólar oficial se trae de
+   dolarapi.com y se puede cambiar a mano. Es una estimación: no guarda nada. */
+let IMP={modo:"tarjeta", dolar:"", fuenteDolar:"", precio:"", tipo:"digital", iibb:"2", conDolares:false, fob:"", flete:"", arancel:"", conTarjeta:true};
+function subImpuestos(){
+  const ch=(campo,v,txt)=>`<button class="chip ${IMP[campo]===v?"on":""}" data-imp-set="${campo}" data-imp-v="${v}" aria-pressed="${IMP[campo]===v}">${txt}</button>`;
+  const sw=(campo,txt)=>`<label class="cfgrow" style="display:flex;align-items:center;gap:10px;min-height:44px"><input type="checkbox" data-imp-chk="${campo}" ${IMP[campo]?"checked":""}> <span>${txt}</span></label>`;
+  const campo=(id,label,ph,extra="")=>`<div class="fld"><label for="imp-${id}">${label}</label><input id="imp-${id}" data-imp="${id}" type="text" inputmode="decimal" placeholder="${ph}" value="${esc(IMP[id])}">${extra}</div>`;
+  return `<div class="panel pad">
+    <div class="chipsrow" role="group" aria-label="Qué querés calcular" style="margin-bottom:14px">${ch("modo","tarjeta","Suscripciones y compras con tarjeta")}${ch("modo","envio","Paquetes del exterior")}</div>
+    ${campo("dolar","Dólar oficial (venta)","1.000",`<div class="hint" id="imp-fuente">${esc(IMP.fuenteDolar||"")}</div>`)}
+    ${IMP.modo==="tarjeta" ? `
+      ${campo("precio","Precio en dólares","9,99")}
+      <div class="chipsrow" role="group" aria-label="Qué es" style="margin-bottom:14px">${ch("tipo","digital","Streaming, juegos o apps")}${ch("tipo","exterior","Compra o servicio afuera")}${ch("tipo","excluido","Salud, libros o educación")}</div>
+      ${IMP.tipo==="digital"?campo("iibb","Ingresos Brutos de tu provincia (%)","2"):""}
+      ${sw("conDolares","Lo pago con dólares propios (cuenta en dólares o stop debit)")}`
+    : `
+      ${campo("fob","Valor de lo que compraste (USD, sin envío)","120")}
+      ${campo("flete","Envío (USD)","15")}
+      ${campo("arancel","Arancel del producto (%)","0",'<div class="hint">Solo cuenta para lo que pasa de USD 400. Depende del producto: si no lo sabés, dejalo en 0.</div>')}
+      ${sw("conTarjeta","Lo pagué con tarjeta en pesos")}`}
+  </div>
+  <div class="panel pad" id="imp-res" aria-live="polite" style="margin-top:12px"></div>
+  <div class="hint" style="margin:12px 4px">Es una estimación con las normas vigentes al 08/11/2026: IVA a servicios digitales (RG 4240), percepción del 30 % (RG 5617/2024), régimen de envíos (Decreto 604/2026 y RG 5884/2026). El banco y la Aduana tienen la última palabra. El 30 % se puede descontar de Ganancias o pedir que lo devuelvan.</div>`;
+}
+function impResultado(){
+  const box=$("imp-res"); if(!box||!window.Impuestos) return;
+  const n=v=>parseMonto(String(v||""))||0, $p=v=>fmt(v,"ARS"), $u=v=>fmt(v,"USD");
+  const dolar=n(IMP.dolar);
+  if(!dolar){ box.innerHTML='<div class="hint">Falta el valor del dólar.</div>'; return; }
+  if(IMP.modo==="tarjeta"){
+    const r=Impuestos.pagoConTarjeta({precioUsd:n(IMP.precio),dolar,tipo:IMP.tipo,iibbPct:n(IMP.iibb),conDolares:IMP.conDolares});
+    if(!r.precioPesos){ box.innerHTML='<div class="hint">Escribí el precio en dólares.</div>'; return; }
+    box.innerHTML=`<div class="lbl-up">Vas a pagar</div><div class="num" style="font-size:32px;font-weight:800;margin:4px 0">${$p(r.total)}</div>
+      <div class="hint" style="margin:0 0 10px">${r.recargoPct?`${String(r.recargoPct).replace(".",",")} % más que el precio · cada dólar te sale ${$p(r.dolarFinal)}`:"Sin impuestos extra"}</div>
+      <div class="row imp-row" style="padding:6px 0"><div class="rt"><b>Precio</b></div><div class="num">${$p(r.precioPesos)}</div></div>
+      ${r.lineas.map(l=>`<div class="row imp-row" style="padding:6px 0"><div class="rt"><b>${esc(l.nombre)}</b><span>${esc(l.aclaracion||"")}</span></div><div class="num">${$p(l.pesos)}</div></div>`).join("")}`;
+  } else {
+    const r=Impuestos.envio({fobUsd:n(IMP.fob),fleteUsd:n(IMP.flete),dolar,arancelPct:n(IMP.arancel),pagadoConTarjetaEnPesos:IMP.conTarjeta});
+    if(!r.compraPesos){ box.innerHTML='<div class="hint">Escribí cuánto salió lo que compraste.</div>'; return; }
+    box.innerHTML=`${r.fueraDeRegimen?'<div class="warn" style="margin-bottom:10px">Pasa de USD 3.000: no entra como envío personal, tiene que ser una importación común.</div>':""}
+      <div class="lbl-up">Total con impuestos</div><div class="num" style="font-size:32px;font-weight:800;margin:4px 0">${$p(r.total)}</div>
+      <div class="hint" style="margin:0 0 10px">${r.dentroDeFranquicia?"Entra en la franquicia de USD 400: en la Aduana pagás solo el IVA.":`Pasa de la franquicia por ${$u(r.excedenteUsd)}: ese excedente paga arancel y estadística.`} Tenés 5 envíos por año.</div>
+      <div class="row imp-row" style="padding:6px 0"><div class="rt"><b>Compra y envío</b></div><div class="num">${$p(r.compraPesos)}</div></div>
+      ${r.lineasUsd.map(l=>`<div class="row imp-row" style="padding:6px 0"><div class="rt"><b>${esc(l.nombre)}</b><span>${$u(l.usd)} · ${esc(l.aclaracion||"")}</span></div><div class="num">${$p(l.usd*dolar)}</div></div>`).join("")}
+      ${r.percepcion?`<div class="row imp-row" style="padding:6px 0"><div class="rt"><b>Percepción 30 %</b><span>Por pagar con tarjeta en pesos; se descuenta o se pide la devolución</span></div><div class="num">${$p(r.percepcion)}</div></div>`:""}`;
+  }
+}
+async function impMontar(){
+  const el=$("sub-body");
+  el.querySelectorAll("[data-imp]").forEach(i=>i.oninput=()=>{ IMP[i.dataset.imp]=i.value; if(i.dataset.imp==="dolar") IMP.fuenteDolar="Escrito a mano"; impResultado(); });
+  el.querySelectorAll("[data-imp-chk]").forEach(i=>i.onchange=()=>{ IMP[i.dataset.impChk]=i.checked; impResultado(); });
+  el.querySelectorAll("[data-imp-set]").forEach(b=>b.onclick=()=>{ IMP[b.dataset.impSet]=b.dataset.impV; renderSub(); });
+  impResultado();
+  if(IMP.dolar) return;
+  try{
+    const r=await fetch("https://dolarapi.com/v1/dolares/oficial",{cache:"no-store"}); if(!r.ok) throw new Error(String(r.status));
+    const d=await r.json(); if(!(Number(d.venta)>0)) throw new Error("sin dato");
+    IMP.dolar=String(d.venta).replace(".",",");
+    IMP.fuenteDolar=`Oficial venta según dolarapi.com${d.fechaActualizacion?" · "+new Date(d.fechaActualizacion).toLocaleString("es-AR",{dateStyle:"short",timeStyle:"short"}):""} · lo podés cambiar.`;
+  }catch(e){ IMP.fuenteDolar="No pude traer el dólar: escribilo a mano."; }
+  if(subView==="impuestos"){ const i=$("imp-dolar"); if(i&&!i.value) i.value=IMP.dolar; const f=$("imp-fuente"); if(f) f.textContent=IMP.fuenteDolar; impResultado(); }
+}
 function subGrupos(){ return `<div id="grp-root"><div class="empty">Cargando…</div></div>`; }
 async function grpMontar(){
   const root=$("grp-root"); if(!root) return;
@@ -5586,6 +5653,7 @@ function bindSub(){
   const el=$("sub-body");
   if(subView==="honorapp") cargarHonorapp();
   if(subView==="grupos") grpMontar();
+  if(subView==="impuestos") impMontar();
   if(subView==="pruebas") bindPruebas();
   if(subView==="resultados") cargarResultados();
   if(subView==="diagnostico"){
