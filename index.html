@@ -556,6 +556,13 @@ button.row{background:transparent;border:0;color:inherit;font:inherit;text-align
 .sep{height:1px;background:var(--line-2)}
 .more{width:100%;border:0;background:var(--soft);color:var(--red-ink);font-weight:800;font-size:13px;padding:15px;display:flex;align-items:center;justify-content:center;gap:7px}
 .empty{color:var(--ink-2);font-size:13px;text-align:center;padding:26px 16px}
+.md3-demos{padding:16px;display:flex;flex-direction:column;gap:10px}
+.md3-democard{display:flex;align-items:center;gap:13px;width:100%;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:18px;padding:13px 14px;text-align:left;min-height:64px;box-shadow:var(--md-e1)}
+.md3-democard .di{width:42px;height:42px;border-radius:14px;background:var(--brand);color:var(--on-brand);display:grid;place-items:center;flex:none}
+.md3-democard .dt{flex:1;min-width:0}
+.md3-democard .dt b{display:block;font-size:14px;font-weight:800;color:var(--ink)}
+.md3-democard .dt span{display:block;font-size:12px;color:var(--ink-2);margin-top:2px;line-height:1.35}
+.md3-badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:800;background:var(--amber-bg);color:var(--amber)}
 .iconx{background:none;border:0;color:var(--ink-3);padding:4px;border-radius:8px;display:grid;place-items:center}
 .iconx:hover{color:var(--ink);background:rgba(32,30,29,.06)}
 
@@ -1657,6 +1664,7 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
       <span data-ic="tarjeta" data-ic-size="16" aria-hidden="true"></span>Cargar las cuotas desde el resumen
       <input id="res-archivo" type="file" accept="image/*,application/pdf,.pdf" style="display:none" aria-label="Elegir el resumen de la tarjeta (PDF o foto)">
     </label>
+    <div class="tiny" id="tar-cupo-ia" style="text-align:center;margin-top:6px"></div>
     <div class="sec"><b>Cuotas por mes</b></div>
     <div class="panel" id="cuotas-list"></div>
     <div style="height:6px"></div>
@@ -1804,6 +1812,7 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
       </div>
       <p class="vozhint">Escribí o dictá como hablás: "5 lucas en el chino", "2 palos del auto", "500 mangos de pan". Reconozco el monto, el comercio, la cuenta, la tarjeta, las cuotas y la fecha.<br>
         <span id="voz-hoy"></span></p>
+      <div class="tiny" id="voz-cupo" style="margin-top:6px"></div>
       <div class="vozestado" id="voz-estado"></div>
       <div class="kbdhint hidden" id="voz-teclado" role="status"></div>
       <div class="inline-err" id="voz-err"></div>
@@ -2123,6 +2132,7 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
   <h3 id="res-tit">Cuotas del resumen</h3>
   <p class="hint" id="res-sub" style="margin:0 0 12px"></p>
   <div class="hint hidden" id="res-cargos" style="margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--soft);border:1px solid var(--line)"></div>
+  <div class="hint hidden" id="res-dolares" style="margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--teal-bg);color:var(--ink);border:1px solid var(--line)"></div>
   <div class="g2">
     <div class="fld"><label>Tarjeta</label><select id="res-card"></select></div>
     <div class="fld"><label>Resumen que vence en</label><input id="res-mes" type="month"></div>
@@ -2908,6 +2918,7 @@ const CATS_DEFAULT=[
   {nombre:"Alquileres",emoji:"🏘️",icono:"edificio",tipo:"ingreso",color:"#89c2d9"},
   {nombre:"Freelance",emoji:"💻",icono:"laptop",tipo:"ingreso",color:"#b18ce8"},
   {nombre:"Intereses",emoji:"📈",icono:"grafico",tipo:"ingreso",color:"#c9a227"},
+  {nombre:"Rendimientos",emoji:"📈",icono:"grafico",tipo:"ingreso",color:"#16a34a"},
   {nombre:"Cenas",emoji:"🍝",icono:"comida",tipo:"compartido",color:"#e8837a"},
   {nombre:"Salidas",emoji:"🍻",icono:"vino",tipo:"compartido",color:"#a78bfa"},
   {nombre:"Viajes",emoji:"✈️",icono:"avion",tipo:"compartido",color:"#4fa8b8"},
@@ -2946,6 +2957,8 @@ function aplicarCVD(on){
   const mt=document.querySelector('meta[name=theme-color]');
   if(mt) mt.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--themecolor').trim()||"#0e1511");
 }
+/* al volver la conexión intenta completar las cotizaciones que hayan quedado pendientes */
+window.addEventListener("online", ()=>{ setTimeout(()=>{ completarDolaresPendientes(false).catch(()=>{}); },1500); });
 function aplicarTema(t){
   if(!TEMAS.some(x=>x.k===t)) t="clara";
   document.documentElement.setAttribute("data-theme",t);
@@ -3004,7 +3017,7 @@ const SEC_COLOR={app:"--red",movs:"--red",cal:"--red",mas:"--red",cfg:"--red",ta
 const STAT_COLOR={gasto:"--red",ingreso:"--green",ahorro:"--teal",todos:"--red"};
 const STAT_TIPO ={gasto:"gasto",ingreso:"ingreso",ahorro:"ahorro",todos:"gasto"};
 const SEC_TIPO ={tar:"tarjeta",metas:"ahorro",meta:"ahorro"};
-const SUB_COLOR={tarjetas:"--amber",dividir:"--violet",fijos:"--green",presu:"--red",categorias:"--violet",cuentas:"--blue",graficos:"--teal",tema:"--teal",perfil:"--blue"};
+const SUB_COLOR={tarjetas:"--amber",dividir:"--violet",fijos:"--green",presu:"--red",categorias:"--violet",cuentas:"--blue",graficos:"--teal",tema:"--teal",perfil:"--blue",reintegros:"--green"};
 function colorVista(){ if(vista==="movs") return STAT_COLOR[detStat]||"--red";
   return (vista==="sub" ? (SUB_COLOR[subView]||"--red") : (SEC_COLOR[vista]||"--red")); }
 function tipoVista(){ if(vista==="movs") return STAT_TIPO[detStat]||"gasto";
@@ -3726,6 +3739,64 @@ ICON_D.persona='M4.6 20.4a7.4 7.4 0 0 1 14.8 0#C12,8,4';
 pintarIconos();
 
 /* ===================== INICIO ===================== */
+/* @prueba:estado-vacio */
+const EJEMPLOS_VACIO_MD3=[
+  {id:"jerga", ic:"micro", titulo:"Probá cómo entiende jerga",
+   sub:"«Gasté 15 lucas en el súper ayer con Mercado Pago»",
+   frase:"Gasté 15 lucas en el súper ayer con Mercado Pago"},
+  {id:"resumen", ic:"tarjeta", titulo:"Subí un resumen en PDF de muestra",
+   sub:"Ordena tus cuotas rodando y detecta cargos y consumos en dólares",
+   textoResumen:`RESUMEN DE CUENTA VISA GALICIA\nCIERRE ACTUAL 24 Oct 26 VENCIMIENTO ACTUAL 05 Nov 26\n12-04-26 * 004512 MERCADOLIBRE*CELULAR C.07/12 45.000,00\n03-08-26 K 018833 FRAVEGA HELADERA C.03/06 68.500,00\n02-10-26 001234 NETFLIX.COM USD 9,99\n24-10-26 IMPUESTO DE SELLOS 3.420,50\nSALDO ACTUAL $ 116.920,50   PAGO MINIMO $ 18.000,00`},
+  {id:"qr", ic:"camara", titulo:"Escaneá un QR de ARCA de muestra",
+   sub:"Lee fecha, comprobante y monto exacto sin gastar IA",
+   urlQr:"https://www.arca.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsImZlY2hhIjoiMjAyNi0xMS0wOCIsImN1aXQiOjMwNTA2Nzk0MTY1LCJwdG9WdGEiOjQsInRpcG9DbXAiOjYsIm5yb0NtcCI6MTg0MiwiaW1wb3J0ZSI6Mjg0NTAuNzUsIm1vbmVkYSI6IlBFUyIsImN0eiI6MSwidGlwb0RvY1JlYyI6OTksIm5yb0RvY1JlYyI6MCwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjc2MTIzNDU2Nzg5MDEyfQ=="}
+];
+function htmlEstadoVacioMD3(){
+  return `<div class="md3-demos">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 2px 4px">
+      <b style="font-size:14px">Probala en 30 segundos</b>
+      <span class="md3-badge">Ejemplo · No se guardan en tu cuenta</span>
+    </div>
+    ${EJEMPLOS_VACIO_MD3.map(e=>`<button type="button" class="md3-democard tapz" data-demo="${esc(e.id)}">
+      <span class="di">${icon(e.ic,20)}</span>
+      <span class="dt"><b>${esc(e.titulo)}</b><span>${esc(e.sub)}</span></span>
+    </button>`).join("")}
+    <button type="button" class="btn sm w" id="rec-primero" style="margin-top:4px">+ Cargar mi primer movimiento real</button>
+  </div>`;
+}
+/* @fin:estado-vacio */
+
+let MODO_EJEMPLO = false;
+function correrDemoMD3(id){
+  const ej = EJEMPLOS_VACIO_MD3.find(x=>x.id===id); if(!ej) return;
+  MODO_EJEMPLO = true;
+  if(id==="jerga"){
+    openVoz(ej.frase);
+    $("voz-estado").textContent = "Ejemplo interactivo · no se guarda en tu cuenta.";
+    $("voz-guardar").textContent = "Listo, entendí el ejemplo";
+  } else if(id==="resumen"){
+    const leido = cuotasDelResumen(ej.textoResumen);
+    RES.items = leido.cuotas.map(completarCuota).map(it=>({...it, ok:true, dup:false}));
+    $("res-card").innerHTML = CARDS.length ? CARDS.map(c=>`<option value="${c.id}">${esc(cardLabel(c))}</option>`).join("") : `<option value="__demo">Visa Galicia (ejemplo)</option>`;
+    $("res-mes").value = mesDelResumen(leido);
+    $("res-pagado").checked = false;
+    $("res-err").textContent = "";
+    $("res-sub").innerHTML = `<span class="md3-badge">Ejemplo · no se guarda</span> Encontré ${RES.items.length} compras en cuotas en el PDF de muestra.`;
+    const cg = $("res-cargos"), txt = textoCargos(leido.cargos, CUR);
+    if(cg){ cg.innerHTML = txt; cg.classList.toggle("hidden", !txt); }
+    if(typeof pintarAvisoDolaresResumen==="function") pintarAvisoDolaresResumen(leido);
+    pintarResumen();
+    $("res-save").textContent = "Cerrar ejemplo";
+    $("res-ov").classList.remove("hidden");
+  } else if(id==="qr"){
+    openVoz("");
+    const q = datosQRFactura(ej.urlQr);
+    if(q){ V.comercio="Farmacity"; V.categoria="Salud"; V.descripcion="Compra en farmacia"; aplicarQRFactura(q); textoTicket(); renderVoz(); }
+    $("voz-estado").textContent = "Ejemplo de QR de ARCA (Factura B por $ 28.450,75) · no se guarda en tu cuenta.";
+    $("voz-guardar").textContent = "Listo, entendí el ejemplo";
+  }
+}
+
 function renderInicio(){
   const modo=modoTotal(), esTot=modo==="total";
   const total=cifraInicio(CUR,modo), otra=cifraInicio(CUR,esTot?"disp":"total");
@@ -3777,13 +3848,12 @@ function renderInicio(){
   renderCuentasHome();
 
   const todos=mergedMovs(), rows=todos.slice(0,10);
-  $("rec-count").textContent = todos.length ? rows.length+" de "+todos.length : "";
+  $("rec-count").textContent = todos.length ? rows.length+" de "+todos.length : "Ejemplos de 1 toque";
   $("rec-panel").innerHTML = rows.length
     ? rows.map(r=>movRow(r)).join('<div class="sep"></div>')+`<div class="sep"></div><button class="more tapz" id="ver-mas">Ver todos ${icon('chevron',16)}</button>`
-    : `<div class="empty">Todavía no hay movimientos.<br><button class="btn sm" id="rec-primero" style="margin-top:12px">Cargar el primero</button></div>`;
-  /* v2 · antes estas filas se dibujaban con movRow(r,false), que quita el data-open:
-     se veían iguales que en Movimientos pero no se podían abrir ni editar. */
+    : htmlEstadoVacioMD3();
   bindRows($("rec-panel"),"app");
+  $("rec-panel").querySelectorAll("[data-demo]").forEach(b=>b.onclick=()=>correrDemoMD3(b.dataset.demo));
   if($("ver-mas")) $("ver-mas").onclick=()=>{ detStat="todos"; show("movs"); renderMovs(); };
   if($("rec-primero")) $("rec-primero").onclick=()=>openReg(null);
 }
@@ -4312,7 +4382,9 @@ function renderCuentas(){
         </div>`:""}
         <div class="acts">
           <button class="btn ghost" data-pasar="${esc(a.key)}">${icon('transferir',15)} Pasar plata</button>
-          <button class="btn ghost" data-saldo="${esc(a.key)}">${icon('billete',15)} Ajustar saldo</button>
+          ${esCuentaRemunerada(tipoCuenta(a.key),a.nombre)
+            ? `<button class="btn ghost" data-rend="${esc(a.key)}">${icon('grafico',15)} Ajustar por rendimiento</button>`
+            : `<button class="btn ghost" data-saldo="${esc(a.key)}">${icon('billete',15)} Ajustar saldo</button>`}
           <button class="iconx" data-del-acc="${esc(a.id)}" aria-label="Borrar la cuenta ${esc(a.nombre)}">${icon('borrar',16)}</button>
         </div>
       </div>`;
@@ -4329,7 +4401,8 @@ function renderCuentas(){
   pintarIconos(el);
 
   el.querySelectorAll("[data-pasar]").forEach(b=>b.onclick=()=>nuevaTransf(b.dataset.pasar));
-  el.querySelectorAll("[data-saldo]").forEach(b=>b.onclick=()=>abrirAjusteSaldo(b.dataset.saldo));
+  el.querySelectorAll("[data-saldo]").forEach(b=>b.onclick=()=>abrirAjusteSaldo(b.dataset.saldo,false));
+  el.querySelectorAll("[data-rend]").forEach(b=>b.onclick=()=>abrirAjusteSaldo(b.dataset.rend,true));
   el.querySelectorAll("[data-del-acc]").forEach(b=>b.onclick=async()=>{
     const a=ACCOUNTS.find(x=>String(x.id)===String(b.dataset.delAcc)); if(!a) return;
     const usos=TX.filter(t=>t.cuenta===a.key).length+TRF.filter(t=>t.origen===a.key||t.destino===a.key).length+SENT.filter(x=>x.cuenta===a.key).length;
@@ -4387,21 +4460,59 @@ function renderCuentas(){
    número por atrás: el saldo sigue saliendo de los movimientos y siempre se
    puede rastrear de dónde salió cada peso.
    ========================================================================= */
-let saldoCta=null;
-function abrirAjusteSaldo(key){
+/* @prueba:rendimiento-cuenta */
+function esCuentaRemunerada(tipo, nombre){
+  if(tipo==="billetera" || tipo==="inversion") return true;
+  return /mercadopago|mercado pago|ual[aá]|naranja|personal pay|prex|belo|lemon|cocos|balanz/i.test(String(nombre||""));
+}
+function calcularAjusteRendimiento(p){
+  const actual = round2(p.saldoActual);
+  const real = round2(p.saldoBilletera);
+  const dif = round2(real - actual);
+  if(!(dif > 0)){
+    return {
+      ok: false,
+      diferencia: dif,
+      fila: null,
+      mensaje: dif === 0
+        ? `El saldo de ${p.cuentaNombre} ya coincide.`
+        : `El saldo es menor por ${fmt(Math.abs(dif), p.moneda||"ARS")}: si gastaste algo, cargalo como gasto.`
+    };
+  }
+  return {
+    ok: true,
+    diferencia: dif,
+    fila: {
+      fecha: p.fecha,
+      cuenta: p.cuentaKey,
+      tipo: "ingreso",
+      monto: dif,
+      categoria: "Rendimientos",
+      origen: "rendimiento",
+      descripcion: `Rendimiento en ${p.cuentaNombre}`
+    },
+    mensaje: `Sumo +${fmt(dif, p.moneda||"ARS")} en «Rendimientos», separado de tus ingresos por trabajo.`
+  };
+}
+/* @fin:rendimiento-cuenta */
+
+let saldoCta=null, saldoModoRend=false;
+function abrirAjusteSaldo(key, comoRendimiento){
   const a=cuentaByKey(key); if(!a) return;
-  saldoCta=key;
+  saldoCta=key; saldoModoRend=!!comoRendimiento;
   const cur=a.moneda||"ARS", sal=accountBalance(key), rsv=reservado(key);
-  $("saldo-tit").textContent=`¿Cuánto tenés en ${a.nombre}?`;
+  $("saldo-tit").textContent = saldoModoRend ? `Ajustar por rendimiento · ${a.nombre}` : `¿Cuánto tenés en ${a.nombre}?`;
   $("saldo-actual").innerHTML=`Según lo que cargaste, ahí hay <b>${fmt(sal,cur)}</b>.`
-    + (rsv>0 ? ` Incluye los ${fmt(rsv,cur)} que tenés reservados: el banco también los cuenta.` : "");
+    + (rsv>0 ? ` Incluye los ${fmt(rsv,cur)} que tenés reservados.` : "");
   $("saldo-monto").value=String(sal).replace(".",",");
-  $("saldo-dif").textContent="Poné el número que ves en tu banco o billetera.";
+  $("saldo-dif").textContent = saldoModoRend
+    ? "Escribí el saldo que te muestra hoy la billetera y anoto la diferencia en «Rendimientos»."
+    : "Poné el número que ves en tu banco o billetera.";
   $("saldo-err").textContent="";
   $("saldo-ov").classList.remove("hidden");
   setTimeout(()=>{ try{ $("saldo-monto").select(); }catch(e){} },80);
 }
-function cerrarSaldo(){ $("saldo-ov").classList.add("hidden"); saldoCta=null; }
+function cerrarSaldo(){ $("saldo-ov").classList.add("hidden"); saldoCta=null; saldoModoRend=false; }
 $("saldo-cancel").onclick=cerrarSaldo;
 $("saldo-ov").onclick=e=>{ if(e.target.id==="saldo-ov") cerrarSaldo(); };
 document.addEventListener("keydown",e=>{
@@ -4413,6 +4524,11 @@ $("saldo-monto").addEventListener("input",()=>{
   const cur=monedaCuenta(saldoCta), sal=accountBalance(saldoCta);
   const real=round2(parseMonto($("saldo-monto").value));
   const dif=round2(real-sal);
+  if(saldoModoRend){
+    const r=calcularAjusteRendimiento({cuentaKey:saldoCta, cuentaNombre:CTA_NOMBRE[saldoCta]||saldoCta, saldoActual:sal, saldoBilletera:real, fecha:todayISO(), moneda:cur});
+    $("saldo-dif").textContent = !$("saldo-monto").value.trim() ? "Escribí el saldo que te muestra hoy la billetera." : r.mensaje;
+    return;
+  }
   $("saldo-dif").textContent = !$("saldo-monto").value.trim() ? "Poné el número que ves en tu banco o billetera."
     : dif===0 ? "Ya coinciden: no hace falta ajustar nada."
     : dif>0 ? `Voy a anotar un ingreso de ${fmt(dif,cur)} para que coincida.`
@@ -4423,19 +4539,26 @@ $("saldo-save").onclick=async()=>{
   const key=saldoCta; if(!key) return;
   const txt=$("saldo-monto").value.trim();
   if(!txt){ marcarMal("saldo-monto","Escribí cuánta plata tenés ahí."); return; }
-  const cur=monedaCuenta(key), sal=accountBalance(key);
+  const cur=monedaCuenta(key), sal=accountBalance(key), nom=CTA_NOMBRE[key]||key;
   const real=round2(parseMonto(txt));
   const dif=round2(real-sal);
   if(dif===0){ avisarOK("Ya coincidía","No hizo falta anotar nada."); cerrarSaldo(); return; }
+  if(saldoModoRend && dif<0){
+    const usarAjuste = await confirmar({titulo:"El saldo es menor que el anotado",texto:`En ${nom} hay ${fmt(Math.abs(dif),cur)} menos. ¿Querés anotarlo como un ajuste de saldo (gasto)?`,ok:"Anotar ajuste"});
+    if(!usarAjuste) return;
+  }
   botonOcupado($("saldo-save"),true);
-  const {error}=await sb.from("transactions").insert({user_id:user.id, fecha:todayISO(), cuenta:key,
-    tipo: dif>0?"ingreso":"gasto", monto:Math.abs(dif), categoria:"Ajuste de saldo",
-    descripcion:`Ajuste: puse que tenía ${fmt(real,cur)}`});
+  const esRend = saldoModoRend && dif>0;
+  const fila = esRend
+    ? {...calcularAjusteRendimiento({cuentaKey:key,cuentaNombre:nom,saldoActual:sal,saldoBilletera:real,fecha:todayISO(),moneda:cur}).fila, id:nuevoId(), user_id:user.id}
+    : {id:nuevoId(), user_id:user.id, fecha:todayISO(), cuenta:key, tipo:dif>0?"ingreso":"gasto", monto:Math.abs(dif), categoria:"Ajuste de saldo", descripcion:`Ajuste: puse que tenía ${fmt(real,cur)}`};
+  const {error}=await insertarTxConDolar(fila,"id");
   botonOcupado($("saldo-save"),false);
   if(error){ errorEnCaja("saldo-err", error, "No pude guardar el saldo"); return; }
   cerrarSaldo(); await loadAll();
-  avisarOK(`${CTA_NOMBRE[key]||key} quedó en ${fmt(real,cur)}`,
-    `Anoté ${dif>0?"un ingreso":"un gasto"} de ${fmt(Math.abs(dif),cur)} en «Ajuste de saldo». Lo podés borrar desde Movimientos.`);
+  avisarOK(`${nom} quedó en ${fmt(real,cur)}`,
+    esRend ? `Anoté +${fmt(dif,cur)} en «Rendimientos», separado de tus ingresos por trabajo.`
+           : `Anoté ${dif>0?"un ingreso":"un gasto"} de ${fmt(Math.abs(dif),cur)} en «Ajuste de saldo».`);
 };
 
 /* --- crear o editar una transferencia --- */
@@ -4905,6 +5028,7 @@ const MAS=[
   {k:"grupos",   n:"Grupos y viajes",  s:"Dividí gastos entre varios amigos",     ic:"gente",     col:"violet"},
   {k:"graficos", n:"Gráficos",         s:"Ingresos, gastos y categorías",         ic:"ingreso",   col:"teal"},
   {k:"impuestos",n:"Impuestos en dólares", s:"Cuánto sale de verdad con tarjeta o al importar", ic:"porcentaje", col:"amber"},
+  {k:"reintegros",n:"Topes de reintegro", s:"Hasta cuánto pagar con cada promo para no perder tope", ic:"etiqueta", col:"green"},
   {k:"exportar", n:"Exportar a CSV",   s:"Bajate todos tus movimientos",          ic:"exportar",  col:"blue",   go:()=>$("mv-export").onclick()},
   {k:"recorrido",n:"Ver el recorrido", s:"Cómo funciona la app, paso a paso",     ic:"chispa",    col:"violet", go:()=>iniciarRecorrido()},
   {k:"pruebas",  n:"Probar la app",    s:"Ejercicios cortos para ayudarnos a mejorarla", ic:"lista", col:"violet"}
@@ -5052,7 +5176,99 @@ function rubroTxt(g){
 
 /* --- las columnas nuevas pueden no existir todavía en Supabase --- */
 let colsNuevasMissing=false;
-const COLS_NUEVAS={accounts:["tipo"], savings_goals:["tipo","rubro"]};
+const COLS_NUEVAS={accounts:["tipo"], savings_goals:["tipo","rubro"], transactions:["dolar_dia"]};
+
+/* @prueba:dolar-dia */
+function extraerVentaDolar(j){
+  if(!j || typeof j!=="object") return null;
+  const raw = j.venta != null ? j.venta : j.compra;
+  const v = typeof raw==="string" ? Number(raw.replace(",",".")) : Number(raw);
+  return (Number.isFinite(v) && v > 0) ? round2(v) : null;
+}
+function urlDolarFecha(fechaIso, hoyIso){
+  const f = String(fechaIso||"").slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(f) || f >= hoyIso) return "https://dolarapi.com/v1/dolares/bolsa";
+  const [y,m,d] = f.split("-");
+  return `https://api.argentinadatos.com/v1/cotizaciones/dolares/bolsa/${y}/${m}/${d}`;
+}
+function resolverDolarCache(fechaIso, mapa){
+  if(!mapa || typeof mapa!=="object") return null;
+  const f = String(fechaIso||"").slice(0,10);
+  if(mapa[f] > 0) return mapa[f];
+  const previas = Object.keys(mapa).filter(k=>k<=f && mapa[k]>0).sort();
+  if(previas.length) return mapa[previas[previas.length-1]];
+  const todas = Object.keys(mapa).filter(k=>mapa[k]>0).sort();
+  return todas.length ? mapa[todas[todas.length-1]] : null;
+}
+/* @fin:dolar-dia */
+
+const DOLAR_CACHE_KEY="miscuentas_dolar_mep_v1";
+const DOLAR_PEND_KEY="miscuentas_dolar_pend_v1";
+let DOLAR_CACHE={};
+try{ DOLAR_CACHE=JSON.parse(localStorage.getItem(DOLAR_CACHE_KEY)||"{}")||{}; }catch(e){ DOLAR_CACHE={}; }
+function guardarDolarCache(){ try{ localStorage.setItem(DOLAR_CACHE_KEY, JSON.stringify(DOLAR_CACHE)); }catch(e){} }
+async function obtenerDolarDelDia(fechaIso){
+  const f = String(fechaIso||todayISO()).slice(0,10);
+  if(DOLAR_CACHE[f] > 0) return DOLAR_CACHE[f];
+  try{
+    const r = await fetch(urlDolarFecha(f, todayISO()));
+    if(r.ok){
+      const v = extraerVentaDolar(await r.json());
+      if(v){ DOLAR_CACHE[f]=v; guardarDolarCache(); return v; }
+    }
+  }catch(e){}
+  /* Plan B si es fin de semana, feriado o sin red: usa la cotización hábil anterior o la de dolarapi */
+  try{
+    if(f !== todayISO()){
+      const d = new Date(f+"T12:00:00");
+      for(let k=1;k<=4;k++){
+        d.setDate(d.getDate()-1);
+        const fk = isoLocal(d);
+        if(DOLAR_CACHE[fk]>0){ DOLAR_CACHE[f]=DOLAR_CACHE[fk]; guardarDolarCache(); return DOLAR_CACHE[f]; }
+        const r2 = await fetch(urlDolarFecha(fk, todayISO()));
+        if(r2.ok){ const v2 = extraerVentaDolar(await r2.json()); if(v2){ DOLAR_CACHE[fk]=v2; DOLAR_CACHE[f]=v2; guardarDolarCache(); return v2; } }
+      }
+    }
+    const rHoy = await fetch("https://dolarapi.com/v1/dolares/bolsa");
+    if(rHoy.ok){ const vh = extraerVentaDolar(await rHoy.json()); if(vh){ DOLAR_CACHE[todayISO()]=vh; guardarDolarCache(); if(f===todayISO()) return vh; } }
+  }catch(e){}
+  return resolverDolarCache(f, DOLAR_CACHE);
+}
+async function insertarTxConDolar(fila, columnas){
+  const f = {...fila};
+  if(f.dolar_dia === undefined){
+    const d = await obtenerDolarDelDia(f.fecha || todayISO());
+    if(d > 0) f.dolar_dia = d;
+  }
+  let res = await insertarUna("transactions", f, columnas);
+  if(res.error && faltaColumna(res.error)){
+    const sin = {...f}; delete sin.dolar_dia;
+    res = await insertarUna("transactions", sin, columnas);
+  }
+  return res;
+}
+async function completarDolaresPendientes(notificar){
+  if(!user || !sb || navigator.onLine===false) return 0;
+  const faltan = TX.filter(t=>!(Number(t.dolar_dia)>0) && !esSaldoInicial(t)).slice(0,45);
+  if(!faltan.length){ if(notificar) avisarOK("Todo al día","Todos tus movimientos ya tienen la cotización de su día."); return 0; }
+  let actualizados = 0;
+  for(const t of faltan){
+    const d = await obtenerDolarDelDia(t.fecha);
+    if(!(d>0)) continue;
+    const {error} = await sb.from("transactions").update({dolar_dia:d}).eq("id",t.id);
+    if(error && faltaColumna(error)){
+      if(notificar) toast("Falta la columna dolar_dia",{sub:"Corré supabase/cotizaciones.sql en Supabase para guardar la cotización.",tipo:"err"});
+      return 0;
+    }
+    if(!error){ t.dolar_dia = d; actualizados++; }
+  }
+  if(notificar){
+    if(actualizados) avisarOK(`Completé ${actualizados} movimiento${actualizados===1?"":"s"}`,`Con el dólar MEP de cada fecha.`);
+    else toast("No pude traer las cotizaciones",{sub:"Revisá la conexión y probá de nuevo.",tipo:"err"});
+    if(subView==="graficos") renderSub();
+  }
+  return actualizados;
+}
 function faltaColumna(err){
   const m=(err&&(err.message||err.hint||""))+"";
   return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
@@ -5212,6 +5428,7 @@ function renderSub(){
   if(subView==="dividir") el.innerHTML=subDividir();
   if(subView==="grupos") el.innerHTML=subGrupos();
   if(subView==="impuestos") el.innerHTML=subImpuestos();
+  if(subView==="reintegros") el.innerHTML=subReintegros();
   if(subView==="graficos") el.innerHTML=subGraficos();
   if(subView==="tema") el.innerHTML=subTema();
   if(subView==="seguridad") el.innerHTML=subSeguridad();
@@ -5448,6 +5665,125 @@ async function impMontar(){
   }catch(e){ IMP.fuenteDolar="No pude traer el dólar: escribilo a mano."; }
   if(subView==="impuestos"){ const i=$("imp-dolar"); if(i&&!i.value) i.value=IMP.dolar; const f=$("imp-fuente"); if(f) f.textContent=IMP.fuenteDolar; impResultado(); }
 }
+/* @prueba:reintegros */
+function gastoParaAgotarTope(porcentaje, tope){
+  const p = Number(porcentaje)||0, t = Number(tope)||0;
+  if(!(p > 0) || !(t > 0)) return 0;
+  return round2(t / (p / 100));
+}
+function calcularPlanReintegro(montoCompra, promos){
+  let restante = Math.max(0, round2(Number(montoCompra)||0));
+  const activas = (promos||[])
+    .filter(x => x && x.activa !== false && Number(x.porcentaje) > 0 && Number(x.tope) > 0)
+    .slice()
+    .sort((a,b) => (Number(b.porcentaje) - Number(a.porcentaje)) || (Number(b.tope) - Number(a.tope)));
+  const pasos = [];
+  let reintegroTotal = 0;
+  for(const pr of activas){
+    if(restante <= 0) break;
+    const pct = Number(pr.porcentaje), tope = round2(Number(pr.tope));
+    const maxCompra = gastoParaAgotarTope(pct, tope);
+    const pagar = round2(Math.min(restante, maxCompra));
+    const reintegro = round2(Math.min(tope, pagar * (pct / 100)));
+    if(pagar > 0){
+      pasos.push({
+        id: pr.id,
+        medio: pr.medio,
+        porcentaje: pct,
+        tope,
+        maxCompra,
+        pagar,
+        reintegro,
+        agotoTope: pagar >= maxCompra - 0.01
+      });
+      restante = round2(restante - pagar);
+      reintegroTotal = round2(reintegroTotal + reintegro);
+    }
+  }
+  const total = Math.max(0, round2(Number(montoCompra)||0));
+  return {
+    montoCompra: total,
+    pasos,
+    sinPromo: restante,
+    reintegroTotal,
+    neto: round2(total - reintegroTotal)
+  };
+}
+/* @fin:reintegros */
+
+const PROMOS_KEY="miscuentas_promos_v1";
+let PROMOS=[], montoCompraReintegro="";
+try{ PROMOS=JSON.parse(localStorage.getItem(PROMOS_KEY)||"[]")||[]; }catch(e){ PROMOS=[]; }
+function guardarPromos(){ try{ localStorage.setItem(PROMOS_KEY, JSON.stringify(PROMOS)); }catch(e){} }
+function subReintegros(){
+  return `<div class="panel pad">
+      <div class="lbl-up">Antes de pagar en la caja</div>
+      <div class="fld" style="margin:8px 0 0"><label for="rei-compra">¿Cuánto vas a pagar en total?</label>
+        <input id="rei-compra" type="text" inputmode="decimal" placeholder="Ej: 55.000" value="${esc(montoCompraReintegro)}"></div>
+      <div id="rei-plan" aria-live="polite" style="margin-top:12px"></div>
+    </div>
+    <div class="sec" style="margin-top:16px"><b>Tus promos cargadas</b><span>${PROMOS.length}</span></div>
+    <div class="panel" id="rei-lista"></div>
+    <div class="panel pad" style="margin-top:12px">
+      <div class="lbl-up">Agregar promo a mano</div>
+      <div class="g2" style="margin-top:8px">
+        <div class="fld" style="margin:0"><label for="rei-medio">Banco o billetera</label><input id="rei-medio" type="text" placeholder="Ej: Galicia MODO"></div>
+        <div class="fld" style="margin:0"><label for="rei-dias">Días o rubro</label><input id="rei-dias" type="text" placeholder="Ej: Jueves · Súper"></div>
+        <div class="fld" style="margin:0"><label for="rei-pct">Descuento (%)</label><input id="rei-pct" type="text" inputmode="decimal" placeholder="25"></div>
+        <div class="fld" style="margin:0"><label for="rei-tope">Tope de reintegro ($)</label><input id="rei-tope" type="text" inputmode="decimal" placeholder="10.000"></div>
+      </div>
+      <div class="err" id="rei-err"></div>
+      <button class="btn w" id="rei-add" style="margin-top:8px">+ Guardar promo</button>
+      <div class="hint" style="margin-top:6px">Cargás las promos que usás vos. La app calcula hasta cuánto pagar con cada una para no pasarte del tope.</div>
+    </div>`;
+}
+function pintarReintegros(){
+  const lista=$("rei-lista"), box=$("rei-plan"); if(!lista||!box) return;
+  lista.innerHTML = PROMOS.length ? PROMOS.map(p=>{
+    const max = gastoParaAgotarTope(p.porcentaje, p.tope);
+    return `<div class="row"><div class="ri" style="background:var(--green-bg);color:var(--green)">${icon('etiqueta',16)}</div>
+      <div class="rt"><div class="rtop"><b>${esc(p.medio)} · ${String(p.porcentaje).replace(".",",")}%</b>
+        <div class="rv num" style="color:var(--green)">tope ${fmt(p.tope,"ARS")}</div></div>
+        <span>${p.dias?esc(p.dias)+" · ":""}se agota pagando <b>${fmt(max,"ARS")}</b></span></div>
+      <button class="iconx" data-rei-del="${esc(p.id)}" aria-label="Borrar promo de ${esc(p.medio)}">${icon('borrar',16)}</button></div>`;
+  }).join('<div class="sep"></div>') : `<div class="empty">Todavía no cargaste ninguna promo.<br>Agregá una acá abajo (por ejemplo: 25 % con tope de $ 10.000).</div>`;
+  pintarIconos(lista);
+  lista.querySelectorAll("[data-rei-del]").forEach(b=>b.onclick=()=>{
+    PROMOS=PROMOS.filter(x=>String(x.id)!==String(b.dataset.reiDel)); guardarPromos(); pintarReintegros();
+  });
+  const m = parseMonto(montoCompraReintegro)||0;
+  if(!PROMOS.length){ box.innerHTML=`<div class="hint">Cargá al menos una promo abajo y escribí cuánto vas a pagar.</div>`; return; }
+  if(!(m>0)){
+    box.innerHTML=PROMOS.map(p=>`<div class="hint" style="margin:4px 0">• Con <b>${esc(p.medio)}</b> (${p.porcentaje}%, tope ${fmt(p.tope,"ARS")}) aprovechás el tope entero pagando hasta <b>${fmt(gastoParaAgotarTope(p.porcentaje,p.tope),"ARS")}</b>.</div>`).join("");
+    return;
+  }
+  const plan = calcularPlanReintegro(m, PROMOS);
+  box.innerHTML = `<div class="regnota" style="--acc:var(--green);--accbg:var(--green-bg)">
+      <div><b>Te ahorrás ${fmt(plan.reintegroTotal,"ARS")}</b> · terminás pagando <b>${fmt(plan.neto,"ARS")}</b></div></div>`
+    + plan.pasos.map((p,i)=>`<div class="row" style="padding:8px 0">
+        <div class="rt"><b>${i+1}. Pagá ${fmt(p.pagar,"ARS")} con ${esc(p.medio)}</b>
+          <span>Te devuelven ${fmt(p.reintegro,"ARS")} (${p.porcentaje}%)${p.agotoTope?" · agotás el tope":""}</span></div></div>`).join('<div class="sep"></div>')
+    + (plan.sinPromo>0 ? `<div class="hint" style="margin-top:6px">Quedan <b>${fmt(plan.sinPromo,"ARS")}</b> por encima de tus topes: pagalos con el medio que te resulte más cómodo.</div>` : "");
+}
+function reintegrosMontar(){
+  const inp=$("rei-compra");
+  if(inp) inp.oninput=()=>{ montoCompraReintegro=inp.value; pintarReintegros(); };
+  if($("rei-add")) $("rei-add").onclick=()=>{
+    $("rei-err").textContent="";
+    const medio=($("rei-medio").value||"").trim(), dias=($("rei-dias").value||"").trim();
+    const pct=parseMonto($("rei-pct").value), tope=round2(parseMonto($("rei-tope").value));
+    if(!medio){ marcarMal("rei-medio","Poné el nombre del banco o la billetera.","rei-err"); return; }
+    if(!(pct>0 && pct<=100)){ marcarMal("rei-pct","Poné el porcentaje de descuento (entre 1 y 100).","rei-err"); return; }
+    if(!(tope>0)){ marcarMal("rei-tope","Poné el tope de reintegro en pesos.","rei-err"); return; }
+    PROMOS.push({id:nuevoId(), medio, dias, porcentaje:pct, tope, activa:true});
+    guardarPromos();
+    $("rei-medio").value=""; $("rei-dias").value=""; $("rei-pct").value=""; $("rei-tope").value="";
+    renderSub();
+    avisarOK("Promo guardada", `${medio} se agota a los ${fmt(gastoParaAgotarTope(pct,tope),"ARS")}.`);
+  };
+  pintarReintegros();
+}
+
 function subGrupos(){ return `<div id="grp-root"><div class="empty">Cargando…</div></div>`; }
 async function grpMontar(){
   const root=$("grp-root"); if(!root) return;
@@ -5632,9 +5968,84 @@ function grpBind(root){
     if(!await confirmar({titulo:"¿Borrar el grupo?",texto:"Se borran sus personas y todos sus gastos. No se puede deshacer.",ok:"Borrar",peligro:true})) return;
     const r=await guardar(()=>grpBorrar("grupos",gid),{err:"No pude borrar el grupo",ok:"Grupo borrado"}); if(!r.error){ grpAbierto=null; grpPintar(); } };
 }
+/* @prueba:historico */
+/* Tasas mensuales de IPC (% mensual de INDEC / serie ArgentinaDatos). Respaldo local por si no hay red. */
+/* respaldo sin conexión: IPC mensual de INDEC (nivel general, %) tal como lo publica
+   api.argentinadatos.com/v1/finanzas/indices/inflacion, consultado el 09/11/2026. Con conexión se actualiza solo. */
+const IPC_MENSUAL_BASE={
+  "2025-10":2.3,"2025-11":2.5,"2025-12":2.8,"2026-01":2.9,"2026-02":2.9,"2026-03":3.4,
+  "2026-04":2.6,"2026-05":2.1,"2026-06":1.9,"2026-07":2.1,"2026-08":1.7,"2026-09":1.9
+};
+const EXPLICACION_VISTA_HIST={
+  nominal:"Como se pagó: muestra los pesos tal cual salieron o entraron ese día.",
+  ipc:"En pesos de hoy: trae cada mes a plata de hoy con la inflación mensual (IPC de INDEC).",
+  usd:"En dólares: divide cada movimiento por el dólar MEP del día en que se hizo."
+};
+function factorIpcEntre(mesOrigen, mesDestino, mapaTasas){
+  if(!mesOrigen || !mesDestino || mesOrigen >= mesDestino) return 1;
+  const tasas = mapaTasas || IPC_MENSUAL_BASE;
+  let [y,m] = mesOrigen.slice(0,7).split("-").map(Number);
+  const [yd,md] = mesDestino.slice(0,7).split("-").map(Number);
+  let factor = 1, pasos = 0;
+  while((y < yd || (y === yd && m < md)) && pasos < 120){
+    m++; if(m > 12){ m = 1; y++; }
+    const k = `${y}-${String(m).padStart(2,"0")}`;
+    const t = Number(tasas[k]);
+    if(Number.isFinite(t) && t > -50 && t < 200) factor *= (1 + t / 100);
+    pasos++;
+  }
+  return factor;
+}
+function convertirMovimientoVista(t, modo, ctx){
+  const monto = Number(t && t.monto) || 0;
+  if(!(monto > 0)) return 0;
+  const c = ctx || {};
+  const mon = (t && t.moneda) || "ARS";
+  /* sin cotización de ese día no se inventa una: el movimiento no entra en la vista en dólares */
+  const dolar = Number(t && t.dolar_dia) || Number(c.dolarFallback) || 0;
+  if(modo === "usd"){
+    if(mon === "USD") return round2(monto);
+    return dolar > 0 ? round2(monto / dolar) : 0;
+  }
+  const baseArs = mon === "USD" ? monto * dolar : monto;
+  if(modo === "ipc"){
+    const f = factorIpcEntre(String(t.fecha||"").slice(0,7), c.mesHoy || curMonth(), c.tasasIpc);
+    return round2(baseArs * f);
+  }
+  return round2(baseArs);
+}
+/* @fin:historico */
+
+const IPC_CACHE_KEY="miscuentas_ipc_indec_v1";
+let IPC_TASAS={...IPC_MENSUAL_BASE}, histVista="nominal";
+try{ Object.assign(IPC_TASAS, JSON.parse(localStorage.getItem(IPC_CACHE_KEY)||"{}")||{}); }catch(e){}
+async function actualizarIpcIndec(){
+  try{
+    const r = await fetch("https://api.argentinadatos.com/v1/finanzas/indices/inflacion");
+    if(!r.ok) return;
+    const arr = await r.json();
+    if(Array.isArray(arr)){
+      arr.forEach(x=>{ if(x && x.fecha && Number.isFinite(Number(x.valor))) IPC_TASAS[String(x.fecha).slice(0,7)] = Number(x.valor); });
+      try{ localStorage.setItem(IPC_CACHE_KEY, JSON.stringify(IPC_TASAS)); }catch(e){}
+      if(subView==="graficos") renderCharts();
+    }
+  }catch(e){}
+}
+
 /* --- gráficos --- */
 function subGraficos(){
-  return `<div class="panel pad"><div class="sec" style="padding:0 0 12px"><b>Ingresos vs. gastos por mes</b></div><canvas id="chart-flow"></canvas></div>
+  const sinDolar = TX.filter(t=>!(Number(t.dolar_dia)>0) && !esSaldoInicial(t)).length;
+  return `<div class="panel pad">
+      <div class="sec" style="padding:0 0 8px"><b>Ingresos vs. gastos por mes</b></div>
+      <div class="chipsrow" id="hist-vistas" role="group" aria-label="Moneda del histórico" style="margin-bottom:8px">
+        <button class="chip ${histVista==="nominal"?"on":""}" data-hv="nominal" aria-pressed="${histVista==="nominal"}">Como se pagó</button>
+        <button class="chip ${histVista==="ipc"?"on":""}" data-hv="ipc" aria-pressed="${histVista==="ipc"}">En pesos de hoy</button>
+        <button class="chip ${histVista==="usd"?"on":""}" data-hv="usd" aria-pressed="${histVista==="usd"}">En dólares</button>
+      </div>
+      <div class="hint" id="hist-explicacion" style="margin:0 0 12px">${esc(EXPLICACION_VISTA_HIST[histVista]||EXPLICACION_VISTA_HIST.nominal)}</div>
+      <canvas id="chart-flow"></canvas>
+      ${histVista==="usd" && sinDolar ? `<button class="btn ghost sm w" id="hist-completar-dolar" style="margin-top:10px">Completar cotización MEP de ${sinDolar} movimiento${sinDolar===1?"":"s"} anterior${sinDolar===1?"":"es"}</button>` : ""}
+    </div>
     <div class="panel pad"><div class="sec" style="padding:0 0 12px"><b>Gastos por categoría · ${mesLargo(VMONTH)}</b></div>
     <canvas id="chart-cat"></canvas><div id="cat-legend" style="margin-top:12px"></div></div>`;
 }
@@ -5665,6 +6076,7 @@ function bindSub(){
   if(subView==="honorapp") cargarHonorapp();
   if(subView==="grupos") grpMontar();
   if(subView==="impuestos") impMontar();
+  if(subView==="reintegros") reintegrosMontar();
   if(subView==="pruebas") bindPruebas();
   if(subView==="resultados") cargarResultados();
   if(subView==="diagnostico"){
@@ -5786,7 +6198,13 @@ function bindSub(){
     });
   }
   if(subView==="dividir"){ bindDividir(); }
-  if(subView==="graficos"){ renderCharts(); setTimeout(resizeCharts,50); }
+  if(subView==="graficos"){
+    actualizarIpcIndec();
+    obtenerDolarDelDia(todayISO()).then(()=>{ if(subView==="graficos") renderCharts(); });
+    el.querySelectorAll("[data-hv]").forEach(b=>b.onclick=()=>{ histVista=b.dataset.hv; renderSub(); });
+    if($("hist-completar-dolar")) $("hist-completar-dolar").onclick=()=>completarDolaresPendientes(true);
+    renderCharts(); setTimeout(resizeCharts,50);
+  }
   if(subView==="tema"){
     el.querySelectorAll("[data-tema]").forEach(b=>b.onclick=async()=>{
       aplicarTema(b.dataset.tema); renderSub(); renderTodo();
@@ -6553,15 +6971,24 @@ function axisColor(){ return getComputedStyle(document.documentElement).getPrope
 function renderCharts(){
   const gc=axisColor();
   if($("chart-flow")){
-    const months={}; TX.forEach(t=>{ if((CTA_MON[t.cuenta]||"ARS")!==CUR || esSaldoInicial(t)) return; const k=t.fecha.slice(0,7); (months[k] ||= {ing:0,gas:0});
-      if(t.tipo==="ingreso") months[k].ing+=Number(t.monto); else months[k].gas+=Number(t.monto); });
-    const keys=Object.keys(months).sort().slice(-6);
+    const monGraf = histVista==="usd" ? "USD" : CUR;
+    const dFallback = resolverDolarCache(todayISO(), DOLAR_CACHE) || 1150;
+    const months={};
+    TX.forEach(t=>{
+      if(esSaldoInicial(t)) return;
+      const monCta = CTA_MON[t.cuenta]||"ARS";
+      if(histVista!=="usd" && monCta!==CUR) return;
+      const k=t.fecha.slice(0,7); (months[k] ||= {ing:0,gas:0});
+      const val = convertirMovimientoVista({fecha:t.fecha, monto:t.monto, moneda:monCta, dolar_dia:t.dolar_dia||resolverDolarCache(t.fecha,DOLAR_CACHE)}, histVista, {mesHoy:curMonth(), tasasIpc:IPC_TASAS, dolarFallback:dFallback});
+      if(t.tipo==="ingreso") months[k].ing+=val; else months[k].gas+=val;
+    });
+    const keys=Object.keys(months).sort().slice(-12);
     if(chartFlow) chartFlow.destroy();
     chartFlow=new Chart($("chart-flow"),{type:"bar",data:{labels:keys.map(mesCorto),datasets:[
       {label:"Ingresos",data:keys.map(k=>round2(months[k].ing)),backgroundColor:getComputedStyle(document.documentElement).getPropertyValue('--green').trim()||"#1f6640",borderRadius:6},
       {label:"Gastos",data:keys.map(k=>round2(months[k].gas)),backgroundColor:getComputedStyle(document.documentElement).getPropertyValue('--red').trim()||"#d92d0e",borderRadius:6}]},
-      options:{responsive:true,animation:{duration:700,easing:'easeOutCubic',delay:c=>(c.type==='data'&&c.mode==='default')?(c.dataIndex*130+c.datasetIndex*65):0},animations:{y:{from:c=>c.chart.scales.y.getPixelForValue(0)}},plugins:{legend:{position:"bottom",labels:{color:gc}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw,CUR)}`}}},
-        scales:{x:{ticks:{color:gc}},y:{ticks:{color:gc,callback:v=>fmtCompact(v,CUR)}}}}});
+      options:{responsive:true,animation:{duration:700,easing:'easeOutCubic',delay:c=>(c.type==='data'&&c.mode==='default')?(c.dataIndex*130+c.datasetIndex*65):0},animations:{y:{from:c=>c.chart.scales.y.getPixelForValue(0)}},plugins:{legend:{position:"bottom",labels:{color:gc}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw,monGraf)}`}}},
+        scales:{x:{ticks:{color:gc}},y:{ticks:{color:gc,callback:v=>fmtCompact(v,monGraf)}}}}});
   }
   if($("chart-cat")){
     const cats={}; TX.filter(t=>t.tipo==="gasto"&&t.fecha.slice(0,7)===VMONTH&&(CTA_MON[t.cuenta]||"ARS")===CUR&&!esSaldoInicial(t))
@@ -7118,7 +7545,7 @@ $("reg-listo").onclick=async()=>{
       if(_sh) _creados.push({t:"shared_txns",id:_sh.id});
     }
     else{
-      const {data:_nuevo,error}=await insertarUna("transactions",{id:idPara("mov"),fecha:R.fecha,cuenta:R.cuenta,tipo:R.tipo,
+      const {data:_nuevo,error}=await insertarTxConDolar({id:idPara("mov"),fecha:R.fecha,cuenta:R.cuenta,tipo:R.tipo,
         monto:total,categoria:R.cat,descripcion:desc,comercio,user_id:user.id});
       if(error) throw error;
       if(_nuevo){ marcarReciente(_nuevo.id); _creados.push({t:"transactions",id:_nuevo.id}); }   /* v3.7 · para resaltar la fila recién creada */
@@ -7524,27 +7951,106 @@ function geminiKey(){ try{ return localStorage.getItem("miscuentas_gemini_key")|
    Edge Function "gemini-proxy" está publicada con el secreto GEMINI_API_KEY, la app
    le pide todo a ella y la key nunca llega al navegador. Cuando detecta el servidor,
    borra la key vieja de este dispositivo. Sin servidor, sigue andando como antes. */
+/* @prueba:cupo-ia */
+const CUPO_IA_RELECTURAS = 15;
+const CUPO_IA_RESUMENES = 1;
+/* Lugar marcado para conectar la suscripción con un tercero más adelante (sin cobro hoy) */
+function esPro(perf){
+  const p = perf !== undefined ? perf : (typeof PROFILE !== "undefined" ? PROFILE : null);
+  return !!(p && (p.es_pro === true || p.plan === "pro" || p.plan === "combo_honorapp"));
+}
+function estadoCupoIA(guardado, mesAct, pro){
+  const g = guardado || {};
+  const mismoMes = g.mes === mesAct;
+  const relUsadas = mismoMes ? Math.max(0, Number(g.relecturasUsadas) || 0) : 0;
+  const resUsados = mismoMes ? Math.max(0, Number(g.resumenesUsados) || 0) : 0;
+  const esP = pro !== undefined ? !!pro : esPro();
+  const relRest = esP ? Infinity : Math.max(0, CUPO_IA_RELECTURAS - relUsadas);
+  const resRest = esP ? Infinity : Math.max(0, CUPO_IA_RESUMENES - resUsados);
+  return {
+    esPro: esP,
+    mes: mesAct,
+    relecturasUsadas: relUsadas,
+    relecturasRestantes: relRest,
+    resumenesUsados: resUsados,
+    resumenesRestantes: resRest,
+    puedeRelectura: esP || relRest > 0,
+    puedeResumen: esP || resRest > 0
+  };
+}
+function textoCupoRelectura(est){
+  if(!est || est.esPro) return "IA ilimitada activa en tu cuenta.";
+  if(est.relecturasRestantes <= 0)
+    return "Usaste tus 15 relecturas con IA del mes · el dictado por voz, el QR de ARCA y los gastos compartidos siguen andando gratis.";
+  return `Te quedan ${est.relecturasRestantes} ${est.relecturasRestantes===1?"relectura":"relecturas"} con IA este mes · la voz y el QR son ilimitados.`;
+}
+function textoCupoResumen(est){
+  if(!est || est.esPro) return "PDF digital gratis · IA ilimitada.";
+  if(est.resumenesRestantes <= 0)
+    return "Ya usaste el resumen por foto con IA de este mes · el PDF digital del banco sigue andando gratis.";
+  return `El PDF del banco es ilimitado · te queda ${est.resumenesRestantes} lectura de foto de resumen con IA este mes.`;
+}
+/* @fin:cupo-ia */
+
+const CUPO_IA_KEY = "miscuentas_cupo_ia_v1";
+let CUPO_IA = {mes: curMonth(), relecturasUsadas: 0, resumenesUsados: 0};
+try{ const raw=localStorage.getItem(CUPO_IA_KEY); if(raw) CUPO_IA=Object.assign(CUPO_IA, JSON.parse(raw)||{}); }catch(e){}
+function guardarCupoIA(){ try{ localStorage.setItem(CUPO_IA_KEY, JSON.stringify(CUPO_IA)); }catch(e){} }
+function cupoActual(){ return estadoCupoIA(CUPO_IA, curMonth(), esPro()); }
+function anotarUsoIA(tipo, relSrv, resSrv){
+  const m = curMonth();
+  if(CUPO_IA.mes !== m){ CUPO_IA = {mes: m, relecturasUsadas: 0, resumenesUsados: 0}; }
+  if(relSrv != null && !isNaN(relSrv)) CUPO_IA.relecturasUsadas = Number(relSrv);
+  else if(tipo !== "resumen_pdf") CUPO_IA.relecturasUsadas++;
+  if(resSrv != null && !isNaN(resSrv)) CUPO_IA.resumenesUsados = Number(resSrv);
+  else if(tipo === "resumen_pdf") CUPO_IA.resumenesUsados++;
+  guardarCupoIA(); pintarCupoIA();
+}
+function pintarCupoIA(){
+  const est = cupoActual();
+  const vc = $("voz-cupo");
+  if(vc) vc.textContent = iaActiva() ? textoCupoRelectura(est) : "Intérprete en tu teléfono y QR de ARCA: gratis y sin límite.";
+  const tc = $("tar-cupo-ia");
+  if(tc) tc.textContent = textoCupoResumen(est);
+}
+
 let IA_SERVIDOR=null;   /* null: no sé todavía · true: hay proxy con key · false: no hay */
 async function detectarIAServidor(){
-  if(IA_SERVIDOR!==null || !sb || !sb.functions) return IA_SERVIDOR;
+  if(IA_SERVIDOR!==null || !sb || !sb.functions){ pintarCupoIA(); return IA_SERVIDOR; }
   try{
-    const {data,error}=await sb.functions.invoke("gemini-proxy",{body:{ping:true}});
+    let {data,error}=await sb.functions.invoke("gemini-proxy",{body:{cupo:true}});
+    /* sin sesión o con la función vieja, {cupo} falla: se pregunta solo si está configurada */
+    if(error || !data) ({data,error}=await sb.functions.invoke("gemini-proxy",{body:{ping:true}}));
     IA_SERVIDOR = !error && !!(data&&data.configurado);
+    if(data && typeof data.relecturasUsadas==="number"){
+      CUPO_IA={mes:curMonth(), relecturasUsadas:data.relecturasUsadas, resumenesUsados:data.resumenesUsados||0};
+      guardarCupoIA();
+    }
   }catch(e){ IA_SERVIDOR=false; }
   if(IA_SERVIDOR && geminiKey()){ try{ localStorage.removeItem("miscuentas_gemini_key"); }catch(e){} }
+  pintarCupoIA();
   return IA_SERVIDOR;
 }
 function iaActiva(){ return IA_SERVIDOR===true || !!geminiKey(); }
-async function llamarGemini(body){
+async function llamarGemini(body, tipoUso){
+  const t = tipoUso === "resumen_pdf" ? "resumen_pdf" : "relectura";
+  const est = cupoActual();
+  if( t==="relectura" && !est.puedeRelectura ) throw new Error(textoCupoRelectura(est));
+  if( t==="resumen_pdf" && !est.puedeResumen ) throw new Error(textoCupoResumen(est));
   if(IA_SERVIDOR===true){
-    const {data,error}=await sb.functions.invoke("gemini-proxy",{body:{modelo:geminiModelo(),body}});
-    if(error) throw new Error(error.message||"el servidor de IA no respondió");
+    const {data,error}=await sb.functions.invoke("gemini-proxy",{body:{modelo:geminiModelo(),tipo:t,body}});
+    if(error || (data && data.error)){
+      if(data && typeof data.relecturasUsadas==="number") anotarUsoIA(t, data.relecturasUsadas, data.resumenesUsados);
+      throw new Error((data&&data.error)||error.message||"el servidor de IA no respondió");
+    }
+    anotarUsoIA(t);
     return data;
   }
   const key=geminiKey(); if(!key) throw new Error("sin-key");
   const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModelo()}:generateContent`,
     {method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify(body)});
   if(!r.ok) throw new Error("http "+r.status);
+  anotarUsoIA(t);
   return r.json();
 }
 function geminiModelo(){ let m=null; try{ m=localStorage.getItem("miscuentas_gemini_model"); }catch(e){}
@@ -9056,7 +9562,37 @@ function cuotasDelResumen(texto){
     out.push({descripcion:desc, fecha:f, actual, total, monto, moneda:/u\$s|us\$|usd|d[oó]lar/i.test(l)?"USD":"ARS"});
   }
   const esResumen = /saldo actual|pago m[ií]nimo|cierre actual|resumen de (cuenta|tarjeta)|l[ií]mite de compra/i.test(texto||"");
-  return {cuotas:out, vence, cierre, esResumen, cargos:cargosDelResumen(texto)};
+  return {cuotas:out, vence, cierre, esResumen, cargos:cargosDelResumen(texto), consumosUsd:consumosUsdDelResumen(texto, out)};
+}
+/* v7.4 · Consumos en dólares del resumen (en 1 pago o la cuota en USD del mes) para comparar dólar tarjeta vs. MEP */
+function consumosUsdDelResumen(texto, cuotasLeidas){
+  const items=[];
+  (cuotasLeidas||[]).filter(c=>c.moneda==="USD" && c.monto>0).forEach(c=>{
+    items.push({descripcion:c.descripcion, usd:c.monto});
+  });
+  String(texto||"").split(/\n+/).forEach(l0=>{
+    const l=l0.replace(/\s+/g," ").trim(), n=l.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+    if(!l || !/\b(u\$s|us\$|usd)\b/i.test(l)) return;
+    if(RE_CUOTA.test(l) || cuotaSinPrefijo(l)) return;
+    if(/saldo|pago minimo|su pago|limite|percepcion|impuesto|iva\b|interes|bonif/.test(n)) return;
+    const m=l.match(/(?:u\$s|us\$|usd)\s*(-?\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{2}))/i) || l.match(/(-?\d{1,3}(?:\.\d{3})*,\d{2})\s*$/);
+    if(!m) return;
+    const usd=importeAR(m[1].replace(".",","));
+    if(!(usd>0)) return;
+    const desc=l.replace(/^\s*\d{1,2}\s*[-./ ]\s*(\d{1,2}|[a-zA-Z]{3})[a-zA-Z]*\.?\s*[-./ ]\s*\d{2,4}/,"")
+      .replace(/(?:u\$s|us\$|usd).*$/i,"").replace(/\b\d{4,}\b/g," ").replace(/[*#]+/g," ").replace(/\s+/g," ").trim().slice(0,36) || "Consumo en USD";
+    items.push({descripcion:desc, usd});
+  });
+  const totalUsd=round2(items.reduce((a,x)=>a+x.usd,0));
+  return {items, totalUsd};
+}
+function compararPagoDolaresResumen(totalUsd, dolarOficial, dolarMep, iibbPct){
+  const usd = round2(Number(totalUsd)||0);
+  if(!(usd>0) || !(dolarOficial>0) || !(dolarMep>0) || typeof Impuestos==="undefined") return null;
+  const tar = Impuestos.pagoConTarjeta({precioUsd:usd, dolar:dolarOficial, tipo:"digital", iibbPct:Number(iibbPct)||0, conDolares:false});
+  const mepCosto = round2(usd * dolarMep);
+  const ahorro = round2(tar.total - mepCosto);
+  return {totalUsd:usd, conTarjetaArs:tar.total, conMepArs:mepCosto, ahorroArs:ahorro, dolarOficial:round2(dolarOficial), dolarMep:round2(dolarMep)};
 }
 /* v6.11 · CARGOS DEL BANCO: sellos, percepciones, IVA, intereses, comisiones y seguros del resumen.
    No son compras: se muestran aparte para que se vea cuánto se va en el banco cada mes. */
@@ -9147,8 +9683,32 @@ function abrirResumen(leido, texto){
   /* v6.11 · lo que se fue en el banco: sólo se muestra, no se carga como gasto */
   const cg=$("res-cargos"), txt=textoCargos(leido.cargos, monedaTarjeta(cardById(card)));
   if(cg){ cg.innerHTML=txt; cg.classList.toggle("hidden", !txt); }
+  pintarAvisoDolaresResumen(leido);
   pintarResumen();
   $("res-ov").classList.remove("hidden");
+}
+async function pintarAvisoDolaresResumen(leido){
+  const box=$("res-dolares"); if(!box) return;
+  const u = leido && leido.consumosUsd;
+  if(!u || !(u.totalUsd>0)){ box.innerHTML=""; box.classList.add("hidden"); return; }
+  let ofi=1050, mep=resolverDolarCache(todayISO(), DOLAR_CACHE)||1160;
+  try{
+    const [rOfi, rMep] = await Promise.all([
+      fetch("https://dolarapi.com/v1/dolares/oficial").then(r=>r.ok?r.json():null).catch(()=>null),
+      obtenerDolarDelDia(todayISO())
+    ]);
+    if(rOfi && Number(rOfi.venta)>0) ofi=Number(rOfi.venta);
+    if(rMep && Number(rMep)>0) mep=Number(rMep);
+  }catch(e){}
+  const cmp = compararPagoDolaresResumen(u.totalUsd, ofi, mep, 2);
+  if(!cmp){ box.classList.add("hidden"); return; }
+  const lista = u.items.slice(0,4).map(x=>`${esc(x.descripcion)} (${fmt(x.usd,"USD")})`).join(" · ");
+  box.innerHTML = `<b>Consumos en dólares: ${fmt(cmp.totalUsd,"USD")}</b> (${lista})<br>`
+    + `Pagando en pesos (dólar tarjeta: oficial ${fmt(cmp.dolarOficial,"ARS")} + 30 % RG 5617 + 21 % IVA RG 4240 + 2 % IIBB): <b>${fmt(cmp.conTarjetaArs,"ARS")}</b>.<br>`
+    + `Pagando con dólares propios (MEP hoy ${fmt(cmp.dolarMep,"ARS")}): <b>${fmt(cmp.conMepArs,"ARS")}</b>`
+    + (cmp.ahorroArs>0 ? ` · <b>te ahorrás ${fmt(cmp.ahorroArs,"ARS")}</b> pagando con dólares antes del vencimiento.` : ".")
+    + `<br><span class="tiny">Solo informativo: Mis Cuentas no compra dólares ni paga el resumen.</span>`;
+  box.classList.remove("hidden");
 }
 function pintarResumen(){
   const card=$("res-card").value, cur=monedaTarjeta(cardById(card)), pagado=$("res-pagado").checked, mes=$("res-mes").value;
@@ -9176,6 +9736,7 @@ function pintarResumenPie(){
 $("res-cancel").onclick=()=>$("res-ov").classList.add("hidden");
 let guardandoRes=false;
 $("res-save").onclick=async()=>{
+  if(MODO_EJEMPLO){ MODO_EJEMPLO=false; $("res-ov").classList.add("hidden"); avisarOK("Así funciona el lector de resúmenes","Cuando subas tu PDF del banco, carga todas las cuotas de una vez."); return; }
   if(guardandoRes) return;
   const sel=RES.items.filter(x=>x.ok), cardId=$("res-card").value, mes=$("res-mes").value, pagado=$("res-pagado").checked;
   if(!sel.length){ $("res-err").textContent="Tildá al menos una compra."; return; }
@@ -9245,7 +9806,7 @@ ${texto?"TEXTO EXACTO DEL PDF:\n\"\"\"\n"+texto.slice(0,8000)+"\n\"\"\"\n":""}Li
 - vencimiento: la fecha de "Vencimiento actual" (YYYY-MM-DD), no el próximo.
 - es_resumen: false si no es un resumen de tarjeta.`;
     const j=await llamarGemini({contents:[{role:"user",parts:[{inline_data:{mime_type:foto.mime,data:foto.data}},{text:prompt}]}],
-      generationConfig:{...iaConfig(esquema),maxOutputTokens:4096}});
+      generationConfig:{...iaConfig(esquema),maxOutputTokens:4096}},"resumen_pdf");
     const d=JSON.parse(iaTexto(j));
     const cuotas=(d.cuotas||[]).map(c=>({descripcion:String(c.descripcion||"Compra en cuotas").slice(0,40), fecha:/^\d{4}-\d{2}-\d{2}$/.test(c.fecha_compra||"")?c.fecha_compra:null,
       actual:Math.round(c.cuota_actual), total:Math.round(c.cuotas_total), monto:round2(Number(c.monto_cuota)), moneda:c.moneda==="USD"?"USD":"ARS"}))
@@ -9391,7 +9952,12 @@ function pintarDictado(){
 /* v5.5 · la IA lee SIEMPRE la frase al terminar, no sólo cuando faltaba el monto.
    No repite el pedido si ya leyó esa misma frase o si ya hay uno en camino. */
 function reforzarIA(forzar){
+  pintarCupoIA();
   if(!iaActiva() || !(V.texto||"").trim()) return null;
+  if(!cupoActual().puedeRelectura){
+    $("voz-estado").textContent = textoCupoRelectura(cupoActual());
+    return null;
+  }
   if(forzar!==true && V.iaHecho===V.texto) return null;
   if(vozIA && vozIA.texto===V.texto) return vozIA.p;
   const texto=V.texto;
@@ -9567,6 +10133,7 @@ function renderVozFilas(){
   $("voz").setAttribute("data-t",V.tipo);
   $("voz-guardar").disabled=!vozCompleto();
   $("voz-ia").classList.toggle("hidden", !iaActiva());
+  pintarCupoIA();
   if(V.corregido && !quiereEscuchar && $("voz-estado").textContent==="")
     $("voz-estado").textContent="Tomé lo último que dijiste.";
 }
@@ -9623,6 +10190,7 @@ function vozEditar(campo){
 
 /* ---------------- guardar ---------------- */
 async function vozGuardar(){
+  if(MODO_EJEMPLO){ MODO_EJEMPLO=false; cerrarVoz(); avisarOK("Así funciona la carga inteligente","Cuando dictes o escanees un comprobante tuyo, queda anotado en tu cuenta."); return; }
   if(guardandoVoz) return;
   /* v5.5 · si la IA todavía está leyendo la frase, se la espera (hasta 8 s). Si cambió
      algo, no se guarda a ciegas: se muestra para que lo revises y vuelvas a tocar Guardar. */
@@ -9681,7 +10249,7 @@ async function vozGuardar(){
       if(error) throw error;
       if(_sh) _creados.push({t:"shared_txns",id:_sh.id});
     } else {
-      const {data:_tx,error}=await insertarUna("transactions",{id:idVoz("mov"),fecha:V.fecha,cuenta:V.cuenta,tipo:V.tipo==="ingreso"?"ingreso":"gasto",
+      const {data:_tx,error}=await insertarTxConDolar({id:idVoz("mov"),fecha:V.fecha,cuenta:V.cuenta,tipo:V.tipo==="ingreso"?"ingreso":"gasto",
         monto:V.monto,categoria:V.categoria,descripcion:desc,comercio:V.comercio,user_id:user.id},"id");
       if(error) throw error;
       if(_tx){ _creados.push({t:"transactions",id:_tx.id}); marcarReciente(_tx.id); }
@@ -9712,6 +10280,7 @@ async function vozGuardar(){
 
 /* ---------------- enganches ---------------- */
 function cerrarVoz(){
+  MODO_EJEMPLO = false;
   if(quiereEscuchar) try{ pararDictado(); }catch(e){}
   $("voz-ov").classList.add("hidden");
 }

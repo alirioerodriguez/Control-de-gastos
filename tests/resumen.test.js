@@ -6,7 +6,8 @@ const path = require('path')
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')
 const tramo = (nombre) => require('./tramo')(html, nombre)
 global.round2 = (n) => Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100
-eval(tramo('resumen') + ';global.cuotasDelResumen=cuotasDelResumen;global.fechaResumen=fechaResumen;global.cargosDelResumen=cargosDelResumen;')
+global.Impuestos = require('../impuestos.js')
+eval(tramo('resumen') + ';global.cuotasDelResumen=cuotasDelResumen;global.fechaResumen=fechaResumen;global.cargosDelResumen=cargosDelResumen;global.compararPagoDolaresResumen=compararPagoDolaresResumen;')
 
 const CASOS = [
   ['Visa (Galicia): "C.07/12" y columnas de pesos y dólares', `
@@ -124,6 +125,12 @@ for (const [nombre, texto, esp] of CARGOS) {
 const conCargos = cuotasDelResumen(CARGOS[1][1])
 if (!conCargos.cargos || conCargos.cargos.total.ARS !== 13582) { fallas++; console.log('✗ cuotasDelResumen no devuelve los cargos') }
 
-const total = CASOS.length + CARGOS.length
+const visaConNetflix = cuotasDelResumen(CASOS[0][1])
+const cmpUsd = compararPagoDolaresResumen(visaConNetflix.consumosUsd.totalUsd, 1000, 1150, 2)
+const okUsd = visaConNetflix.consumosUsd.totalUsd === 9.99 && cmpUsd && cmpUsd.conTarjetaArs === 15284.7 && cmpUsd.conMepArs === 11488.5 && cmpUsd.ahorroArs === 3796.2
+if (!okUsd) fallas++
+console.log(okUsd ? '✓' : '✗', 'consumos en USD del resumen: detecta Netflix USD 9,99 y compara dólar tarjeta vs. MEP')
+
+const total = CASOS.length + CARGOS.length + 1
 console.log(`\n${total - fallas}/${total} bien`)
 process.exit(fallas ? 1 : 0)
