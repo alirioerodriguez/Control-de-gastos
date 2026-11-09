@@ -14,7 +14,10 @@ const CORS = {
 const json = (cuerpo: unknown, status = 200) =>
   new Response(JSON.stringify(cuerpo), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
 
-const MODELO_OK = /^gemini-[a-z0-9.\-]{1,40}$/
+// Solo los modelos que usa la app: nadie puede pedir uno más caro con la cuenta de Mis Cuentas.
+const MODELOS = new Set(['gemini-3.5-flash', 'gemini-3.5-flash-lite'])
+// Pedidos por persona cada 24 horas (cada dictado o foto es uno o dos). Ver supabase/uso-ia.sql.
+const TOPE_DIA = 200
 const MAX_BYTES = 12 * 1024 * 1024 // una foto de ticket ya achicada pesa ~0,5 MB
 
 Deno.serve(async (req) => {
@@ -37,7 +40,16 @@ Deno.serve(async (req) => {
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!)
   const { data: quien } = await db.auth.getUser(token)
   if (!quien?.user) return json({ error: 'Iniciá sesión para usar la IA.' }, 401)
-  if (!cuerpo.modelo || !MODELO_OK.test(cuerpo.modelo) || !cuerpo.body) return json({ error: 'Falta el modelo o el pedido.' }, 400)
+  if (!cuerpo.modelo || !MODELOS.has(cuerpo.modelo) || !cuerpo.body) return json({ error: 'Falta el modelo o el pedido.' }, 400)
+
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+  const { count } = await admin
+    .from('uso_ia')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', quien.user.id)
+    .gte('at', new Date(Date.now() - 24 * 3600 * 1000).toISOString())
+  if ((count ?? 0) >= TOPE_DIA) return json({ error: 'Llegaste al máximo de cargas con IA por hoy. Mañana vuelve a andar.' }, 429)
+  await admin.from('uso_ia').insert({ user_id: quien.user.id })
 
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cuerpo.modelo}:generateContent`, {
     method: 'POST',
