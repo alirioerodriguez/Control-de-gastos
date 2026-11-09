@@ -23,5 +23,5 @@
 
 ## Pendiente
 
-- **Publicar el tope de la IA:** correr `supabase/uso-ia.sql` en el SQL Editor y volver a publicar la función `gemini-proxy` (con verificación de JWT, como hasta ahora). El orden no importa: si la función se publica antes que la tabla, sigue andando sin tope.
+- **Tope de la IA publicado el 09/11/2026** (tabla `uso_ia` creada y `gemini-proxy` v2 con verificación de JWT). Probado: sin sesión responde 401. El proyecto todavía **no tiene cargado el secreto `GEMINI_API_KEY`** (la función responde «configurado: false»), así que hoy la IA usa la clave que cada persona guarda en su dispositivo; el modelo permitido y el tope de 200 por día se van a poder ver andando recién cuando se cargue ese secreto.
 - **Protección contra contraseñas filtradas** de Supabase: requiere el plan Pro.
