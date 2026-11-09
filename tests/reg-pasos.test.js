@@ -6,10 +6,10 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')
 
 const casos = [
   ['el paso 1 oculta categoría, cuenta, fecha, descripción y guardar',
-    /#reg\[data-paso="1"\] :is\(\.regrow,#reg-extra,#reg-varios-row,#reg-quick,#reg-hint,#reg-listo\)\{display:none !important\}/.test(html)],
-  ['el paso 2 oculta los tipos, el teclado y el botón Siguiente',
-    /#reg\[data-paso="2"\] :is\(#reg-tipos,#reg-keys,#reg-sig,#reg-del,#reg-mic,#reg-cam\)\{display:none !important\}/.test(html)],
-  ['hay botón Siguiente al lado de Guardar', html.includes('<button class="btn" id="reg-sig"') && html.includes('id="reg-listo"')],
+    /#reg\[data-paso="1"\] :is\(\.regrow,#reg-extra,#reg-quick,#reg-hint,#reg-listo\)\{display:none !important\}/.test(html)],
+  ['el paso 2 oculta los tipos, el teclado, el primer botón y «Cargar varios»',
+    /#reg\[data-paso="2"\] :is\(#reg-tipos,#reg-keys,#reg-sig,#reg-del,#reg-mic,#reg-cam,#reg-varios-row\)\{display:none !important\}/.test(html)],
+  ['el botón del paso 1 dice lo mismo que el de guardar', html.includes('<button class="btn" id="reg-sig"') && html.includes('$("reg-sig").textContent = $("reg-listo").textContent;')],
   ['con monto cargado desde otra pantalla arranca en el paso 2', html.includes('paso: montoPre ? 2 : 1')],
   ['Siguiente no deja pasar sin monto', /\$\("reg-sig"\)\.onclick=[\s\S]{0,300}if\(!\(regTotal\(\)>0\)\)/.test(html)],
   ['atrás en el paso 2 vuelve al monto en vez de cerrar', /\$\("reg-back"\)\.onclick=\(\)=>\{ if\(R\.paso===2\)\{ R\.paso=1; renderReg\(\); return; \}/.test(html)],

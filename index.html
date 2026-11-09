@@ -288,9 +288,9 @@
 #reg .nums button:active,#reg .ops button:active{transform:scale(.96)}
 #reg #reg-listo{background:var(--acc);color:var(--on-accent);height:54px;font-size:15px}
 /* v8.0 · la carga en 2 pasos: 1) monto y tipo, 2) categoría y el resto. En pantallas chicas no entraba todo junto. */
-#reg[data-paso="1"] :is(.regrow,#reg-extra,#reg-varios-row,#reg-quick,#reg-hint,#reg-listo){display:none !important}
+#reg[data-paso="1"] :is(.regrow,#reg-extra,#reg-quick,#reg-hint,#reg-listo){display:none !important}
 #reg[data-paso="1"] #reg-chips-top:not(:has(.frec)){display:none}
-#reg[data-paso="2"] :is(#reg-tipos,#reg-keys,#reg-sig,#reg-del,#reg-mic,#reg-cam){display:none !important}
+#reg[data-paso="2"] :is(#reg-tipos,#reg-keys,#reg-sig,#reg-del,#reg-mic,#reg-cam,#reg-varios-row){display:none !important}
 #reg[data-paso="2"] #reg-disp{cursor:pointer}
 #reg .regpaso{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.75;margin-left:auto}
 #reg.escribiendo .teclado{display:none}
@@ -1923,7 +1923,7 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
     </div>
     <!-- v3.2 · las dos formas de cargar viven al lado del botón de guardar, no arriba -->
     <div class="regbtns">
-      <button class="btn" id="reg-sig" style="flex:1">Siguiente</button>
+      <button class="btn" id="reg-sig" style="flex:1">Guardar gasto</button>
       <button class="btn" id="reg-listo" style="flex:1">Guardar gasto</button>
       <button class="vozic" id="reg-mic" aria-label="Dictar el gasto por voz" title="Dictar" data-ic="micro" data-ic-size="19"></button>
       <button class="vozic" id="reg-cam" aria-label="Cargar la foto de un ticket" title="Foto del ticket" data-ic="camara" data-ic-size="19"></button>
@@ -7372,6 +7372,7 @@ function renderReg(){
     : esC ? "Guardar compartido"
     : esT ? regTextosTarjeta(cur).boton
     : T==="ingreso" ? "Guardar ingreso" : "Guardar gasto";
+  $("reg-sig").textContent = $("reg-listo").textContent;
 }
 /* refresco liviano: no re-crea los inputs que estás tipeando */
 function renderRegSoft(){
@@ -7380,7 +7381,7 @@ function renderRegSoft(){
   if(R.tipo==="tarjeta"){
     const tx=regTextosTarjeta(cur);
     if(nota) nota.querySelector("span:last-child").innerHTML=tx.nota;
-    $("reg-sub").textContent=tx.sub; $("reg-listo").textContent=tx.boton;
+    $("reg-sub").textContent=tx.sub; $("reg-listo").textContent=tx.boton; $("reg-sig").textContent=tx.boton;
   }
 }
 function splitDelta(total){
