@@ -12,7 +12,7 @@ export type DatosWidget = {
 
 export const URL_APP = 'miscuentas://inicio';
 export const URL_NUEVO = 'miscuentas://nuevo';
-export const COLOR = { fondo: '#2b2723', texto: '#ffffff', suave: '#c9c3bc', acento: '#e4572e' } as const;
+export const COLOR = { fondo: '#0e1511', texto: '#f0fdf4', suave: '#a7c4b2', acento: '#1dea00', textoAcento: '#0e1511' } as const;
 
 const archivo = () => new File(Paths.document, 'widget.json');
 

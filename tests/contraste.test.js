@@ -54,6 +54,7 @@ const pares = (t) => [
   ['texto suave sobre la cabecera oscura', 'on-dark-3', 'dark', TEXTO],
   ...colores.map((c) => [`${c} claro (versión para la cabecera oscura)`, `${c}-hi`, 'dark', TEXTO]),
   ['texto sobre los botones de acento', 'on-accent', 'red', TEXTO],
+  ['texto sobre los botones de marca', 'on-brand', 'brand', TEXTO],
   ['borde de los campos sobre las tarjetas', 'line-in', 'card', NO_TEXTO],
   ['borde de los campos sobre el fondo', 'line-in', 'bg', NO_TEXTO],
   ['anillo de foco sobre las tarjetas', 'foco', 'card', NO_TEXTO],

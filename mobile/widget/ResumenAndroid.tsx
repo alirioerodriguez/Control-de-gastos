@@ -30,7 +30,7 @@ export function ResumenAndroid({ datos }: { datos: DatosWidget }) {
           accessibilityLabel="Cargar un gasto"
           style={{ backgroundColor: COLOR.acento, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 }}
         >
-          <TextWidget text="+ Gasto" style={{ fontSize: 14, fontWeight: '700', color: COLOR.texto }} />
+          <TextWidget text="+ Gasto" style={{ fontSize: 14, fontWeight: '700', color: COLOR.textoAcento }} />
         </FlexWidget>
       </FlexWidget>
     </FlexWidget>

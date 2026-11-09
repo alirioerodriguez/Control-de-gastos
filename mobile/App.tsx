@@ -183,7 +183,7 @@ export default function App() {
           <View style={[styles.cover, { backgroundColor: APP.fondo }]}>
             <Text style={[styles.title, { color: APP.texto }]}>Sin conexión</Text>
             <Text style={styles.text}>Revisá tu internet y probá de nuevo.</Text>
-            <Pressable style={[styles.btn, { backgroundColor: APP.acento }]} onPress={retry}><Text style={styles.btnText}>Reintentar</Text></Pressable>
+            <Pressable style={[styles.btn, { backgroundColor: APP.acento }]} onPress={retry}><Text style={[styles.btnText, { color: (APP as { textoBoton?: string }).textoBoton ?? '#ffffff' }]}>Reintentar</Text></Pressable>
           </View>
         )}
       </SafeAreaView>

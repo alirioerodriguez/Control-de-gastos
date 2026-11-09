@@ -13,9 +13,9 @@ export type PropsResumen = {
 // usa tiene que estar adentro (nada de constantes importadas de otros archivos; solo componentes y modificadores).
 export function ResumenIOS(props: PropsResumen, env: WidgetEnvironment) {
   'widget';
-  const fondo = '#2b2723';
-  const suave = '#c9c3bc';
-  const acento = '#e4572e';
+  const fondo = '#0e1511';
+  const suave = '#a7c4b2';
+  const acento = '#1dea00';
   const hay = !!(props && props.disponible);
   const chico = !!env && env.widgetFamily === 'systemSmall';
   return (
@@ -37,7 +37,7 @@ export function ResumenIOS(props: PropsResumen, env: WidgetEnvironment) {
         {!chico && hay ? <Text modifiers={[font({ size: 11 }), foregroundStyle(suave)]}>{`Act. ${props.actualizado}`}</Text> : null}
         <Spacer />
         <Link destination="miscuentas://nuevo">
-          <Text modifiers={[font({ size: 14, weight: 'bold' }), foregroundStyle('#ffffff'), padding({ horizontal: 12, vertical: 6 }), background(acento), cornerRadius(14)]}>+ Gasto</Text>
+          <Text modifiers={[font({ size: 14, weight: 'bold' }), foregroundStyle('#0e1511'), padding({ horizontal: 12, vertical: 6 }), background(acento), cornerRadius(14)]}>+ Gasto</Text>
         </Link>
       </HStack>
     </VStack>

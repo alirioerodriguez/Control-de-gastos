@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "miscuentas",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#f1efec",
+    "backgroundColor": "#0e1511",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ar.alirio.miscuentas",
@@ -20,8 +20,9 @@
     "android": {
       "package": "ar.alirio.miscuentas",
       "adaptiveIcon": {
-        "backgroundColor": "#2b2723",
-        "foregroundImage": "./assets/android-icon.png"
+        "backgroundColor": "#1DEA00",
+        "foregroundImage": "./assets/android-icon.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "versionCode": 1000,
@@ -54,7 +55,7 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 120,
           "resizeMode": "contain",
-          "backgroundColor": "#2b2723"
+          "backgroundColor": "#0e1511"
         }
       ],
       [

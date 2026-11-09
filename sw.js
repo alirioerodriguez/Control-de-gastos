@@ -1,6 +1,6 @@
 // Service worker de Mis Cuentas: solo guarda la pantalla principal para que la app abra sin conexión.
 // Todo lo demás (Supabase, fuentes, librerías) va siempre a la red, como antes.
-const CACHE = 'mis-cuentas-v1'
+const CACHE = 'mis-cuentas-v2'
 const PANTALLA = '/'
 
 self.addEventListener('install', (e) => {
