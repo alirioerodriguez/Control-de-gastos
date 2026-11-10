@@ -998,7 +998,7 @@ input[type=checkbox]:focus-visible{outline:3px solid var(--acc);outline-offset:2
 .plan-aho{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:5px 11px;border-radius:999px;
   background:rgba(255,255,255,.08);font-size:13px;font-weight:700;color:var(--on-dark-2)}
 .plan-aho span{color:var(--teal-hi);display:grid;place-items:center}
-.plan-aho b{color:var(--teal-hi);font-weight:800}
+.plan-aho b{color:var(--on-dark);font-weight:800}   /* axe: el teal-hi sobre la pastilla (cabecera + 8 % de blanco) no llegaba a 4,5:1 en 3 temas */
 .planseg button{flex:1 1 auto;min-width:0;min-height:44px;border:0;border-radius:999px;background:transparent;color:var(--on-dark-2);
   font-size:clamp(11.5px,3.3vw,13px);letter-spacing:-.01em;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;transition:background .16s ease,color .16s ease}
 .planseg button.on{background:var(--card);color:var(--ink);box-shadow:var(--md-e1)}
@@ -1611,8 +1611,8 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
     <div class="panel pad">
       <div class="fld" style="margin:0"><input id="f-text" type="text" aria-label="Buscar entre tus movimientos" placeholder="Buscar categoría, comercio, cuenta, meta…" autocomplete="off"></div>
       <div class="g2" style="margin-top:10px">
-        <div class="fld" style="margin:0"><select id="f-cuenta"><option value="">Todas las cuentas</option></select></div>
-        <div class="fld" style="margin:0"><select id="f-cat"><option value="">Todas las categorías</option></select></div>
+        <div class="fld" style="margin:0"><select id="f-cuenta" aria-label="Filtrar por cuenta"><option value="">Todas las cuentas</option></select></div>
+        <div class="fld" style="margin:0"><select id="f-cat" aria-label="Filtrar por categoría"><option value="">Todas las categorías</option></select></div>
       </div>
       <div class="tiny" id="mv-count" style="margin-top:10px"></div>
     </div>
@@ -1894,11 +1894,11 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
     <div class="regrow">
       <label class="regsel" id="reg-sel-wrap">
         <span class="ic" id="reg-sel-ic" data-ic="billetera" data-ic-size="16"></span>
-        <select id="reg-sel"></select>
+        <select id="reg-sel" aria-label="Cuenta, tarjeta o quién pagó"></select>
         <span class="ch" data-ic="chevron" data-ic-size="14"></span>
       </label>
       <button class="regdate" id="reg-fecha-btn"><span data-ic="calendario" data-ic-size="15"></span><span id="reg-fecha-txt">Hoy</span></button>
-      <input id="reg-fecha" type="date" class="fecha-oculta">
+      <input id="reg-fecha" type="date" class="fecha-oculta" aria-label="Fecha del movimiento">
     </div>
     <div class="regrow" id="reg-row-comercio">
       <span class="regdescico" data-ic="tienda" data-ic-size="15"></span>
