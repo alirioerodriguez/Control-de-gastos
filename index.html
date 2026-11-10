@@ -592,7 +592,9 @@ button.row{background:transparent;border:0;color:inherit;font:inherit;text-align
 /* formularios */
 .fld{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
 .fld label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
-.fld input,.fld select{border:1px solid var(--line-in);border-radius:16px;padding:13px 14px;background:var(--card);color:var(--ink);font-size:15px;width:100%;min-height:48px}
+.fld input,.fld select,.fld textarea{border:1px solid var(--line-in);border-radius:16px;padding:13px 14px;background:var(--card);color:var(--ink);font-size:15px;width:100%;min-height:48px;font-family:inherit}
+.fld textarea{min-height:140px;resize:vertical;line-height:1.45}
+.fld textarea:focus-visible{outline:3px solid var(--foco);outline-offset:1px;border-color:transparent}
 .fld input:focus-visible,.fld select:focus-visible{outline:3px solid var(--foco);outline-offset:1px;border-color:transparent}
 .btn{border:0;border-radius:16px;padding:15px 18px;background:var(--brand);color:var(--on-brand);font-weight:800;font-size:15px;min-height:48px}
 .btn.ghost{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
@@ -3025,7 +3027,7 @@ const SEC_COLOR={app:"--red",movs:"--red",cal:"--red",mas:"--red",cfg:"--red",ta
 const STAT_COLOR={gasto:"--red",ingreso:"--green",ahorro:"--teal",todos:"--red"};
 const STAT_TIPO ={gasto:"gasto",ingreso:"ingreso",ahorro:"ahorro",todos:"gasto"};
 const SEC_TIPO ={tar:"tarjeta",metas:"ahorro",meta:"ahorro"};
-const SUB_COLOR={tarjetas:"--amber",dividir:"--violet",fijos:"--green",presu:"--red",categorias:"--violet",cuentas:"--blue",graficos:"--teal",tema:"--teal",perfil:"--blue",reintegros:"--green"};
+const SUB_COLOR={tarjetas:"--amber",dividir:"--violet",fijos:"--green",presu:"--red",categorias:"--violet",cuentas:"--blue",graficos:"--teal",escucharte:"--green",tema:"--teal",perfil:"--blue",reintegros:"--green"};
 function colorVista(){ if(vista==="movs") return STAT_COLOR[detStat]||"--red";
   return (vista==="sub" ? (SUB_COLOR[subView]||"--red") : (SEC_COLOR[vista]||"--red")); }
 function tipoVista(){ if(vista==="movs") return STAT_TIPO[detStat]||"gasto";
@@ -5041,6 +5043,7 @@ const MAS=[
   {k:"reintegros",n:"Topes de reintegro", s:"Hasta cuánto pagar con cada promo para no perder tope", ic:"etiqueta", col:"green"},
   {k:"exportar", n:"Exportar a CSV",   s:"Bajate todos tus movimientos",          ic:"exportar",  col:"blue",   go:()=>$("mv-export").onclick()},
   {k:"recorrido",n:"Ver el recorrido", s:"Cómo funciona la app, paso a paso",     ic:"chispa",    col:"violet", go:()=>iniciarRecorrido()},
+  {k:"escucharte",n:"Queremos escucharte", s:"Contanos una idea, algo que no anda o lo que quieras", ic:"chispa", col:"green"},
   {k:"pruebas",  n:"Probar la app",    s:"Ejercicios cortos para ayudarnos a mejorarla", ic:"lista", col:"violet"}
 ];
 /* v3.3 · Ajustes se parte con una regla que se dice en una frase:
@@ -5439,6 +5442,7 @@ function renderSub(){
   if(subView==="grupos") el.innerHTML=subGrupos();
   if(subView==="impuestos") el.innerHTML=subImpuestos();
   if(subView==="reintegros") el.innerHTML=subReintegros();
+  if(subView==="escucharte") el.innerHTML=subEscucharte();
   if(subView==="graficos") el.innerHTML=subGraficos();
   if(subView==="tema") el.innerHTML=subTema();
   if(subView==="seguridad") el.innerHTML=subSeguridad();
@@ -5725,6 +5729,41 @@ const PROMOS_KEY="miscuentas_promos_v1";
 let PROMOS=[], montoCompraReintegro="";
 try{ PROMOS=JSON.parse(localStorage.getItem(PROMOS_KEY)||"[]")||[]; }catch(e){ PROMOS=[]; }
 function guardarPromos(){ try{ localStorage.setItem(PROMOS_KEY, JSON.stringify(PROMOS)); }catch(e){} }
+/* --- «Queremos escucharte»: la sugerencia llega al panel de Alirio (App de apps). Solo se manda lo que la persona escribe,
+   el tipo, la versión y, si quiere, su mail: nada de sus cuentas ni movimientos. --- */
+const SUGERIR_URL="https://app-de-apps-alirio.vercel.app/api/sugerir";
+let sugTipo="idea";
+function subEscucharte(){
+  const t=(k,txt)=>`<button type="button" class="chip ${sugTipo===k?"on":""}" data-sug-tipo="${k}" aria-pressed="${sugTipo===k}">${txt}</button>`;
+  return `<div class="panel pad">
+      <p class="hint" style="margin:0 0 12px">Mis Cuentas la hacemos entre todos. Contanos qué te gustaría, qué no anda o qué cambiarías: lo leemos todo.</p>
+      <div class="chipsrow" role="group" aria-label="Qué nos querés contar" style="margin-bottom:12px">${t("idea","Una idea")}${t("problema","Algo no anda")}${t("otra","Otra cosa")}</div>
+      <div class="fld"><label for="sug-texto">Tu mensaje</label><textarea id="sug-texto" maxlength="2000" placeholder="Por ejemplo: me gustaría poder cargar gastos desde el reloj"></textarea></div>
+      <div class="fld"><label for="sug-mail">Tu mail (opcional, si querés que te respondamos)</label><input id="sug-mail" type="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="nombre@ejemplo.com"></div>
+      <input id="sug-web" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
+      <button class="btn w" id="sug-enviar" type="button">Enviar</button>
+      <p class="hint" style="margin:10px 0 0">No mandamos nada de tus cuentas ni de tus movimientos: solo lo que escribas acá.</p>
+    </div>`;
+}
+function escucharteMontar(){
+  document.querySelectorAll("[data-sug-tipo]").forEach(b=>b.onclick=()=>{ sugTipo=b.dataset.sugTipo;
+    document.querySelectorAll("[data-sug-tipo]").forEach(x=>{ const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-pressed",String(on)); }); });
+  $("sug-enviar").onclick=async()=>{
+    const texto=$("sug-texto").value.trim(), mail=$("sug-mail").value.trim();
+    if(texto.length<3){ marcarMal("sug-texto","Escribí un poco más, así entendemos qué nos querés contar."); return; }
+    if(mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)){ marcarMal("sug-mail","Revisá el mail: tiene que ser como nombre@ejemplo.com."); return; }
+    botonOcupado($("sug-enviar"),true);
+    try{
+      const r=await fetch(SUGERIR_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({app:"mis-cuentas",tipo:sugTipo,texto,mail,web:$("sug-web").value,version:APP_VERSION})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j.error||"No se pudo enviar");
+      $("sug-texto").value=""; $("sug-mail").value="";
+      avisarOK("¡Gracias! Ya nos llegó","Lo vamos a leer con atención.");
+    }catch(e){ toast("No se pudo enviar",{sub:navigator.onLine===false?"Estás sin conexión. Probá cuando vuelva.":e.message,tipo:"err"}); }
+    finally{ botonOcupado($("sug-enviar"),false); }
+  };
+}
 function subReintegros(){
   return `<div class="panel pad">
       <div class="lbl-up">Antes de pagar en la caja</div>
@@ -6087,6 +6126,7 @@ function bindSub(){
   if(subView==="grupos") grpMontar();
   if(subView==="impuestos") impMontar();
   if(subView==="reintegros") reintegrosMontar();
+  if(subView==="escucharte") escucharteMontar();
   if(subView==="pruebas") bindPruebas();
   if(subView==="resultados") cargarResultados();
   if(subView==="diagnostico"){
