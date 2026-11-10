@@ -2142,6 +2142,7 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
 <div id="res-ov" class="ov hidden" role="dialog" aria-modal="true" aria-labelledby="res-tit"><div class="sheet">
   <h3 id="res-tit">Cuotas del resumen</h3>
   <p class="hint" id="res-sub" style="margin:0 0 12px"></p>
+  <div class="hint hidden" id="res-aviso" role="alert" style="margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--amber-bg);color:var(--ink);border:1px solid var(--amber)"></div>
   <div class="hint hidden" id="res-cargos" style="margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--soft);border:1px solid var(--line)"></div>
   <div class="hint hidden" id="res-dolares" style="margin:0 0 12px;padding:10px 12px;border-radius:12px;background:var(--teal-bg);color:var(--ink);border:1px solid var(--line)"></div>
   <div class="g2">
@@ -9403,16 +9404,6 @@ function cargarPdfJs(){
   return _pdfjs ||= import(PDFJS_URL+"pdf.min.mjs").then(m=>{ m.GlobalWorkerOptions.workerSrc=PDFJS_URL+"pdf.worker.min.mjs"; return m; })
     .catch(e=>{ _pdfjs=null; throw new Error("no pude abrir el lector de PDF"); });
 }
-/* el texto de una página, armado en renglones (pdf.js lo da en pedacitos sueltos) */
-function renglonesPDF(items){
-  const filas=[];
-  items.filter(it=>it.str && it.str.trim()).forEach(it=>{
-    const y=it.transform[5], x=it.transform[4];
-    let f=filas.find(r=>Math.abs(r.y-y)<3); if(!f){ f={y,partes:[]}; filas.push(f); }
-    f.partes.push({x,t:it.str});
-  });
-  return filas.sort((a,b)=>b.y-a.y).map(f=>f.partes.sort((a,b)=>a.x-b.x).map(p=>p.t).join(" ").replace(/\s+/g," ").trim()).join("\n");
-}
 async function leerPDF(file){
   const pdfjs=await cargarPdfJs();
   const doc=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()), isEvalSupported:false}).promise;
@@ -9629,9 +9620,79 @@ function fechaSinAnio(t, ref){
   if(mes<1 || mes>12 || d<1 || d>31) return null;
   return `${mes>refM?refY-1:refY}-${String(mes).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 }
+/* v7.6 · FILAS DEL PDF POR COORDENADA Y. pdf.js entrega el texto en pedacitos sueltos y, en tablas como la de
+   Santander, el orden lineal mezcla las filas. Se agrupan los pedazos que comparten la altura (Y) —con una
+   tolerancia de 3 unidades, porque cada columna puede venir con 1 punto de diferencia— y se ordenan por X.
+   Si el resumen trae una cabecera con «Pesos» y «Dólares», el importe cuyo centro cae del lado de «Dólares» sale
+   con el prefijo «USD», así el renglón no depende de que el banco escriba la moneda en la descripción. */
+function renglonesPDF(items){
+  const piezas=(items||[]).filter(it=>it && it.str && String(it.str).trim() && it.transform)
+    .map(it=>({x:it.transform[4], y:it.transform[5], w:it.width||0, t:String(it.str)}))
+    .sort((a,b)=>b.y-a.y);
+  const filas=[];
+  piezas.forEach(p=>{
+    const f=filas[filas.length-1];
+    if(f && Math.abs(f.y-p.y)<=3) f.partes.push(p); else filas.push({y:p.y, partes:[p]});
+  });
+  const sinTilde=t=>t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  let colPesos=null, colUsd=null;
+  return filas.map(f=>{
+    f.partes.sort((a,b)=>a.x-b.x);
+    const pe=f.partes.find(p=>sinTilde(p.t)==="pesos"), us=f.partes.find(p=>/^(dolares|usd|u\$s|us\$)$/.test(sinTilde(p.t)));
+    if(pe && us){ colPesos=pe.x+pe.w/2; colUsd=us.x+us.w/2; }
+    else if(colPesos!==null) f.partes.forEach(p=>{
+      if(/^-?\d{1,3}(?:\.\d{3})*,\d{2}$/.test(p.t.trim()) && Math.abs(p.x+p.w/2-colUsd)<Math.abs(p.x+p.w/2-colPesos)) p.t="USD "+p.t.trim();
+    });
+    return f.partes.map(p=>p.t).join(" ").replace(/\s+/g," ").trim();
+  }).filter(Boolean).join("\n");
+}
+/* v7.6 · UNA PLANTILLA POR EMISOR, detectada por el encabezado. Lo que cambia entre bancos lo resuelve el
+   lector común (C.07/12, Cuota 04/06, Cta. 05/10, «07/12» a secas; DD-MM-AA, DD/MM/AAAA, DD-Mon-AA); lo que
+   hace falta saber del emisor es lo que NO se puede deducir de la línea:
+   ICBC Mastercard pone el monto original en dólares dentro de la descripción y el importe del renglón está en pesos. */
+const PLANTILLAS_RESUMEN=[
+  {id:"icbc", nombre:"ICBC", re:/\bicbc\b/, usdEnDescripcion:true},
+  {id:"galicia", nombre:"Galicia", re:/galicia/},
+  {id:"santander", nombre:"Santander", re:/santander/},
+  {id:"bbva", nombre:"BBVA", re:/\bbbva\b/},
+  {id:"naranja", nombre:"Naranja", re:/naranja/},
+];
+function emisorDelResumen(texto){
+  const lineas=String(texto||"").split(/\n+/).map(l=>l.trim()).filter(Boolean);
+  const sinTilde=t=>t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const buscar=t=>PLANTILLAS_RESUMEN.filter(p=>p.re.test(sinTilde(t)));
+  const enCab=buscar(lineas.slice(0,15).join("\n"));
+  if(enCab.length===1) return enCab[0];
+  if(enCab.length>1) return null;                                  // dos emisores en el encabezado: no se adivina
+  const en=buscar(lineas.join("\n"));
+  return en.length===1 ? en[0] : null;
+}
+/* v7.6 · ¿LA SUMA CUADRA? Saldo anterior + movimientos (consumos, cargos, bonificaciones y pagos, con su signo) debe dar
+   el saldo actual centavo a centavo. Los renglones en dólares no entran: van en su propia columna. Si falta el saldo
+   anterior, el actual o los renglones, dice «sin-datos» en vez de dar por buena una lectura que no se pudo comprobar. */
+const RE_MOV_FECHA=/^\s*\d{1,2}\s*[-./ ]\s*(?:\d{1,2}|(?:ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic|jan|apr|aug|dec)[a-z]*\.?)(?:\s*[-./ ]\s*\d{2,4})?(?!\d)/i;
+function validarSumaResumen(texto, plantilla){
+  let ant=null, act=null, mov=0, n=0, usd=0;
+  String(texto||"").split(/\n+/).map(l=>l.replace(/\s+/g," ").trim()).filter(Boolean).forEach(l=>{
+    const tras=(re)=>{ const m=l.match(re); if(!m) return undefined; const i=l.slice(m.index+m[0].length).match(/-?\d{1,3}(?:\.\d{3})*,\d{2}(?!\d)/); return i?importeAR(i[0]):undefined; };
+    if(ant===null && /saldo\s+anterior/i.test(l)){ const v=tras(/saldo\s+anterior/i); if(v!==undefined) ant=v; return; }
+    if(act===null && /saldo\s+actual|total\s+a\s+pagar|saldo\s+al\s+cierre/i.test(l)){ const v=tras(/saldo\s+actual|total\s+a\s+pagar|saldo\s+al\s+cierre/i); if(v!==undefined) act=v; return; }
+    const fechado=RE_MOV_FECHA.test(l), pago=/^\s*(?:su\s+)?pagos?\b(?!\s+m[ií]nimo)/i.test(l);
+    if(!fechado && !pago) return;
+    const montos=[...l.matchAll(RE_IMPORTE)].filter(m=>!/^\s*%/.test(l.slice(m.index+m[0].length)));
+    if(!montos.length) return;
+    let monto=importeAR(montos[montos.length-1][0]);
+    if(!fechado) monto=-Math.abs(monto);                           // «SU PAGO EN PESOS» resta aunque venga sin signo
+    if(!(plantilla && plantilla.usdEnDescripcion) && /u\$s|us\$|\busd\b|d[oó]lar/i.test(l)){ usd++; return; }
+    mov=round2(mov+monto); n++;
+  });
+  if(ant===null || act===null || !n) return {estado:"sin-datos", saldoAnterior:ant, saldoActual:act, renglones:n};
+  const calculado=round2(ant+mov), diferencia=round2(act-calculado);
+  return {estado:Math.abs(diferencia)<0.005?"cuadra":"no-cuadra", saldoAnterior:ant, saldoActual:act, movimientos:mov, calculado, diferencia, renglones:n, enDolares:usd};
+}
 function cuotasDelResumen(texto){
   const lineas=String(texto||"").split(/\n+/).map(l=>l.replace(/\s+/g," ").trim()).filter(Boolean);
-  const out=[];
+  const out=[], plantilla=emisorDelResumen(texto);
   let vence=null, cierre=null;
   for(const l of lineas){
     /* "CIERRE ACTUAL 24 Oct 26 VENCIMIENTO ACTUAL 05 Nov 26" suele venir en un solo renglón */
@@ -9653,10 +9714,13 @@ function cuotasDelResumen(texto){
     antes=antes.replace(/^\s*\d{1,2}\s*[-./ ]\s*(\d{1,2}|[a-zA-Z]{3})[a-zA-Z]*\.?\s*[-./ ]\s*\d{2,4}/,"").replace(RE_FECHA_INICIO,"")
       .replace(/\b\d{5,}\b/g," ").replace(/[*#]+/g," ").replace(/\s+/g," ").trim();
     const desc=antes.replace(/^[KkFf]\s+/,"").slice(0,40) || "Compra en cuotas";
-    out.push({descripcion:desc, fecha:f, actual, total, monto, moneda:/u\$s|us\$|usd|d[oó]lar/i.test(l)?"USD":"ARS"});
+    /* fecha: la de la compra original (en las cuotas puede ser de meses atrás); fechaEfectiva: el cierre de este resumen */
+    out.push({descripcion:desc, fecha:f, fechaCompra:f, fechaEfectiva:cierre||null, actual, total, monto,
+      moneda:!(plantilla&&plantilla.usdEnDescripcion) && /u\$s|us\$|usd|d[oó]lar/i.test(l)?"USD":"ARS"});
   }
   const esResumen = /saldo actual|pago m[ií]nimo|cierre actual|resumen de (cuenta|tarjeta)|l[ií]mite de compra/i.test(texto||"");
-  return {cuotas:out, vence, cierre, esResumen, cargos:cargosDelResumen(texto), consumosUsd:consumosUsdDelResumen(texto, out)};
+  return {cuotas:out, vence, cierre, esResumen, emisor:plantilla?plantilla.nombre:null, validacion:validarSumaResumen(texto, plantilla),
+    cargos:cargosDelResumen(texto), consumosUsd:consumosUsdDelResumen(texto, out)};
 }
 /* v7.4 · Consumos en dólares del resumen (en 1 pago o la cuota en USD del mes) para comparar dólar tarjeta vs. MEP */
 function consumosUsdDelResumen(texto, cuotasLeidas){
@@ -9720,7 +9784,7 @@ function cargosDelResumen(texto){
 /* fin cuotas del resumen (puro) */
 
 /* Lo que pasa en la app con lo leído */
-let RES={items:[], archivo:null};
+let RES={items:[], archivo:null, aviso:false, avisoVisto:false};
 function mesDelResumen(r){
   if(r.vence) return r.vence.slice(0,7);
   if(r.cierre) return mesSuma(r.cierre.slice(0,7),1);
@@ -9777,6 +9841,13 @@ function abrirResumen(leido, texto){
   /* v6.11 · lo que se fue en el banco: sólo se muestra, no se carga como gasto */
   const cg=$("res-cargos"), txt=textoCargos(leido.cargos, monedaTarjeta(cardById(card)));
   if(cg){ cg.innerHTML=txt; cg.classList.toggle("hidden", !txt); }
+  /* v7.6 · si la suma de lo leído no da el saldo del resumen, se avisa y no se guarda en silencio */
+  const val=leido.validacion, av=$("res-aviso"), curR=monedaTarjeta(cardById(card));
+  RES.aviso=!!(val && val.estado==="no-cuadra"); RES.avisoVisto=false;
+  if(av){
+    av.textContent = RES.aviso ? `Ojo: la suma no cuadra con el resumen. Saldo anterior ${fmt(val.saldoAnterior,curR)} más los movimientos que leí ${fmt(val.movimientos,curR)} da ${fmt(val.calculado,curR)}, y el resumen dice ${fmt(val.saldoActual,curR)} (diferencia ${fmt(Math.abs(val.diferencia),curR)}). Puede faltar o sobrar algún renglón: revisá antes de cargar.` : "";
+    av.classList.toggle("hidden", !RES.aviso);
+  }
   pintarAvisoDolaresResumen(leido);
   pintarResumen();
   $("res-ov").classList.remove("hidden");
@@ -9835,6 +9906,7 @@ $("res-save").onclick=async()=>{
   const sel=RES.items.filter(x=>x.ok), cardId=$("res-card").value, mes=$("res-mes").value, pagado=$("res-pagado").checked;
   if(!sel.length){ $("res-err").textContent="Tildá al menos una compra."; return; }
   if(!/^\d{4}-\d{2}$/.test(mes)){ $("res-err").textContent="Elegí el mes en que vence el resumen."; return; }
+  if(RES.aviso && !RES.avisoVisto){ RES.avisoVisto=true; $("res-err").textContent="La suma no cuadraba con el resumen (mirá el aviso de arriba). Si igual querés cargarlas, tocá de nuevo."; return; }
   const card=cardById(cardId);
   guardandoRes=true; botonOcupado($("res-save"),true);
   const _creados=[];
