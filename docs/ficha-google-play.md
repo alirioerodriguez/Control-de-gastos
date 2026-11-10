@@ -1,6 +1,6 @@
 # Ficha de Google Play — Mis Cuentas
 
-Textos para pegar en Play Console (**Crecer → Presencia en la tienda → Ficha principal**). Escritos el 07/11/2026 a partir de lo que la app hace hoy. Límites de Google: título 30 caracteres, descripción breve 80, descripción completa 4.000. La app es una TWA (`ar.alirio.miscuentas`): los cambios de la web llegan solos.
+Textos para pegar en Play Console (**Crecer → Presencia en la tienda → Ficha principal**). Escritos el 07/11/2026 y actualizados el 09/11/2026 (marca nueva, carga en 2 pasos y herramientas nuevas). Límites de Google: título 30 caracteres, descripción breve 80, descripción completa 4.000. La app es una TWA (`ar.alirio.miscuentas`): los cambios de la web llegan solos.
 
 ## Título (30)
 Mis Cuentas: gastos y cuotas
@@ -16,11 +16,15 @@ Dicta tus gastos, ordena tus cuotas y divide gastos con tu pareja o tu grupo.
 • Dicta el gasto como lo dirías: «gasté 15 lucas en el súper», «voy por la 7 de 12». Entiende lucas, palos y cuotas.
 • Escanea el QR de una factura o de un servicio y se carga solo.
 • Sube el PDF del resumen de tu tarjeta (Visa, Mastercard, Amex o Naranja) y tienes tus cuotas ordenadas.
+• Carga en dos pasos simples: primero el monto, después la categoría. Pensado para pantallas chicas.
+• Mantén presionado el ícono para cargar o dictar un gasto directo.
 
 **Tus cuentas claras**
 • Ingresos, gastos, ahorros y metas en un solo lugar.
 • Cuotas que vienen, mes por mes.
-• Los impuestos que te cobra la tarjeta, separados.
+• Los impuestos que te cobra la tarjeta, separados, y cuánto te ahorras pagando los consumos en dólares con dólar MEP.
+• Tu año en pesos de hoy (ajustado por la inflación de INDEC) o en dólares del día de cada gasto.
+• Calculadora de topes de reintegro: cuánto pagar con cada billetera para no perder descuentos.
 
 **Gastos compartidos**
 • Grupos y viajes con tu pareja, tu familia o tus amigos, aunque no tengan la app.
@@ -49,6 +53,7 @@ Mis Cuentas es un registro: no se conecta a tu banco, no mueve dinero ni hace pa
   - **Fotos y archivos:** tickets y resúmenes en PDF, solo para leerlos.
   - **Audio:** la app no graba ni guarda audio. El dictado lo transcribe el reconocimiento de voz del sistema (Google), fuera de la app. Confirmar en la guía de Data Safety si igual hay que declararlo.
   - **Proveedores:** Supabase (San Pablo, Brasil) guarda los datos y Google Gemini lee tickets solo si la persona activa el refuerzo con IA. Google considera esto procesamiento por un proveedor, no «compartir».
+  - **Cotizaciones e inflación:** la app consulta el dólar MEP (dolarapi.com y ArgentinaDatos) y el IPC de INDEC (ArgentinaDatos). Son datos públicos: no se envía nada de la persona.
   - Todo viaja cifrado y se puede borrar.
 - **Funciones financieras:** marcar solo lo que corresponda a un registro o seguimiento de finanzas personales. No presta, no procesa pagos ni ofrece servicios bancarios.
 - **Público objetivo:** mayores de 18. Sin anuncios.
@@ -56,4 +61,4 @@ Mis Cuentas es un registro: no se conecta a tu banco, no mueve dinero ni hace pa
 
 ## Antes de pegar
 - Cada punto tiene que estar en la versión publicada. Si algo se saca de la app, se saca de acá.
-- Capturas: 4 a 8, con datos de ejemplo (nunca con datos reales).
+- Capturas: 6 listas en `Documents\Android-apps\miscuentasicha\` (1080 × 2160, con una cuenta de ejemplo inventada): inicio, carga en 2 pasos, dictado, plan de cuotas y gráficos. El gráfico de 1024 × 500 está en la misma carpeta.
