@@ -595,6 +595,7 @@ button.row{background:transparent;border:0;color:inherit;font:inherit;text-align
 .fld input,.fld select,.fld textarea{border:1px solid var(--line-in);border-radius:16px;padding:13px 14px;background:var(--card);color:var(--ink);font-size:15px;width:100%;min-height:48px;font-family:inherit}
 .fld textarea{min-height:140px;resize:vertical;line-height:1.45}
 .fld textarea:focus-visible{outline:3px solid var(--foco);outline-offset:1px;border-color:transparent}
+.link-pro{background:none;border:0;padding:8px 2px;min-height:32px;font:inherit;font-weight:600;color:var(--ink);text-decoration:underline;cursor:pointer}
 .fld input:focus-visible,.fld select:focus-visible{outline:3px solid var(--foco);outline-offset:1px;border-color:transparent}
 .btn{border:0;border-radius:16px;padding:15px 18px;background:var(--brand);color:var(--on-brand);font-weight:800;font-size:15px;min-height:48px}
 .btn.ghost{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
@@ -3687,6 +3688,21 @@ function cuotasDeTarjeta(cardId){
   const pM=Object.fromEntries(PURCH.map(p=>[p.id,p]));
   return INST.filter(x=>{ const p=pM[x.purchase_id]; return p && p.card_id===cardId; });
 }
+/* @prueba:cuotas-terminan */
+/* Compras cuya última cuota cae en `mes`: al mes siguiente esa plata se libera. */
+function comprasQueTerminan(mes, purch, inst){
+  const ult={};
+  inst.forEach(x=>{ const m=String(x.mes||"").slice(0,7); if(!ult[x.purchase_id] || m>ult[x.purchase_id]) ult[x.purchase_id]=m; });
+  return purch.filter(p=>ult[p.id]===mes).map(p=>p.descripcion||"Compra");
+}
+function listaNombres(ns){ return ns.length<=1 ? (ns[0]||"") : ns.slice(0,-1).join(", ")+" y "+ns[ns.length-1]; }
+/* @fin:cuotas-terminan */
+function terminanTxt(mes){
+  const ns=comprasQueTerminan(mes, PURCH.filter(p=>monedaTarjeta(cardById(p.card_id))===CUR), INST);
+  if(!ns.length) return "";
+  const vis=ns.length>3 ? [...ns.slice(0,3), `${ns.length-3} más`] : ns;
+  return ` (termin${ns.length===1?"a":"an"} ${listaNombres(vis)})`;
+}
 function compraResumen(p){
   const cuotas=INST.filter(x=>x.purchase_id===p.id);
   const pagadas=cuotas.filter(x=>x.pagada).length;
@@ -4253,7 +4269,7 @@ function renderTarjetas(){
   const h=$("proj-hint");
   if(h){ const a=cuotasDelMes(prox,CUR), b=cuotasDelMes(mesSuma(prox,1),CUR), d=deudaTarjetas(CUR);
     h.textContent = d>0
-      ? `${b<a?`Después de ${mesLargo(prox).split(" ")[0]} bajás ${fmt(round2(a-b),CUR)} en cuotas.`:b>a?`Después de ${mesLargo(prox).split(" ")[0]} subís ${fmt(round2(b-a),CUR)} en cuotas.`:"Las cuotas se mantienen el mes siguiente."} En total te quedan ${fmt(d,CUR)} por pagar.`
+      ? `${b<a?`Después de ${mesLargo(prox).split(" ")[0]} bajás ${fmt(round2(a-b),CUR)} en cuotas${terminanTxt(prox)}.`:b>a?`Después de ${mesLargo(prox).split(" ")[0]} subís ${fmt(round2(b-a),CUR)} en cuotas.`:"Las cuotas se mantienen el mes siguiente."} En total te quedan ${fmt(d,CUR)} por pagar.`
       : "No tenés cuotas pendientes."; }
 
   const cel=$("compras-list");
@@ -5733,6 +5749,12 @@ function guardarPromos(){ try{ localStorage.setItem(PROMOS_KEY, JSON.stringify(P
    el tipo, la versión y, si quiere, su mail: nada de sus cuentas ni movimientos. --- */
 const SUGERIR_URL="https://app-de-apps-alirio.vercel.app/api/sugerir";
 let sugTipo="idea";
+/* Pro todavía no se cobra: quien se queda sin cupo puede pedir que le avisen. Llega al panel como una idea,
+   así se mide cuánta gente lo quiere antes de armar la suscripción. */
+const TEXTO_QUIERO_PRO="Quiero Mis Cuentas Pro (IA sin límite). Avisame cuando salga.";
+function quieroPro(){ sugTipo="idea"; openSub("escucharte");
+  const t=$("sug-texto"); if(t && !t.value) t.value=TEXTO_QUIERO_PRO;
+  const m=$("sug-mail"); if(m) setTimeout(()=>m.focus(),50); }
 function subEscucharte(){
   const t=(k,txt)=>`<button type="button" class="chip ${sugTipo===k?"on":""}" data-sug-tipo="${k}" aria-pressed="${sugTipo===k}">${txt}</button>`;
   return `<div class="panel pad">
@@ -8079,6 +8101,11 @@ function pintarCupoIA(){
   if(vc) vc.textContent = iaActiva() ? textoCupoRelectura(est) : "Intérprete en tu teléfono y QR de ARCA: gratis y sin límite.";
   const tc = $("tar-cupo-ia");
   if(tc) tc.textContent = textoCupoResumen(est);
+  /* sin cupo: enlace para pedir Pro */
+  const pro = `<button type="button" class="link-pro" data-quiero-pro>Avisame cuando salga Pro, con IA sin límite</button>`;
+  if(vc && iaActiva() && !est.puedeRelectura) vc.insertAdjacentHTML("beforeend", " "+pro);
+  if(tc && !est.puedeResumen) tc.insertAdjacentHTML("beforeend", " "+pro);
+  document.querySelectorAll("[data-quiero-pro]").forEach(b=>b.onclick=quieroPro);
 }
 
 let IA_SERVIDOR=null;   /* null: no sé todavía · true: hay proxy con key · false: no hay */
