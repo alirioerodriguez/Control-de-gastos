@@ -58,23 +58,28 @@ async function guardarYCompartir(nombre: string, datos: string) {
   await Sharing.shareAsync(archivo.uri, { dialogTitle: nombre });
 }
 
-// El widget abre la app con miscuentas://nuevo («+ Gasto») o miscuentas://inicio. Los enlaces del sitio
+// El widget abre la app con miscuentas://nuevo («+ Gasto») o miscuentas://inicio, y los atajos del ícono con
+// miscuentas://nuevo o miscuentas://voz (plugins/atajos-android.js). Los enlaces del sitio
 // (por ejemplo, el de un evento que llega por WhatsApp) también abren la app, en esa página.
-const accionDe = (url: string | null | undefined) => (url && /^miscuentas:\/\/nuevo/.test(url) ? 'nuevo' : null);
+const accionDe = (url: string | null | undefined) => {
+  const m = url && /^miscuentas:\/\/(nuevo|voz)/.exec(url);
+  return m ? (m[1] as 'nuevo' | 'voz') : null;
+};
 const delSitio = (url: string | null | undefined) => (url && url.startsWith(ORIGEN + '/') ? url : null);
 
 export default function App() {
   const web = useRef<WebViewHandle>(null);
   const cargada = useRef(false);
-  // Si la app estaba cerrada y se abrió desde «+ Gasto», la web arranca ya con ?accion=nuevo.
+  // Si la app estaba cerrada y se abrió desde «+ Gasto» o un atajo, la web arranca ya con ?accion=nuevo (o voz).
   const [inicio, setInicio] = useState<string | null>(null);
   useEffect(() => {
     Linking.getInitialURL()
-      .then((u) => setInicio(accionDe(u) ? `${APP.sitio}?accion=nuevo` : delSitio(u) || APP.sitio))
+      .then((u) => setInicio(accionDe(u) ? `${APP.sitio}?accion=${accionDe(u)}` : delSitio(u) || APP.sitio))
       .catch(() => setInicio(APP.sitio));
     const sub = Linking.addEventListener('url', ({ url }) => {
-      if (accionDe(url) && cargada.current) web.current?.injectJavaScript(`window.__accionDesdeApp && window.__accionDesdeApp('nuevo'); true;`);
-      else if (delSitio(url)) web.current?.injectJavaScript(`location.href = ${JSON.stringify(url)}; true;`);
+      const accion = accionDe(url);
+      if (accion && cargada.current) web.current?.injectJavaScript(`window.__accionDesdeApp && window.__accionDesdeApp('${accion}'); true;`);
+      else if (!accion && delSitio(url)) web.current?.injectJavaScript(`location.href = ${JSON.stringify(url)}; true;`);
     });
     return () => sub.remove();
   }, []);
