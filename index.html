@@ -334,6 +334,10 @@
 .pcthd{display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--ink-2);margin-bottom:6px}
 .pcthd b{color:var(--acc);font-size:15px}
 .pctbox input[type=range]{width:100%;accent-color:var(--acc)}
+.pctnum{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
+.pctnum button{width:44px;height:44px;border:1px solid var(--line-in,var(--line));border-radius:12px;background:var(--card);color:var(--ink);font-size:22px;font-weight:800;line-height:1;display:grid;place-items:center;flex:none}
+.pctnum label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--ink-2)}
+.pctnum input{width:72px;min-height:44px;border:1px solid var(--line-in,var(--line));border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-size:16px;font-weight:700;text-align:center}
 
 /* ===== detalle del movimiento ===== */
 #det{--acc:var(--red); --accbg:var(--red-bg); --hdr:color-mix(in srgb, var(--dark) 74%, var(--red) 26%)}
@@ -431,6 +435,9 @@
 
 *{box-sizing:border-box}
 html,body{margin:0}
+/* WCAG 2.4.11 · el foco no queda tapado por la barra de abajo (.nav mide ~70 px) ni por el aviso sin conexión de arriba: al enfocar, el navegador deja ese margen libre */
+html{scroll-padding-bottom:calc(96px + env(safe-area-inset-bottom));scroll-padding-top:56px}
+.sheet,#reg-cats,#onb{scroll-padding-bottom:24px}
 body{font-family:'Inter',system-ui,sans-serif; font-variant-numeric:tabular-nums; font-size:15px; background:var(--bg); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased}
 button,input,select{font-family:inherit}
 button{cursor:pointer}
@@ -7388,7 +7395,10 @@ function renderReg(){
       +`<button class="chip ${!pagoYo?'on':''}" data-pg="otro">Pagó ${esc(o.apodo)}</button></div>`;
     if(R.split==="pct"){
       h+=`<div class="pctbox"><div class="pcthd"><span>Vos <b>${R.pct}%</b></span><span>${esc(o.apodo)} <b>${100-R.pct}%</b></span></div>
-        <input id="reg-pct" type="range" min="0" max="100" step="5" value="${R.pct}"></div>`;
+        <input id="reg-pct" type="range" min="0" max="100" step="5" value="${R.pct}" aria-label="Porcentaje que pagás vos" aria-valuetext="${R.pct}% vos, ${100-R.pct}% ${esc(o.apodo)}">
+        <div class="pctnum"><button type="button" id="reg-pct-menos" aria-label="Bajar 5 puntos tu porcentaje">−</button>
+          <label>Tu parte <input id="reg-pct-n" type="number" inputmode="numeric" min="0" max="100" step="1" value="${R.pct}"> %</label>
+          <button type="button" id="reg-pct-mas" aria-label="Subir 5 puntos tu porcentaje">+</button></div></div>`;   /* WCAG 2.5.7: el reparto no depende de arrastrar */
     }
     if(tot>0) h+=`<div class="regsplit"><div><div class="k">Te toca</div><div class="v">${fmt(d.mio,cur)}</div></div>
       <div class="otro"><div class="k">${pagoYo?esc(o.apodo)+" te debe":"Le debés a "+esc(o.apodo)}</div><div class="v">${fmt(Math.abs(d.otro),cur)}</div></div></div>`;
@@ -7425,7 +7435,14 @@ function renderReg(){
   if($("reg-cuotas")) $("reg-cuotas").oninput=()=>{ R.cuotas=Math.min(60,Math.max(1,parseInt($("reg-cuotas").value)||1)); renderRegSoft(); };
   if($("reg-pagadas")) $("reg-pagadas").oninput=()=>{ R.pagadas=Math.min(R.cuotas,Math.max(0,parseInt($("reg-pagadas").value)||0)); R.primera=null; renderRegSoft(); };
   if($("reg-primera")) $("reg-primera").onchange=()=>{ if($("reg-primera").value){ R.primera=$("reg-primera").value; renderReg(); } };
-  if($("reg-pct")) $("reg-pct").oninput=()=>{ R.pct=Math.max(0,Math.min(100,parseInt($("reg-pct").value)||0)); renderReg(); };
+  if($("reg-pct")){
+    /* tras volver a pintar, el foco vuelve al control que se estaba usando (si no, con teclado se pierde en cada paso) */
+    const ponerPct=(v,foco)=>{ R.pct=Math.max(0,Math.min(100,Math.round(Number(v))||0)); renderReg(); const f=$(foco); if(f) try{ f.focus(); }catch(e){} };
+    $("reg-pct").oninput=()=>ponerPct($("reg-pct").value,"reg-pct");
+    $("reg-pct-n").onchange=()=>ponerPct($("reg-pct-n").value,"reg-pct-n");
+    $("reg-pct-menos").onclick=()=>ponerPct(R.pct-5,"reg-pct-menos");
+    $("reg-pct-mas").onclick=()=>ponerPct(R.pct+5,"reg-pct-mas");
+  }
   top.querySelectorAll("[data-se]").forEach(b=>b.onclick=()=>{ R.sentido=b.dataset.se; renderReg(); });
   top.querySelectorAll("[data-sp]").forEach(b=>b.onclick=()=>{ R.split=b.dataset.sp; renderReg(); });
   top.querySelectorAll("[data-pg]").forEach(b=>b.onclick=()=>{ const p=PAIRS.find(x=>x.id===R.pair);
