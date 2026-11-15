@@ -19,6 +19,17 @@ Lo que agrega sobre la web:
   `react-native-android-widget` (`ResumenAndroid.tsx`), porque en Android los botones de `expo-widgets` no abren
   la app. Tocar el widget abre `miscuentas://inicio`; «+ Gasto» abre `miscuentas://nuevo`.
 
+- **Barra de abajo e Inicio nativos** (`nativo.tsx`, desde el 15/11/2026): la app dibuja su propia barra
+  (Inicio, Movimientos, «+», Plan, Más; mantener apretado el «+» abre el dictado) y una pantalla de Inicio nativa
+  con el Disponible del mes, lo gastado, lo ingresado, botones Dictar y Escribir, los últimos movimientos y
+  tirar para actualizar. Las cuentas las sigue haciendo la web, que le manda el resumen ya escrito (ver «APP NATIVA»
+  en `index.html`), así las cifras nunca difieren. La app avisa con `window.__shellNativo` antes de cargar la página;
+  una versión vieja de la app sigue viendo la barra de la web.
+- **Iniciar sesión con Apple** (`apple.ts`, solo iPhone; Apple lo exige porque hay Google, regla 4.8): la ventana es
+  del sistema y el token se le pasa a la web, que entra con `signInWithIdToken`. El botón aparece solo si el
+  proveedor Apple está activo en Supabase (Authentication → Sign In / Providers → Apple, con
+  `ar.alirio.miscuentas` en «Client IDs»).
+
 Identificador: `ar.alirio.miscuentas` (el mismo que la app de Android de Google Play).
 
 ## Probar en el iPhone (gratis)

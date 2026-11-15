@@ -522,6 +522,10 @@ h1,h2,h3{margin:0}
 
 /* pantallas */
 .screen{min-height:100vh; display:flex; flex-direction:column; padding-bottom:96px}
+/* App con barra e inicio nativos: la barra de abajo la dibuja la app */
+html.shell-nativo #nav{display:none!important}
+html.shell-nativo .screen{padding-bottom:24px}
+html.shell-nativo{scroll-padding-bottom:24px}
 .center{min-height:100vh; display:grid; place-items:center; padding:20px}
 
 /* cabecera oscura */
@@ -1004,6 +1008,7 @@ input[type=checkbox]:focus-visible{outline:3px solid var(--acc);outline-offset:2
 /* =========================================================================
    v4.0 · INGRESO CON GOOGLE
    ========================================================================= */
+.gbtn.abtn{background:#000;color:#fff;border-color:#3a3a3c;margin-bottom:10px}
 .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:52px;border:1px solid var(--line-in);
   border-radius:999px;background:var(--card);color:var(--ink);font-size:15px;font-weight:800;padding:0 18px}
 .gbtn:hover{background:var(--soft)}
@@ -1507,6 +1512,12 @@ body.con-prueba #reg-cats,body.con-prueba #onb{top:var(--barra-prueba,0px)}
     <h1 id="auth-title">Ingresá</h1>
     <p class="sub">Tus cuentas, en el celu y en la compu.</p>
     <!-- v4.0 · Google. Se muestra solo si el proveedor está prendido en Supabase -->
+    <div id="au-apple-wrap" class="hidden">
+      <button class="gbtn abtn tapz" id="au-apple" type="button">
+        <svg width="18" height="20" viewBox="0 0 384 512" aria-hidden="true"><path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+        <span id="au-apple-txt">Continuar con Apple</span>
+      </button>
+    </div>
     <div id="au-google-wrap" class="hidden">
       <button class="gbtn tapz" id="au-google" type="button">
         <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
@@ -3151,6 +3162,7 @@ function show(w){
   if(w!=="reg") seguirCargando=false;   /* v4.5 · "cargar varios" dura mientras la carga esté abierta */
   try{ pruebaPantalla(w); }catch(e){}   /* v5.1 · pruebas con usuarios: tiempo por pantalla */
   const dentro=CON_NAV.includes(w);
+  avisarApp("seccion",{w, dentro});
   $("nav").classList.toggle("hidden", !dentro);
   document.body.classList.toggle("con-nav", dentro);   /* v4.0 · en la compu corre el contenido a la derecha de la barra lateral */
   if(dentro){
@@ -3220,7 +3232,7 @@ else{
     if(recoveryMode && event!=="SIGNED_OUT") return;
     if(event==="TOKEN_REFRESHED"||event==="USER_UPDATED") return;
     const uid=s&&s.user?s.user.id:null;
-    if(!uid) avisarWidget(null);
+    if(!uid){ avisarWidget(null); _resumenUlt=""; avisarApp("resumen",null); }
     if(booted && uid && uid===currentUid) return;
     onSession(s);
   });
@@ -3242,6 +3254,33 @@ function avisarWidget(datos){
   if(txt===_widgetUlt) return; _widgetUlt=txt;
   try{ window.ReactNativeWebView.postMessage(JSON.stringify({type:"widget",datos})); }catch(e){}
 }
+/* APP NATIVA · la app de iPhone y Android dibuja su propia barra de abajo y su Inicio (mobile/inicio.tsx).
+   La app avisa con window.__shellNativo antes de cargar la página; la web le manda el resumen ya escrito
+   (respeta «ocultar montos») y en qué pantalla está. Si la app es vieja, nada de esto se activa. */
+var SHELL_NATIVO = enLaApp() && !!window.__shellNativo;
+if(SHELL_NATIVO) document.documentElement.classList.add("shell-nativo");
+function avisarApp(type,datos){ if(!SHELL_NATIVO) return; try{ window.ReactNativeWebView.postMessage(JSON.stringify({type,datos})); }catch(e){} }
+var _resumenUlt="";
+function datosResumen(){
+  const mes=curMonth(), {gas,ing}=totalesMes(mes,CUR);
+  const orden=t=>(t.fecha||"")+(t.created_at||"");
+  const movs=TX.filter(t=>!esSaldoInicial(t)).sort((a,b)=>orden(b).localeCompare(orden(a))).slice(0,12).map(t=>({
+    id:String(t.id), fecha:fechaCorta(t.fecha), titulo:String(t.descripcion||t.comercio||t.categoria||"Movimiento"),
+    categoria:String(t.categoria||""), emoji:catEmoji(t.categoria), monto:money(Number(t.monto), CTA_MON[t.cuenta]||"ARS"), ingreso:t.tipo==="ingreso" }));
+  return { nombre:(typeof PROFILE!=="undefined"&&PROFILE&&PROFILE.nombre)||"", mes:mesLargo(mes), moneda:CUR, oculto:!!oculto,
+    disponible:money(disponibleDebito(CUR),CUR), gastado:money(gas,CUR), ingresado:money(ing,CUR), movimientos:movs };
+}
+function avisarResumen(){
+  if(!SHELL_NATIVO) return;
+  let d; try{ d=datosResumen(); }catch(e){ return; }
+  const txt=JSON.stringify(d); if(txt===_resumenUlt) return; _resumenUlt=txt;
+  avisarApp("resumen",d);
+}
+/* La barra nativa pide ir a una pantalla («app», «movs», «tar», «mas») o alternar «ocultar montos» */
+window.__irA=function(v){ const b=document.querySelector('[data-nav="'+v+'"]'); if(b) b.click(); else show(v); };
+window.__ocultarDesdeApp=function(){ const b=$("eye-btn"); if(b) b.click(); };
+/* Tirar hacia abajo en el Inicio nativo: vuelve a traer los datos; avisa a la app al terminar */
+window.__refrescarDesdeApp=async function(){ try{ if(user) await loadAll(); }catch(e){} finally{ _resumenUlt=""; avisarResumen(); avisarApp("refrescado",true); } };
 function datosWidget(){
   const mes=curMonth(), {gas}=totalesMes(mes,CUR), ocultar=!!oculto, m=n=>ocultar?"•••••":fmt(n,CUR);
   return { disponible:m(disponibleDebito(CUR)), gastado:m(gas), mes:mesLargo(mes).split(" ")[0], oculto:ocultar,
@@ -3310,6 +3349,27 @@ async function googleDisponible(){
   }catch(e){ return false; }
 }
 if(configured()) googleDisponible().then(ok=>{ $("au-google-wrap").classList.toggle("hidden", !ok); });
+/* Iniciar sesión con Apple: solo dentro de la app de iPhone (Apple lo exige si hay Google, regla 4.8).
+   La app pide el token a Apple con su ventana del sistema y lo pasa a __entrarConApple. Aparece solo si
+   el proveedor Apple está activo en Supabase (Authentication → Providers → Apple). */
+function enLaAppIPhone(){ return enLaApp() && /iPhone|iPad|iPod/.test(navigator.userAgent); }
+async function appleDisponible(){
+  try{ const r=await fetch(SUPABASE_URL+"/auth/v1/settings",{headers:{apikey:SUPABASE_ANON_KEY}}); const j=await r.json();
+    return !!(j&&j.external&&j.external.apple); }catch(e){ return false; }
+}
+if(configured() && enLaAppIPhone()) appleDisponible().then(ok=>{ $("au-apple-wrap").classList.toggle("hidden", !ok); });
+$("au-apple").onclick=()=>{ $("au-err").textContent=""; window.ReactNativeWebView.postMessage(JSON.stringify({ type:"apple" })); };
+window.__entrarConApple=async(token, nonce, nombre)=>{
+  const b=$("au-apple"); b.disabled=true; $("au-apple-txt").textContent="Entrando…";
+  const {data,error}=await sb.auth.signInWithIdToken({ provider:"apple", token, nonce });
+  b.disabled=false; $("au-apple-txt").textContent="Continuar con Apple";
+  if(error){ $("au-err").style.color="var(--red-ink)"; $("au-err").textContent="No se pudo entrar con Apple: "+trad(error.message); return; }
+  /* Apple da el nombre solo la primera vez: se guarda en el perfil si todavía no tiene */
+  if(nombre && data && data.user && !(data.user.user_metadata||{}).full_name){
+    try{ await sb.auth.updateUser({ data:{ full_name:nombre } }); }catch(e){}
+  }
+};
+window.__errorApple=(msg)=>{ $("au-err").style.color="var(--red-ink)"; $("au-err").textContent=msg; };
 $("au-google").onclick=async()=>{
   /* En la app del celular lo hace la app (ver PUENTE CON LA APP) */
   if(enLaApp()){ window.ReactNativeWebView.postMessage(JSON.stringify({ type:"google" })); return; }
@@ -3911,6 +3971,7 @@ function renderTodo(){
   if(vista==="meta") renderMeta();
   pintarReciente();   /* v3.7 · resalta la fila recien guardada o editada */
   try{ avisarWidget(datosWidget()); }catch(e){}
+  avisarResumen();
   correrAccionPendiente();
 }
 

@@ -5,13 +5,15 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sharing from 'expo-sharing';
 import { File, Paths } from 'expo-file-system';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, type WebViewProps } from 'react-native-webview';
 import type { ShouldStartLoadRequest, WebViewMessageEvent, WebViewNavigation, WebViewOpenWindowEvent } from 'react-native-webview/lib/WebViewTypes';
 import { APP } from './config';
 import { actualizarWidget } from './widget/actualizar';
 import { esValido } from './widget/datos';
 import { POLYFILL_VOZ, pedidoVoz, useVozNativa } from './voz';
+import { entrarConApple } from './apple';
+import { Barra, Inicio, esResumen, type Pestana, type Resumen } from './nativo';
 
 // La app muestra la web publicada: cada cambio que se publica llega solo, sin volver a compilar.
 // Lo que agrega: ingreso con Google (Google no lo permite dentro de una vista web), descargas de
@@ -67,8 +69,30 @@ const accionDe = (url: string | null | undefined) => {
 };
 const delSitio = (url: string | null | undefined) => (url && url.startsWith(ORIGEN + '/') ? url : null);
 
+// Le avisa a la web, antes de que cargue, que la app dibuja su propia barra y su Inicio (ver «APP NATIVA» en index.html)
+const SHELL = 'window.__shellNativo = true; true;';
+
+// Pantalla de la web → pestaña de la barra nativa (Ahorros y Fijos viven dentro de Plan, el resto dentro de Más)
+function pestanaDe(w: string): Pestana | null {
+  if (w === 'app' || w === 'cuentas') return 'app';
+  if (w === 'movs') return 'movs';
+  if (w === 'tar' || w === 'meta' || w === 'metas') return 'tar';
+  if (w === 'mas' || w === 'sub' || w === 'cal') return 'mas';
+  return null;
+}
+
 export default function App() {
+  return <SafeAreaProvider><Pantalla /></SafeAreaProvider>;
+}
+
+function Pantalla() {
   const web = useRef<WebViewHandle>(null);
+  const insets = useSafeAreaInsets();
+  // Lo que manda la web: el resumen (null = sin sesión) y en qué pantalla está
+  const [resumen, setResumen] = useState<Resumen | null>(null);
+  const [seccion, setSeccion] = useState<{ w: string; dentro: boolean } | null>(null);
+  const [refrescando, setRefrescando] = useState(false);
+  const js = useCallback((codigo: string) => web.current?.injectJavaScript(`${codigo}; true;`), []);
   const cargada = useRef(false);
   // Si la app estaba cerrada y se abrió desde «+ Gasto» o un atajo, la web arranca ya con ?accion=nuevo (o voz).
   const [inicio, setInicio] = useState<string | null>(null);
@@ -141,6 +165,13 @@ export default function App() {
     let msg: { type?: string; nombre?: string; datos?: unknown; title?: string; text?: string; url?: string };
     try { msg = JSON.parse(e.nativeEvent.data); } catch { return; }
     if (msg.type === 'google') entrarConGoogle();
+    else if (msg.type === 'apple') entrarConApple(web);
+    else if (msg.type === 'resumen') setResumen(esResumen(msg.datos) ? msg.datos : null);
+    else if (msg.type === 'seccion') {
+      const d = msg.datos as { w?: unknown; dentro?: unknown } | undefined;
+      if (d && typeof d.w === 'string') setSeccion({ w: d.w, dentro: !!d.dentro });
+    }
+    else if (msg.type === 'refrescado') setRefrescando(false);
     else if (msg.type === 'archivo' && msg.nombre && typeof msg.datos === 'string')
       guardarYCompartir(msg.nombre, msg.datos).catch(() => Alert.alert('No se pudo guardar el archivo', 'Probá de nuevo.'));
     else if (msg.type === 'share')
@@ -153,17 +184,29 @@ export default function App() {
 
   const retry = () => { setFailed(false); setLoading(true); web.current?.reload(); };
 
+  // La barra y el Inicio nativos aparecen solo con sesión y en las pantallas principales de la web
+  const conBarra = !!resumen && !!seccion?.dentro;
+  const enInicio = !!resumen && seccion?.w === 'app';
+  const ir = useCallback((p: Pestana) => js(`window.__irA && window.__irA('${p}')`), [js]);
+  const accion = useCallback((a: 'nuevo' | 'voz') => js(`window.__accionDesdeApp && window.__accionDesdeApp('${a}')`), [js]);
+  const refrescar = useCallback(() => {
+    setRefrescando(true);
+    js('window.__refrescarDesdeApp && window.__refrescarDesdeApp()');
+    setTimeout(() => setRefrescando(false), 10000); // por si la web no contesta
+  }, [js]);
+
   return (
-    <SafeAreaProvider>
+    <>
       <StatusBar style={APP.barraClara ? 'light' : 'dark'} />
       <SafeAreaView style={[styles.root, { backgroundColor: APP.fondo }]} edges={['top', 'left', 'right']}>
+        <View style={styles.root}>
         {inicio && <RNWebView
           ref={web}
           source={{ uri: inicio }}
           style={[styles.web, { backgroundColor: APP.fondo }]}
           applicationNameForUserAgent={APP.agente}
           originWhitelist={['*']}
-          injectedJavaScriptBeforeContentLoaded={PUENTE + POLYFILL_VOZ}
+          injectedJavaScriptBeforeContentLoaded={SHELL + PUENTE + POLYFILL_VOZ}
           onShouldStartLoadWithRequest={onShouldStart}
           onOpenWindow={onOpenWindow}
           setSupportMultipleWindows
@@ -181,6 +224,12 @@ export default function App() {
           decelerationRate="normal"
           overScrollMode="never"
         />}
+        {enInicio && resumen && (
+          <View style={styles.cover}>
+            <Inicio r={resumen} cargar={() => accion('nuevo')} dictar={() => accion('voz')} verMovs={() => ir('movs')}
+              ocultar={() => js('window.__ocultarDesdeApp && window.__ocultarDesdeApp()')} refrescar={refrescar} refrescando={refrescando} />
+          </View>
+        )}
         {loading && !failed && (
           <View style={[styles.cover, { backgroundColor: APP.fondo }]} pointerEvents="none"><ActivityIndicator color={APP.acento} /></View>
         )}
@@ -191,8 +240,12 @@ export default function App() {
             <Pressable style={[styles.btn, { backgroundColor: APP.acento }]} onPress={retry}><Text style={[styles.btnText, { color: (APP as { textoBoton?: string }).textoBoton ?? '#ffffff' }]}>Reintentar</Text></Pressable>
           </View>
         )}
+        </View>
+        {conBarra && !failed && (
+          <Barra actual={seccion ? pestanaDe(seccion.w) : null} ir={ir} cargar={() => accion('nuevo')} dictar={() => accion('voz')} abajo={insets.bottom} />
+        )}
       </SafeAreaView>
-    </SafeAreaProvider>
+    </>
   );
 }
 

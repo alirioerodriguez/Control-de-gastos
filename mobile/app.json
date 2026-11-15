@@ -15,7 +15,8 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Para sacarle una foto al ticket y cargar el gasto.",
         "NSPhotoLibraryUsageDescription": "Para elegir la foto de un ticket y cargar el gasto."
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "ar.alirio.miscuentas",
@@ -107,7 +108,8 @@
           ]
         }
       ],
-      "./plugins/atajos-android.js"
+      "./plugins/atajos-android.js",
+      "expo-apple-authentication"
     ]
   }
 }
