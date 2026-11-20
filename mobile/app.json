@@ -14,7 +14,9 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Para sacarle una foto al ticket y cargar el gasto.",
-        "NSPhotoLibraryUsageDescription": "Para elegir la foto de un ticket y cargar el gasto."
+        "NSPhotoLibraryUsageDescription": "Para elegir la foto de un ticket y cargar el gasto.",
+        "NSSpeechRecognitionUsageDescription": "Para pasar a texto lo que dictás.",
+        "NSMicrophoneUsageDescription": "Para que le dictes tus gastos."
       },
       "usesAppleSignIn": true
     },
@@ -110,6 +112,29 @@
       ],
       "./plugins/atajos-android.js",
       "expo-apple-authentication"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "ExpoWidgetsTarget",
+                  "bundleIdentifier": "ar.alirio.miscuentas.ExpoWidgetsTarget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.ar.alirio.miscuentas"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "6b8eaef0-9a3d-40f1-bd8b-74b4aceeb76f"
+      }
+    },
+    "owner": "alirior"
   }
 }
