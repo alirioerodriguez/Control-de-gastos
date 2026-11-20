@@ -11,10 +11,10 @@ const caso = (nombre, ok, detalle) => { if (!ok) fallas++; console.log(ok ? '✓
 caso('existe la lista OTRAS_APPS', !!bloque)
 const apps = bloque ? eval(bloque[1]) : []
 const urls = apps.map(a => a.url)
-caso('muestra VeoMás, Savia y Un nuevo comienzo', JSON.stringify(urls) === JSON.stringify([
+caso('muestra VeoMás, Un nuevo comienzo y Savia al final', JSON.stringify(urls) === JSON.stringify([
   'https://donde-la-veo-app.vercel.app/?ref=mis-cuentas',
-  'https://cicloapp.vercel.app/?ref=mis-cuentas',
   'https://un-nuevo-comienzo-empleo.vercel.app/?ref=mis-cuentas',
+  'https://cicloapp.vercel.app/?ref=mis-cuentas',
 ]), urls)
 caso('cada una tiene título, texto e imagen o emoji', apps.every(a => a.titulo && a.texto && (a.img || a.emoji)), apps)
 caso('renderMasMenu usa la lista', /OTRAS_APPS\.map\(/.test(html))
