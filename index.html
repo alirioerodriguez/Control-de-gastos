@@ -5410,7 +5410,7 @@ function renderMasMenu(){
   $("mas-menu").outerHTML=`<div id="mas-menu">
     ${grupo("Herramientas",MAS,"data-mas")}
     ${grupo("Ajustes",CFG,"data-cfg")}
-    <div class="sec" style="margin-top:18px"><b>Otras apps del mismo creador</b></div>
+    <div class="sec" style="margin-top:18px"><b>Otras apps que te pueden servir</b></div>
     ${OTRAS_APPS.map(a=>`<a class="panel pad" href="${a.url}" target="_blank" rel="noopener noreferrer"
        style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;margin-bottom:10px">
       ${a.img?`<img src="${a.img}" alt="" width="48" height="48" style="border-radius:12px;flex:none">`
