@@ -78,6 +78,50 @@
               "targetCellHeight": 2,
               "resizeMode": "horizontal|vertical",
               "updatePeriodMillis": 0
+            },
+            {
+              "name": "Movimientos",
+              "label": "Mis Cuentas: movimientos",
+              "description": "Tus últimos movimientos, con un botón para cargar un gasto.",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 0
+            },
+            {
+              "name": "LoQueViene",
+              "label": "Mis Cuentas: lo que viene",
+              "description": "Lo que te falta pagar este mes y cuánto te quedaría.",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 0
+            },
+            {
+              "name": "Atajos",
+              "label": "Mis Cuentas: atajos",
+              "description": "Dictar, cargar un gasto o un ingreso en un toque.",
+              "minWidth": "250dp",
+              "minHeight": "40dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 1,
+              "resizeMode": "horizontal",
+              "updatePeriodMillis": 0
+            },
+            {
+              "name": "Presupuestos",
+              "label": "Mis Cuentas: presupuestos",
+              "description": "Cómo vas con tus presupuestos del mes.",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 0
             }
           ]
         }
@@ -91,6 +135,42 @@
               "name": "Resumen",
               "displayName": "Mis Cuentas",
               "description": "Tu disponible y lo que gastaste este mes.",
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ]
+            },
+            {
+              "name": "Movimientos",
+              "displayName": "Movimientos",
+              "description": "Tus últimos movimientos.",
+              "supportedFamilies": [
+                "systemMedium",
+                "systemLarge"
+              ]
+            },
+            {
+              "name": "LoQueViene",
+              "displayName": "Lo que viene",
+              "description": "Lo que te falta pagar este mes y cuánto te quedaría.",
+              "supportedFamilies": [
+                "systemMedium",
+                "systemLarge"
+              ]
+            },
+            {
+              "name": "Atajos",
+              "displayName": "Atajos",
+              "description": "Dictar, cargar un gasto o un ingreso en un toque.",
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ]
+            },
+            {
+              "name": "Presupuestos",
+              "displayName": "Presupuestos",
+              "description": "Cómo vas con tus presupuestos del mes.",
               "supportedFamilies": [
                 "systemSmall",
                 "systemMedium"

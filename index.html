@@ -3336,8 +3336,19 @@ window.__movsDesdeApp=function(p){
 window.__abrirMovDesdeApp=function(k,id){ if(["tx","tr","ah"].includes(k)) openDet(k,id,"movs"); };
 function datosWidget(){
   const mes=curMonth(), {gas}=totalesMes(mes,CUR), ocultar=!!oculto, m=n=>ocultar?"•••••":fmt(n,CUR);
+  /* Para los otros widgets: últimos movimientos, lo que viene en el mes y los presupuestos más justos */
+  let movimientos=[], viene=null, presupuestos=[];
+  try{ movimientos=datosResumen().movimientos.slice(0,4).map(x=>({titulo:x.titulo.slice(0,40), monto:x.monto, ingreso:x.ingreso, fecha:x.fecha})); }catch(e){}
+  try{
+    const v=loQueViene();
+    viene={ queda:m(v.queda), items:v.items.slice(0,4).map(x=>{
+      const falta=x.dia==null?null:x.dia-v.hoy;
+      const cuando=x.dia==null?"":falta<0?(x.tipo==="tarjeta"?"cerró, sin pagar":"atrasado"):falta===0?"hoy":falta===1?"mañana":"día "+x.dia;
+      return { titulo:String(x.titulo).slice(0,40), cuando, monto:(x.signo<0?"− ":"+ ")+m(x.monto), urgente:falta!=null&&falta<=3 }; }) };
+  }catch(e){}
+  try{ presupuestos=presupuestosDelMes(mes).slice(0,3).map(x=>({cat:String(x.cat).slice(0,30), gastado:m(x.g), limite:m(x.lim), pct:Math.round(x.g/x.lim*100)})); }catch(e){}
   return { disponible:m(disponibleDebito(CUR)), gastado:m(gas), mes:mesLargo(mes).split(" ")[0], oculto:ocultar,
-    actualizado:new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}) };
+    actualizado:new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}), movimientos, viene, presupuestos };
 }
 /* «+ Gasto» del widget: la app llama a esto (o abre con ?accion=nuevo si estaba cerrada). Si los datos todavía
    no cargaron, queda pendiente hasta que carguen. */
@@ -3350,6 +3361,9 @@ function correrAccionPendiente(){
   if(a==="nuevo"){ show("app"); openReg(null,"gasto",null); }
   /* atajo del ícono en Android: «Dictar un gasto» */
   if(a==="voz"){ show("app"); openVoz(); }
+  /* widget «Atajos» y «Presupuestos» */
+  if(a==="ingreso"){ show("app"); openReg(null,"ingreso",null); }
+  if(a==="presupuesto") openSub("presu");
 }
 function cubrir(txt){ const d=document.createElement("div"); d.textContent=txt;
   d.style.cssText="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#0e1511;color:#f0fdf4;font:600 17px system-ui";
@@ -4160,6 +4174,12 @@ function renderInicio(){
    Lo que todavía no pasó este mes y ya está comprometido: resúmenes de tarjeta
    sin pagar, fijos sin registrar y aportes automáticos a metas. Abajo, cuánto
    te quedaría del Disponible si todo eso pasa. Sólo para el mes en curso. */
+/* Presupuestos del mes, del más justo al más holgado (lo usan los avisos de Inicio y el widget) */
+function presupuestosDelMes(mes){
+  const sp={}; TX.forEach(t=>{ if(t.tipo==="gasto"&&t.fecha.slice(0,7)===mes) sp[t.categoria]=(sp[t.categoria]||0)+Number(t.monto); });
+  Object.entries(compartidoMes(mes,CUR).cats).forEach(([c,v])=>{ sp[c]=(sp[c]||0)+v; });
+  return BUD.map(b=>({cat:b.categoria,lim:Number(b.monto),g:round2(sp[b.categoria]||0)})).filter(x=>x.lim>0).sort((a,b)=>(b.g/b.lim)-(a.g/a.lim));
+}
 function fijoRegistradoEsteMes(r,mes){
   return TX.some(t=>t.fecha.slice(0,7)===mes && t.cuenta===r.cuenta && t.tipo===r.tipo
     && Math.abs(Number(t.monto)-Number(r.monto))<0.005 && (t.descripcion||"")===(r.descripcion||""));
@@ -4235,10 +4255,7 @@ function renderAlertas(){
   });
   /* v3.9 · presupuestos: aviso al 85% y al pasarse (mismo cálculo que la pantalla de Presupuesto) */
   if(VMONTH===mesAct){
-    const sp={}; TX.forEach(t=>{ if(t.tipo==="gasto"&&t.fecha.slice(0,7)===mesAct) sp[t.categoria]=(sp[t.categoria]||0)+Number(t.monto); });
-    Object.entries(compartidoMes(mesAct,CUR).cats).forEach(([c,v])=>{ sp[c]=(sp[c]||0)+v; });
-    const presu=BUD.map(b=>({cat:b.categoria,lim:Number(b.monto),g:round2(sp[b.categoria]||0)})).filter(x=>x.lim>0 && x.g>=x.lim*0.85)
-      .sort((a,b)=>(b.g/b.lim)-(a.g/a.lim));
+    const presu=presupuestosDelMes(mesAct).filter(x=>x.g>=x.lim*0.85);
     presu.forEach(x=>{ const pct=Math.round(x.g/x.lim*100);
       av.push({txt: x.g>x.lim ? `Te pasaste en ${x.cat}: ${fmt(x.g,CUR)} de ${fmt(x.lim,CUR)} (${pct}%)`
                               : `${x.cat} va por el ${pct}% del presupuesto: te quedan ${fmt(round2(x.lim-x.g),CUR)}`,
