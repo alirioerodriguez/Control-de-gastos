@@ -13,7 +13,7 @@ import { actualizarWidget } from './widget/actualizar';
 import { esValido } from './widget/datos';
 import { POLYFILL_VOZ, pedidoVoz, useVozNativa } from './voz';
 import { entrarConApple } from './apple';
-import { Barra, Inicio, esResumen, type Pestana, type Resumen } from './nativo';
+import { Barra, Inicio, Movimientos, esMovs, esResumen, type Movs, type Pestana, type Resumen } from './nativo';
 
 // La app muestra la web publicada: cada cambio que se publica llega solo, sin volver a compilar.
 // Lo que agrega: ingreso con Google (Google no lo permite dentro de una vista web), descargas de
@@ -90,6 +90,7 @@ function Pantalla() {
   const insets = useSafeAreaInsets();
   // Lo que manda la web: el resumen (null = sin sesión) y en qué pantalla está
   const [resumen, setResumen] = useState<Resumen | null>(null);
+  const [movs, setMovs] = useState<Movs | null>(null);
   const [seccion, setSeccion] = useState<{ w: string; dentro: boolean } | null>(null);
   const [refrescando, setRefrescando] = useState(false);
   const js = useCallback((codigo: string) => web.current?.injectJavaScript(`${codigo}; true;`), []);
@@ -167,6 +168,7 @@ function Pantalla() {
     if (msg.type === 'google') entrarConGoogle();
     else if (msg.type === 'apple') entrarConApple(web);
     else if (msg.type === 'resumen') setResumen(esResumen(msg.datos) ? msg.datos : null);
+    else if (msg.type === 'movs') setMovs(esMovs(msg.datos) ? msg.datos : null);
     else if (msg.type === 'seccion') {
       const d = msg.datos as { w?: unknown; dentro?: unknown } | undefined;
       if (d && typeof d.w === 'string') setSeccion({ w: d.w, dentro: !!d.dentro });
@@ -187,6 +189,7 @@ function Pantalla() {
   // La barra y el Inicio nativos aparecen solo con sesión y en las pantallas principales de la web
   const conBarra = !!resumen && !!seccion?.dentro;
   const enInicio = !!resumen && seccion?.w === 'app';
+  const enMovs = !!resumen && !!movs && seccion?.w === 'movs';
   const ir = useCallback((p: Pestana) => js(`window.__irA && window.__irA('${p}')`), [js]);
   const accion = useCallback((a: 'nuevo' | 'voz') => js(`window.__accionDesdeApp && window.__accionDesdeApp('${a}')`), [js]);
   const refrescar = useCallback(() => {
@@ -225,9 +228,16 @@ function Pantalla() {
           overScrollMode="never"
         />}
         {enInicio && resumen && (
-          <View style={styles.cover}>
+          <View style={[styles.cover, styles.pantalla]}>
             <Inicio r={resumen} cargar={() => accion('nuevo')} dictar={() => accion('voz')} verMovs={() => ir('movs')}
               ocultar={() => js('window.__ocultarDesdeApp && window.__ocultarDesdeApp()')} refrescar={refrescar} refrescando={refrescando} />
+          </View>
+        )}
+        {enMovs && movs && (
+          <View style={[styles.cover, styles.pantalla]}>
+            <Movimientos m={movs} refrescar={refrescar} refrescando={refrescando}
+              pedir={(p) => js(`window.__movsDesdeApp && window.__movsDesdeApp(${JSON.stringify(p)})`)}
+              abrir={(k, id) => js(`window.__abrirMovDesdeApp && window.__abrirMovDesdeApp(${JSON.stringify(k)}, ${JSON.stringify(id)})`)} />
           </View>
         )}
         {loading && !failed && (
@@ -252,6 +262,8 @@ function Pantalla() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   web: { flex: 1 },
+  // Las pantallas nativas ocupan todo el ancho (cover centra y deja margen, que es para los avisos)
+  pantalla: { alignItems: 'stretch', justifyContent: 'flex-start', padding: 0, backgroundColor: APP.fondo },
   cover: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', padding: 24 },
   title: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
   text: { color: '#8a8580', fontSize: 15, textAlign: 'center', marginBottom: 20 },

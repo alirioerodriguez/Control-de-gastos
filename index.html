@@ -3287,7 +3287,53 @@ function avisarResumen(){
 window.__irA=function(v){ const b=document.querySelector('[data-nav="'+v+'"]'); if(b) b.click(); else show(v); };
 window.__ocultarDesdeApp=function(){ const b=$("eye-btn"); if(b) b.click(); };
 /* Tirar hacia abajo en el Inicio nativo: vuelve a traer los datos; avisa a la app al terminar */
-window.__refrescarDesdeApp=async function(){ try{ if(user) await loadAll(); }catch(e){} finally{ _resumenUlt=""; avisarResumen(); avisarApp("refrescado",true); } };
+window.__refrescarDesdeApp=async function(){ try{ if(user) await loadAll(); }catch(e){} finally{ _resumenUlt=""; _movsUlt=""; avisarResumen(); avisarMovs(); avisarApp("refrescado",true); } };
+/* Movimientos nativo: la web filtra igual que en su pantalla (mes, tipo, cuenta, categoría o búsqueda en toda la historia)
+   y le pasa a la app las filas ya escritas. Los títulos y totales se leen de la pantalla de la web, así nunca difieren. */
+var _movsUlt="";
+const MAX_FILAS_APP=300;
+function datosMovs(){
+  const q=norm(($("f-text").value||"").trim()), fc=$("f-cuenta").value, fk=$("f-cat").value;
+  let rows=mergedMovs();
+  if(q) rows=rows.filter(r=>coincide(textoMov(r),q));
+  else {
+    rows=rows.filter(r=>r.fecha.slice(0,7)===VMONTH);
+    if(detStat==="ingreso") rows=rows.filter(r=>r.tipo==="ingreso");
+    if(detStat==="gasto") rows=rows.filter(r=>r.tipo==="gasto");
+    if(detStat==="ahorro") rows=rows.filter(r=>r._k==="ah");
+    if(detStat==="pases") rows=rows.filter(r=>r._k==="tr");
+  }
+  if(fc) rows=rows.filter(r=> r._k==="tr"?(r.origen===fc||r.destino===fc):r.cuenta===fc);
+  if(fk) rows=rows.filter(r=>r.categoria===fk);
+  const opciones=sel=>Array.from($(sel).options).map(o=>({v:o.value,t:o.textContent}));
+  return {
+    mes:mesLargo(VMONTH), esteMes:VMONTH===curMonth(), busqueda:($("f-text").value||"").trim(), filtro:detStat, oculto:!!oculto,
+    chips:DET_CHIPS.map(([k,n])=>({k,n})), titulo:$("mv-title").textContent, etiqueta:$("mv-lbl").textContent,
+    total:$("mv-total").textContent, conteo:$("mv-count").textContent,
+    cuenta:fc, categoria:fk, cuentas:opciones("f-cuenta"), categorias:opciones("f-cat"),
+    filas:rows.slice(0,MAX_FILAS_APP).map(r=>{ const m=partesMov(r); return { k:r._k, id:String(r.id), dia:r.fecha, diaTxt:fechaCorta(r.fecha),
+      clase:m.clase, emoji:m.emoji, titulo:m.tit, sub:m.sub, monto:m.val }; }),
+    hayMas:rows.length>MAX_FILAS_APP,
+  };
+}
+function avisarMovs(){
+  if(!SHELL_NATIVO) return;
+  let d; try{ d=datosMovs(); }catch(e){ return; }
+  const txt=JSON.stringify(d); if(txt===_movsUlt) return; _movsUlt=txt;
+  avisarApp("movs",d);
+}
+/* Lo que pide el Movimientos nativo: otro mes (mes: -1 o 1), otro tipo, cuenta, categoría o una búsqueda */
+window.__movsDesdeApp=function(p){
+  p=p||{};
+  if(typeof p.q==="string") $("f-text").value=p.q;
+  if(typeof p.cuenta==="string") $("f-cuenta").value=p.cuenta;
+  if(typeof p.categoria==="string") $("f-cat").value=p.categoria;
+  if(typeof p.filtro==="string" && DET_TIT[p.filtro]){ detStat=p.filtro; $("f-text").value=""; renderMovChips(); }
+  if(p.mes===1||p.mes===-1){ shiftMonth(p.mes); return; }
+  renderMovs();
+};
+/* Tocar una fila nativa abre el detalle de la web, donde se edita o se borra */
+window.__abrirMovDesdeApp=function(k,id){ if(["tx","tr","ah"].includes(k)) openDet(k,id,"movs"); };
 function datosWidget(){
   const mes=curMonth(), {gas}=totalesMes(mes,CUR), ocultar=!!oculto, m=n=>ocultar?"•••••":fmt(n,CUR);
   return { disponible:m(disponibleDebito(CUR)), gastado:m(gas), mes:mesLargo(mes).split(" ")[0], oculto:ocultar,
@@ -3944,25 +3990,25 @@ function mergedMovs(){
   return a.concat(b).concat(c).sort((x,y)=>y.fecha.localeCompare(x.fecha)||String(y.id).localeCompare(String(x.id)));
 }
 function goalName(id){ const g=GOALS.find(x=>x.id===id); return g?((g.emoji||"")+" "+g.nombre):"ahorro general"; }
-function movRow(r,acciones){
+/* Lo que dice cada fila de Movimientos, sin HTML: lo usan la web (movRow) y la app nativa (datosMovs) */
+function partesMov(r){
   const isTr=r._k==="tr", isAh=r._k==="ah", isIn=r.tipo==="ingreso";
   const cur=CTA_MON[r.cuenta]||CTA_MON[r.origen]||"ARS";
-  let col,bg,ic,tit,sub,val;
-  if(isTr){ col="var(--blue)"; bg="var(--blue-bg)"; ic="transferir";
-    tit=esc(r.descripcion)||"Transferencia";
-    sub=`${fechaCorta(r.fecha)} · ${esc(CTA_NOMBRE[r.origen]||r.origen)} → ${esc(CTA_NOMBRE[r.destino]||r.destino)}`;
-    val=money(r.monto,cur);
-  } else if(isAh){ const guarda=r.monto>=0; col="var(--teal)"; bg="var(--teal-bg)"; ic="chanchito";
+  if(isTr) return { clase:"pase", ic:"transferir", emoji:"🔁", tit:String(r.descripcion||"")||"Transferencia",
+    sub:`${CTA_NOMBRE[r.origen]||r.origen} → ${CTA_NOMBRE[r.destino]||r.destino}`, val:money(r.monto,cur) };
+  if(isAh){ const guarda=r.monto>=0;
     /* v3.4 · el ahorro reserva, no mueve: el copy tiene que decir eso */
-    tit=esc(r.descripcion)|| (guarda?"Reservaste plata":"Liberaste plata");
-    sub=`${fechaCorta(r.fecha)} · ${esc(goalName(r.goal_id))} · ${guarda?"en":"de"} ${esc(CTA_NOMBRE[r.cuenta]||r.cuenta)}`;
     /* sin signo: reservar no es ni sumar ni restar plata, sólo apartarla */
-    val=money(Math.abs(r.monto),cur);
-  } else { col=isIn?"var(--green)":"var(--red-ink)"; bg=isIn?"var(--green-bg)":"var(--red-bg)"; ic=isIn?"ingreso":"gasto";
-    tit=esc(r.descripcion)||esc(r.categoria)||"(sin detalle)";
-    sub=`${fechaCorta(r.fecha)} · ${catEmoji(r.categoria)} ${esc(r.categoria)||"—"} · ${esc(CTA_NOMBRE[r.cuenta]||r.cuenta)}`;
-    val=(isIn?"+ ":"− ")+money(r.monto,cur);
-  }
+    return { clase:"ahorro", ic:"chanchito", emoji:"🐷", tit:String(r.descripcion||"")||(guarda?"Reservaste plata":"Liberaste plata"),
+      sub:`${goalName(r.goal_id)} · ${guarda?"en":"de"} ${CTA_NOMBRE[r.cuenta]||r.cuenta}`, val:money(Math.abs(r.monto),cur) }; }
+  return { clase:isIn?"ingreso":"gasto", ic:isIn?"ingreso":"gasto", emoji:catEmoji(r.categoria),
+    tit:String(r.descripcion||"")||String(r.categoria||"")||"(sin detalle)",
+    sub:`${catEmoji(r.categoria)} ${r.categoria||"—"} · ${CTA_NOMBRE[r.cuenta]||r.cuenta}`, val:(isIn?"+ ":"− ")+money(r.monto,cur) };
+}
+const COLOR_MOV={ pase:["var(--blue)","var(--blue-bg)"], ahorro:["var(--teal)","var(--teal-bg)"], ingreso:["var(--green)","var(--green-bg)"], gasto:["var(--red-ink)","var(--red-bg)"] };
+function movRow(r,acciones){
+  const m=partesMov(r), [col,bg]=COLOR_MOV[m.clase], ic=m.ic;
+  const tit=esc(m.tit), sub=`${fechaCorta(r.fecha)} · ${esc(m.sub)}`, val=m.val;
   /* toda la fila abre el detalle, donde se edita todo */
   const abre = acciones===false ? "" : ` data-open="${r._k}" data-oid="${r.id}"`;
   const ch = acciones===false ? "" : `<span class="ch" style="color:var(--ink-3);flex:none;display:grid;place-items:center">${icon('adelante',15)}</span>`;
@@ -4240,7 +4286,7 @@ function coincide(txt,q){ return norm(txt).includes(q); }
 function renderMovs(){
   const q=norm(($("f-text").value||"").trim());
   const fc=$("f-cuenta").value, fk=$("f-cat").value;
-  if(q){ renderBusqueda(q,fc,fk); pintarFab(); return; }
+  if(q){ renderBusqueda(q,fc,fk); pintarFab(); avisarMovs(); return; }
 
   $("mv-otros").innerHTML=""; $("mv-sec-movs").style.display="none";
   $("mv-lbl").textContent="Total del mes";
@@ -4263,6 +4309,7 @@ function renderMovs(){
     : `<div class="empty">${detStat==="pases"?"No pasaste plata entre cuentas este mes.<br><button class=\"btn sm\" id=\"mv-pasar-vacio\" style=\"margin-top:12px\">Pasar plata entre cuentas</button>":"Sin movimientos para ese filtro."}</div>`;
   bindRows(el,'movs');
   if($("mv-pasar-vacio")) $("mv-pasar-vacio").onclick=pasarDesdeMovs;
+  avisarMovs();
   pintarFab();
 }
 /* los chips de tipo viven fuera de renderMovs para no rearmarlos en cada tecla del buscador */

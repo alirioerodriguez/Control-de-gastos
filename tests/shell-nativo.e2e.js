@@ -47,7 +47,35 @@ async function pagina(b, { shell, iphone, apple }) {
     ok('avisa en qué pantalla está', sec && sec.datos.w === 'app' && sec.datos.dentro === true, JSON.stringify(sec))
     await p.evaluate(() => window.__irA('movs')); await p.waitForTimeout(200)
     ok('__irA cambia de pantalla', (await p.evaluate(() => window.__msgs.filter((m) => m.type === 'seccion').pop().datos.w)) === 'movs')
+    // Movimientos nativo
+    const movs = () => p.evaluate(() => window.__msgs.filter((m) => m.type === 'movs').pop()?.datos)
+    const pedir = async (q) => { await p.evaluate((q) => window.__movsDesdeApp(q), q); await p.waitForTimeout(150); return movs() }
+    let mv = await pedir({ filtro: 'gasto' })
+    ok('Movimientos: manda las filas del mes ya escritas (gastos, como la web)', mv && mv.filtro === 'gasto' && mv.filas.length === 1 && mv.filas[0].titulo === 'Coto'
+      && mv.filas[0].clase === 'gasto' && /^− \$/.test(mv.filas[0].monto) && / Súper · Efectivo$/.test(mv.filas[0].sub), JSON.stringify(mv))
+    ok('Movimientos: título, total y conteo son los de la pantalla de la web', mv && await p.evaluate((d) => d.total === document.getElementById('mv-total').textContent
+      && d.titulo === document.getElementById('mv-title').textContent && d.conteo === document.getElementById('mv-count').textContent, mv) && mv.chips.length === 5, JSON.stringify(mv))
+    ok('Movimientos: la fila de la web no cambió', await p.evaluate(() => /Coto/.test(document.getElementById('mov-list').textContent) && /Súper · Efectivo/.test(document.getElementById('mov-list').textContent)))
+    mv = await pedir({ filtro: 'todos' })
+    ok('Movimientos: el chip «Todos» trae gasto e ingreso del mismo día', mv.filtro === 'todos' && mv.filas.length === 2 && mv.filas.some((f) => f.clase === 'ingreso' && /^\+ /.test(f.monto)) && mv.filas[0].dia === mv.filas[1].dia, JSON.stringify(mv.filas))
+    mv = await pedir({ q: 'sueldo' })
+    ok('Movimientos: busca en toda la historia', mv.busqueda === 'sueldo' && mv.filas.length === 1 && mv.filas[0].clase === 'ingreso', JSON.stringify(mv))
+    mv = await pedir({ q: '' })
+    const mesActual = mv.mes
+    mv = await pedir({ mes: -1 })
+    ok('Movimientos: mes anterior', mv.mes !== mesActual && mv.esteMes === false && mv.filas.length === 0, JSON.stringify(mv))
+    mv = await pedir({ mes: 1 })
+    ok('Movimientos: vuelve al mes actual', mv.mes === mesActual && mv.esteMes === true && mv.filas.length === 2)
+    await p.evaluate(() => { const o = document.createElement('option'); o.value = o.textContent = 'Sueldo'; document.getElementById('f-cat').append(o) })
+    mv = await pedir({ categoria: 'Sueldo' })
+    ok('Movimientos: filtra por categoría', mv.categoria === 'Sueldo' && mv.filas.length === 1 && mv.filas[0].titulo === 'Sueldo', JSON.stringify(mv))
+    mv = await pedir({ categoria: '' })
+    await p.evaluate(() => window.__abrirMovDesdeApp('tx', 't1')); await p.waitForTimeout(200)
+    ok('Movimientos: tocar una fila abre el detalle de la web', (await p.evaluate(() => window.__msgs.filter((m) => m.type === 'seccion').pop().datos)).w === 'det')
+    await p.evaluate(() => window.__irA('movs')); await p.waitForTimeout(200)
+
     await p.evaluate(() => window.__ocultarDesdeApp()); await p.waitForTimeout(200)
+    ok('Movimientos: «ocultar montos» también tapa las filas', (await movs()).filas.every((f) => /•••••/.test(f.monto)), JSON.stringify((await movs()).filas))
     const o = await p.evaluate(() => window.__msgs.filter((m) => m.type === 'resumen').pop())
     ok('«ocultar montos» desde la app manda •••••', o.datos.oculto && o.datos.disponible === '•••••' && o.datos.movimientos[0].monto === '•••••', JSON.stringify(o.datos))
     await p.evaluate(() => window.__accionDesdeApp('nuevo')); await p.waitForTimeout(200)
