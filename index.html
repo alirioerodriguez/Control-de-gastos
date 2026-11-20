@@ -670,6 +670,12 @@ button.row{background:transparent;border:0;color:inherit;font:inherit;text-align
 .ov{position:fixed;inset:0;background:rgba(43,39,35,.55);display:grid;place-items:end center;z-index:140}
 .sheet{width:100%;max-width:520px;background:var(--card);border-radius:24px 24px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto;animation:dvRise .3s cubic-bezier(.2,.9,.2,1) both}
 .sheet h3{font-size:17px;font-weight:800;margin-bottom:16px}
+/* ventanas que salen una sola vez (tester, Savia) */
+.unavez-ico{width:64px;height:64px;border-radius:18px;display:grid;place-items:center;font-size:30px;background:var(--green-bg);margin-bottom:14px;object-fit:cover}
+.sheet h3.unavez-tit{font-size:19px;line-height:1.25;margin:0 0 8px}
+.unavez-txt{margin:0 0 12px;font-size:15px;line-height:1.45;color:var(--ink-2)}
+.unavez-lista{background:var(--soft);border-radius:16px;padding:12px 14px;margin:4px 0 14px;font-size:14px;color:var(--ink-2);line-height:1.55}
+.btn.savia{background:#a8466a;color:#fff;display:block;text-align:center;text-decoration:none}
 .r2{display:flex;gap:10px;margin-top:16px}
 
 /* auth */
@@ -3604,6 +3610,7 @@ async function loadAll(){
     detectarIAServidor();   /* v3.9 · no bloquea: la IA es opcional */
     renderTodo();
     if(subView) renderSub();
+    setTimeout(ventanaUnaVez, 2500);   /* tester o Savia: una sola vez, después de que se ve el Inicio */
   } catch(e){
     const {t:_t,s:_s}=traducirError(e);
     anotarError("No pude traer tus datos", e);
@@ -5310,11 +5317,91 @@ function filaMenu(c,attr){ return `<button class="cfgrow rowz" ${attr}="${c.k}">
 const OTRAS_APPS=[
   {url:"https://donde-la-veo-app.vercel.app/?ref=mis-cuentas", img:"donde-la-veo.png", titulo:"¿Qué mirar esta noche?",
    texto:"VeoMás te dice en qué plataforma está cada película o serie en tu país. Gratis y sin cuenta."},
-  {url:"https://cicloapp.vercel.app/?ref=mis-cuentas", emoji:"🌸", titulo:"Savia",
-   texto:"Seguí tu ciclo menstrual con tus datos en privado, en tu teléfono."},
-  {url:"https://un-nuevo-comienzo-empleo.vercel.app/?ref=mis-cuentas", emoji:"🌱", titulo:"¿Estás buscando trabajo?",
-   texto:"Un nuevo comienzo te arma una rutina semanal de CVs, te ayuda con entrevistas y te muestra dónde buscar. Gratis y sin cuenta."}
+  {url:"https://un-nuevo-comienzo-empleo.vercel.app/?ref=mis-cuentas", img:"un-nuevo-comienzo.svg", titulo:"¿Estás buscando trabajo?",
+   texto:"Un nuevo comienzo te arma una rutina semanal de CVs, te ayuda con entrevistas y te muestra dónde buscar. Gratis y sin cuenta."},
+  {url:"https://control-de-facturacion-eight.vercel.app/?ref=mis-cuentas", img:"honorapp.svg", titulo:"¿Atendés pacientes?",
+   texto:"honorapp lleva tus sesiones y tus cobros, y te arma el reporte para tu contadora."},
+  {url:"https://cicloapp.vercel.app/?ref=mis-cuentas", img:"savia.png", titulo:"Savia",
+   texto:"Una nueva app para tu ciclo menstrual y tu cuidado, con tus datos en privado."}
 ];
+
+/* Ventanas que salen una sola vez por cuenta: la invitación a ser tester en Google Play (a quien ya usa la app,
+   nunca al admin) y la presentación de Savia (solo a las cuentas de SAVIA_PARA). Que ya salió se guarda en la cuenta
+   (user_metadata.ventanas_vistas, sin tablas nuevas) y en el teléfono, así no vuelve a salir en otro dispositivo. */
+/* @prueba:una-vez */
+const TESTER_MIN_MOVS=10, TESTER_MIN_DIAS=3;
+const SAVIA_PARA=["f8368900-7ad6-490a-9321-ff40eae7d70d"];   /* Sharon */
+function ventanaQueToca(o){   /* o: {userId, esAdmin, vistas:{tester,savia}, movs:[{created_at,fecha}]} → "savia" | "tester" | null */
+  const v=o.vistas||{};
+  if(!v.savia && SAVIA_PARA.includes(o.userId)) return "savia";
+  if(v.tester || o.esAdmin) return null;
+  const movs=o.movs||[];
+  const dias=new Set(movs.map(m=>String(m.created_at||m.fecha||"").slice(0,10)).filter(Boolean));
+  return movs.length>=TESTER_MIN_MOVS && dias.size>=TESTER_MIN_DIAS ? "tester" : null;
+}
+const mailTesterValido=m=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(m||"").trim());
+/* @fin:una-vez */
+const VISTAS_KEY=()=>"miscuentas_ventanas_v1:"+(user?user.id:"");
+function ventanasVistas(){
+  let loc={}; try{ loc=JSON.parse(localStorage.getItem(VISTAS_KEY())||"{}")||{}; }catch(e){}
+  return Object.assign({}, (user&&user.user_metadata&&user.user_metadata.ventanas_vistas)||{}, loc);
+}
+function marcarVentanaVista(tipo){
+  const v=Object.assign(ventanasVistas(), {[tipo]:new Date().toISOString()});
+  try{ localStorage.setItem(VISTAS_KEY(), JSON.stringify(v)); }catch(e){}
+  if(sb) sb.auth.updateUser({data:{ventanas_vistas:v}}).then(({error})=>{ if(error) anotarError("No pude guardar que ya viste el aviso", error); }).catch(()=>{});
+}
+let ventanaUnaVezHecha=false;
+function ventanaUnaVez(){
+  if(ventanaUnaVezHecha || !user || enOnboarding || document.querySelector(".ov:not(.hidden)")) return;
+  const tipo=ventanaQueToca({userId:user.id, esAdmin:!!(PROFILE&&PROFILE.es_admin), vistas:ventanasVistas(), movs:TX});
+  if(!tipo) return;
+  ventanaUnaVezHecha=true;   /* una por sesión: si le tocan las dos, la otra sale la próxima vez */
+  marcarVentanaVista(tipo);
+  const ov=document.createElement("div");
+  ov.className="ov"; ov.id="unavez-ov";
+  ov.setAttribute("role","dialog"); ov.setAttribute("aria-modal","true"); ov.setAttribute("aria-labelledby","unavez-tit");
+  ov.innerHTML=`<div class="sheet">${tipo==="savia" ? `
+      <img class="unavez-ico" src="savia.png" alt="" width="64" height="64">
+      <h3 class="unavez-tit" id="unavez-tit">Hay una nueva app para tu ciclo menstrual y tu cuidado</h3>
+      <p class="unavez-txt">Se llama Savia. Te acompaña con tu ciclo, también si tomás pastillas, en el embarazo o en la menopausia.</p>
+      <div class="unavez-lista">🌸 Gratis<br>🔒 Tus datos quedan en tu teléfono, en privado</div>
+      <a class="btn w savia" id="unavez-si" href="https://cicloapp.vercel.app/?ref=mis-cuentas-aviso" target="_blank" rel="noopener noreferrer">Conocer Savia</a>`
+    : `
+      <div class="unavez-ico" aria-hidden="true">🧪</div>
+      <h3 class="unavez-tit" id="unavez-tit">¿Te gusta Mis Cuentas? Ayudanos a llevarla a Google Play</h3>
+      <p class="unavez-txt">Para publicarla, Google pide que un grupo de personas la pruebe antes. ¿Querés ser una de ellas?</p>
+      <div class="unavez-lista">✓ Es gratis y la seguís usando igual que ahora<br>✓ Tus cuentas y movimientos no se comparten</div>
+      <div class="fld"><label for="unavez-mail">Tu mail de Google (Gmail)</label>
+        <input id="unavez-mail" type="email" inputmode="email" autocomplete="email" maxlength="120" value="${esc(user.email||"")}"></div>
+      <p class="hint" style="margin:-4px 0 14px">Con este mail te sumamos a la prueba en Google Play. Solo mandamos tu nombre y este mail.</p>
+      <button class="btn w" id="unavez-si" type="button">Sí, quiero ser tester</button>`}
+      <button class="btn ghost w" id="unavez-no" type="button" style="margin-top:8px">Ahora no</button>
+    </div>`;
+  document.body.appendChild(ov);
+  const cerrar=()=>{ ov.remove(); document.removeEventListener("keydown",alEscape); };
+  const alEscape=e=>{ if(e.key==="Escape"){ e.preventDefault(); cerrar(); } };
+  document.addEventListener("keydown",alEscape);
+  ov.onclick=e=>{ if(e.target===ov) cerrar(); };
+  $("unavez-no").onclick=cerrar;
+  setTimeout(()=>{ const b=$("unavez-si"); if(b) b.focus(); },60);
+  if(tipo==="savia"){ $("unavez-si").addEventListener("click",()=>setTimeout(cerrar,0)); return; }
+  $("unavez-si").onclick=async()=>{
+    const mail=$("unavez-mail").value.trim(), boton=$("unavez-si");
+    if(!mailTesterValido(mail)){ marcarMal("unavez-mail","Revisá el mail: tiene que ser como nombre@gmail.com."); return; }
+    botonOcupado(boton,true);
+    try{
+      const nombre=(PROFILE&&PROFILE.nombre)||"Alguien";
+      const r=await fetch(SUGERIR_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({app:"mis-cuentas",tipo:"tester",texto:`${nombre} quiere ser tester de Mis Cuentas en Google Play.`,mail,web:"",version:APP_VERSION})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j.error||"No se pudo enviar");
+      cerrar();
+      avisarOK("¡Gracias! Ya te anotamos","Te avisamos cuando puedas instalarla desde Google Play.");
+    }catch(e){ toast("No se pudo enviar",{sub:navigator.onLine===false?"Estás sin conexión. Probá cuando vuelva.":e.message,tipo:"err"}); }
+    finally{ botonOcupado(boton,false); }
+  };
+}
 function renderMasMenu(){
   /* v2 · "Más" y "Configuración" eran dos menús paralelos sin criterio (H-11).
      Ahora es un solo destino con dos grupos titulados: Herramientas y Ajustes. */
@@ -5323,7 +5410,7 @@ function renderMasMenu(){
   $("mas-menu").outerHTML=`<div id="mas-menu">
     ${grupo("Herramientas",MAS,"data-mas")}
     ${grupo("Ajustes",CFG,"data-cfg")}
-    <div class="sec" style="margin-top:18px"><b>Otras apps del mismo creador</b></div>
+    <div class="sec" style="margin-top:18px"><b>Otras apps que te pueden servir</b></div>
     ${OTRAS_APPS.map(a=>`<a class="panel pad" href="${a.url}" target="_blank" rel="noopener noreferrer"
        style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;margin-bottom:10px">
       ${a.img?`<img src="${a.img}" alt="" width="48" height="48" style="border-radius:12px;flex:none">`
