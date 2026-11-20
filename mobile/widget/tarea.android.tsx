@@ -1,9 +1,9 @@
-// Android redibuja el widget por su cuenta (al agregarlo, al cambiar de tamaño, al reiniciar): usa lo último guardado.
+// Android redibuja los widgets por su cuenta (al agregarlos, al cambiar de tamaño, al reiniciar): usa lo último guardado.
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 import { leer } from './datos';
-import { ResumenAndroid } from './ResumenAndroid';
+import { dibujar } from './dibujar.android';
 
-export async function tareaWidget({ widgetAction, renderWidget }: WidgetTaskHandlerProps) {
+export async function tareaWidget({ widgetInfo, widgetAction, renderWidget }: WidgetTaskHandlerProps) {
   if (widgetAction === 'WIDGET_DELETED' || widgetAction === 'WIDGET_CLICK') return;
-  renderWidget(<ResumenAndroid datos={leer()} />);
+  renderWidget(dibujar(widgetInfo.widgetName, leer(), widgetInfo.height));
 }

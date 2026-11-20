@@ -18,6 +18,10 @@ Lo que agrega sobre la web:
   y respeta «ocultar montos». iOS usa `expo-widgets` (`ResumenIOS.tsx`); Android usa
   `react-native-android-widget` (`ResumenAndroid.tsx`), porque en Android los botones de `expo-widgets` no abren
   la app. Tocar el widget abre `miscuentas://inicio`; «+ Gasto» abre `miscuentas://nuevo`.
+- **Más widgets** (desde el 20/11/2026, `MasAndroid.tsx` y `MasIOS.tsx`): **Movimientos** (los últimos 4, con «+ Gasto»),
+  **Lo que viene** (resúmenes de tarjeta, fijos sin registrar y aportes a metas del mes, y cuánto te quedaría),
+  **Atajos** (Dictar, Gasto e Ingreso: `miscuentas://voz`, `nuevo` e `ingreso`) y **Presupuestos** (los 3 más justos, con su
+  barra; abre `miscuentas://presupuesto`). Los datos salen de `datosWidget` en `index.html`, igual que el Resumen.
 
 - **Barra de abajo e Inicio nativos** (`nativo.tsx`, desde el 15/11/2026): la app dibuja su propia barra
   (Inicio, Movimientos, «+», Plan, Más; mantener apretado el «+» abre el dictado) y una pantalla de Inicio nativa

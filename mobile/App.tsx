@@ -10,7 +10,7 @@ import { WebView, type WebViewProps } from 'react-native-webview';
 import type { ShouldStartLoadRequest, WebViewMessageEvent, WebViewNavigation, WebViewOpenWindowEvent } from 'react-native-webview/lib/WebViewTypes';
 import { APP } from './config';
 import { actualizarWidget } from './widget/actualizar';
-import { esValido } from './widget/datos';
+import { esValido, limpiar } from './widget/datos';
 import { POLYFILL_VOZ, pedidoVoz, useVozNativa } from './voz';
 import { entrarConApple } from './apple';
 import { Barra, Inicio, Movimientos, esMovs, esResumen, type Movs, type Pestana, type Resumen } from './nativo';
@@ -60,12 +60,12 @@ async function guardarYCompartir(nombre: string, datos: string) {
   await Sharing.shareAsync(archivo.uri, { dialogTitle: nombre });
 }
 
-// El widget abre la app con miscuentas://nuevo («+ Gasto») o miscuentas://inicio, y los atajos del ícono con
+// Los widgets abren la app con miscuentas://nuevo («+ Gasto»), ingreso, voz, presupuesto o inicio, y los atajos del ícono con
 // miscuentas://nuevo o miscuentas://voz (plugins/atajos-android.js). Los enlaces del sitio
 // (por ejemplo, el de un evento que llega por WhatsApp) también abren la app, en esa página.
 const accionDe = (url: string | null | undefined) => {
-  const m = url && /^miscuentas:\/\/(nuevo|voz)/.exec(url);
-  return m ? (m[1] as 'nuevo' | 'voz') : null;
+  const m = url && /^miscuentas:\/\/(nuevo|voz|ingreso|presupuesto)/.exec(url);
+  return m ? (m[1] as 'nuevo' | 'voz' | 'ingreso' | 'presupuesto') : null;
 };
 const delSitio = (url: string | null | undefined) => (url && url.startsWith(ORIGEN + '/') ? url : null);
 
@@ -181,7 +181,7 @@ function Pantalla() {
     else if (msg.type === 'voz')
       pedidoVoz(web, msg as Parameters<typeof pedidoVoz>[1]);
     else if (msg.type === 'widget')
-      actualizarWidget(msg.datos === null ? null : esValido(msg.datos) ? msg.datos : null);
+      actualizarWidget(msg.datos === null ? null : esValido(msg.datos) ? limpiar(msg.datos) : null);
   }, [entrarConGoogle]);
 
   const retry = () => { setFailed(false); setLoading(true); web.current?.reload(); };
