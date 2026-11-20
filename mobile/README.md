@@ -25,6 +25,10 @@ Lo que agrega sobre la web:
   tirar para actualizar. Las cuentas las sigue haciendo la web, que le manda el resumen ya escrito (ver «APP NATIVA»
   en `index.html`), así las cifras nunca difieren. La app avisa con `window.__shellNativo` antes de cargar la página;
   una versión vieja de la app sigue viendo la barra de la web.
+- **Movimientos nativo** (`Movimientos` en `nativo.tsx`, desde el 20/11/2026): mes anterior y siguiente, chips
+  (Todos, Gastos, Ingresos, Ahorros, Pases), cuenta y categoría, buscador en toda la historia y la lista por día.
+  La web filtra igual que en su pantalla y le manda las filas ya escritas (`datosMovs` y `__movsDesdeApp` en
+  `index.html`); tocar una fila abre el detalle de la web, donde se edita o se borra.
 - **Iniciar sesión con Apple** (`apple.ts`, solo iPhone; Apple lo exige porque hay Google, regla 4.8): la ventana es
   del sistema y el token se le pasa a la web, que entra con `signInWithIdToken`. El botón aparece solo si el
   proveedor Apple está activo en Supabase (Authentication → Sign In / Providers → Apple, con
