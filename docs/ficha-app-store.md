@@ -16,7 +16,7 @@ Dicta, carga y divide gastos
 Nuevo: Inicio, Movimientos, Plan y Más hechos para el iPhone, widgets en la pantalla de inicio y entrada con Apple. Dicta tus gastos y ordena tus cuotas en minutos.
 
 ## Palabras clave (100)
-presupuesto,finanzas,ahorro,tarjeta,dividir,deudas,dolar,mep,inflacion,billetera,splitwise,viajes,resumen
+presupuesto,finanzas,ahorro,tarjeta,dividir,deudas,dolar,mep,inflacion,billetera,splitwise,viajes
 
 > No repetir palabras que ya están en el nombre o el subtítulo (Apple ya las indexa). «splitwise» es nombre de otra app: Apple puede rechazar marcas ajenas en las palabras clave (guía 2.3.7); si la rechazan, cambiarla por «grupos».
 
