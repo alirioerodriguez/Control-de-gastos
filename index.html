@@ -3287,7 +3287,7 @@ function avisarResumen(){
 window.__irA=function(v){ const b=document.querySelector('[data-nav="'+v+'"]'); if(b) b.click(); else show(v); };
 window.__ocultarDesdeApp=function(){ const b=$("eye-btn"); if(b) b.click(); };
 /* Tirar hacia abajo en el Inicio nativo: vuelve a traer los datos; avisa a la app al terminar */
-window.__refrescarDesdeApp=async function(){ try{ if(user) await loadAll(); }catch(e){} finally{ _resumenUlt=""; _movsUlt=""; avisarResumen(); avisarMovs(); avisarApp("refrescado",true); } };
+window.__refrescarDesdeApp=async function(){ try{ if(user) await loadAll(); }catch(e){} finally{ _resumenUlt=""; _movsUlt=""; _planUlt=""; avisarResumen(); avisarMovs(); avisarPlan(); avisarApp("refrescado",true); } };
 /* Movimientos nativo: la web filtra igual que en su pantalla (mes, tipo, cuenta, categoría o búsqueda en toda la historia)
    y le pasa a la app las filas ya escritas. Los títulos y totales se leen de la pantalla de la web, así nunca difieren. */
 var _movsUlt="";
@@ -3334,6 +3334,35 @@ window.__movsDesdeApp=function(p){
 };
 /* Tocar una fila nativa abre el detalle de la web, donde se edita o se borra */
 window.__abrirMovDesdeApp=function(k,id){ if(["tx","tr","ah"].includes(k)) openDet(k,id,"movs"); };
+/* Plan nativo: lo que viene este mes, presupuestos, ahorros y tarjetas, ya escritos (respeta «ocultar montos»).
+   Tocar algo abre la pantalla de la web donde se edita (__planDesdeApp). */
+var _planUlt="", _planViene=[];
+function datosPlan(){
+  const mes=curMonth(), v=loQueViene(); _planViene=v.items;
+  const viene=v.items.slice(0,8).map((x,i)=>{
+    const falta=x.dia==null?null:x.dia-v.hoy;
+    const cuando=x.dia==null?"sin día":falta<0?(x.tipo==="tarjeta"?"cerró, sin pagar":"atrasado"):falta===0?"hoy":falta===1?"mañana":"día "+x.dia;
+    return { i, tipo:x.tipo, titulo:String(x.titulo), sub:String(x.sub), cuando, monto:(x.signo>0?"+ ":"− ")+money(x.monto,CUR), entra:x.signo>0, urgente:falta!=null&&falta<=3 }; });
+  const presupuestos=presupuestosDelMes(mes).slice(0,6).map(x=>({ cat:String(x.cat), emoji:catEmoji(x.cat), gastado:money(x.g,CUR), limite:money(x.lim,CUR), pct:Math.round(x.g/x.lim*100) }));
+  const metas=GOALS.filter(g=>!g.archivada).slice(0,6).map(g=>{ const cur=monedaMeta(g), j=ahorroDeMeta(g.id), obj=Number(g.objetivo)||0;
+    return { id:String(g.id), nombre:String(g.nombre||"Meta"), juntado:money(j,cur), objetivo:obj>0?money(obj,cur):"", pct:obj>0?Math.min(100,Math.round(j/obj*100)):null }; });
+  const tarjetas=CARDS.slice(0,6).map(c=>{ const r=resumenMes(c.id,mes), cur=monedaTarjeta(c);
+    return { id:String(c.id), nombre:String(cardTitulo(c)), total:money(r.total,cur), pagada:r.registrado&&r.restante<=0, cierre:c.cierre_dia?"cierra el "+c.cierre_dia:"" }; });
+  return { mes:mesLargo(mes), oculto:!!oculto, viene, sale:money(v.sale,CUR), queda:money(v.queda,CUR),
+    presupuestos, ahorro:money(ahorroTotal(CUR),CUR), metas, tarjetas };
+}
+function avisarPlan(){
+  if(!SHELL_NATIVO) return;
+  let d; try{ d=datosPlan(); }catch(e){ return; }
+  const txt=JSON.stringify(d); if(txt===_planUlt) return; _planUlt=txt;
+  avisarApp("plan",d);
+}
+window.__planDesdeApp=function(p){
+  p=p||{};
+  if(["tar","metas","fijos","presu"].includes(p.ir)) irPlan(p.ir);
+  else if(typeof p.viene==="number" && _planViene[p.viene]) _planViene[p.viene].go();
+  else if(typeof p.meta==="string" && GOALS.some(g=>String(g.id)===p.meta)){ activeGoalId=GOALS.find(g=>String(g.id)===p.meta).id; show("meta"); renderMeta(); }
+};
 function datosWidget(){
   const mes=curMonth(), {gas}=totalesMes(mes,CUR), ocultar=!!oculto, m=n=>ocultar?"•••••":fmt(n,CUR);
   /* Para los otros widgets: últimos movimientos, lo que viene en el mes y los presupuestos más justos */
@@ -4040,6 +4069,7 @@ function renderTodo(){
   pintarReciente();   /* v3.7 · resalta la fila recien guardada o editada */
   try{ avisarWidget(datosWidget()); }catch(e){}
   avisarResumen();
+  avisarPlan();
   correrAccionPendiente();
 }
 

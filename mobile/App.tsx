@@ -13,7 +13,7 @@ import { actualizarWidget } from './widget/actualizar';
 import { esValido, limpiar } from './widget/datos';
 import { POLYFILL_VOZ, pedidoVoz, useVozNativa } from './voz';
 import { entrarConApple } from './apple';
-import { Barra, Inicio, Movimientos, esMovs, esResumen, type Movs, type Pestana, type Resumen } from './nativo';
+import { Barra, Inicio, Movimientos, PlanNativo, esMovs, esPlan, esResumen, type Movs, type Pestana, type Plan, type Resumen } from './nativo';
 
 // La app muestra la web publicada: cada cambio que se publica llega solo, sin volver a compilar.
 // Lo que agrega: ingreso con Google (Google no lo permite dentro de una vista web), descargas de
@@ -91,6 +91,9 @@ function Pantalla() {
   // Lo que manda la web: el resumen (null = sin sesión) y en qué pantalla está
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [movs, setMovs] = useState<Movs | null>(null);
+  const [plan, setPlan] = useState<Plan | null>(null);
+  // El Plan nativo es la portada de «Plan»; al tocar una parte (Tarjetas, Ahorros…) se ve esa pantalla de la web
+  const [planNativo, setPlanNativo] = useState(true);
   const [seccion, setSeccion] = useState<{ w: string; dentro: boolean } | null>(null);
   const [refrescando, setRefrescando] = useState(false);
   const js = useCallback((codigo: string) => web.current?.injectJavaScript(`${codigo}; true;`), []);
@@ -169,9 +172,13 @@ function Pantalla() {
     else if (msg.type === 'apple') entrarConApple(web);
     else if (msg.type === 'resumen') setResumen(esResumen(msg.datos) ? msg.datos : null);
     else if (msg.type === 'movs') setMovs(esMovs(msg.datos) ? msg.datos : null);
+    else if (msg.type === 'plan') setPlan(esPlan(msg.datos) ? msg.datos : null);
     else if (msg.type === 'seccion') {
       const d = msg.datos as { w?: unknown; dentro?: unknown } | undefined;
-      if (d && typeof d.w === 'string') setSeccion({ w: d.w, dentro: !!d.dentro });
+      if (d && typeof d.w === 'string') {
+        setSeccion({ w: d.w, dentro: !!d.dentro });
+        if (!['tar', 'metas', 'meta', 'sub'].includes(d.w)) setPlanNativo(true);
+      }
     }
     else if (msg.type === 'refrescado') setRefrescando(false);
     else if (msg.type === 'archivo' && msg.nombre && typeof msg.datos === 'string')
@@ -190,7 +197,8 @@ function Pantalla() {
   const conBarra = !!resumen && !!seccion?.dentro;
   const enInicio = !!resumen && seccion?.w === 'app';
   const enMovs = !!resumen && !!movs && seccion?.w === 'movs';
-  const ir = useCallback((p: Pestana) => js(`window.__irA && window.__irA('${p}')`), [js]);
+  const enPlan = !!resumen && !!plan && planNativo && seccion?.w === 'tar';
+  const ir = useCallback((p: Pestana) => { if (p === 'tar') setPlanNativo(true); js(`window.__irA && window.__irA('${p}')`); }, [js]);
   const accion = useCallback((a: 'nuevo' | 'voz') => js(`window.__accionDesdeApp && window.__accionDesdeApp('${a}')`), [js]);
   const refrescar = useCallback(() => {
     setRefrescando(true);
@@ -238,6 +246,12 @@ function Pantalla() {
             <Movimientos m={movs} refrescar={refrescar} refrescando={refrescando}
               pedir={(p) => js(`window.__movsDesdeApp && window.__movsDesdeApp(${JSON.stringify(p)})`)}
               abrir={(k, id) => js(`window.__abrirMovDesdeApp && window.__abrirMovDesdeApp(${JSON.stringify(k)}, ${JSON.stringify(id)})`)} />
+          </View>
+        )}
+        {enPlan && plan && (
+          <View style={[styles.cover, styles.pantalla]}>
+            <PlanNativo p={plan} refrescar={refrescar} refrescando={refrescando}
+              pedir={(q) => { setPlanNativo(false); js(`window.__planDesdeApp && window.__planDesdeApp(${JSON.stringify(q)})`); }} />
           </View>
         )}
         {loading && !failed && (

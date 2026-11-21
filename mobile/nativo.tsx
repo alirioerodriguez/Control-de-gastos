@@ -294,7 +294,126 @@ export function Movimientos({ m, pedir, abrir, refrescar, refrescando }: {
   );
 }
 
+// Plan: lo que viene este mes, presupuestos, ahorros y tarjetas (ver datosPlan en index.html)
+export type ItemViene = { i: number; tipo: string; titulo: string; sub: string; cuando: string; monto: string; entra: boolean; urgente: boolean };
+export type Plan = {
+  mes: string; oculto: boolean; viene: ItemViene[]; sale: string; queda: string;
+  presupuestos: { cat: string; emoji: string; gastado: string; limite: string; pct: number }[];
+  ahorro: string; metas: { id: string; nombre: string; juntado: string; objetivo: string; pct: number | null }[];
+  tarjetas: { id: string; nombre: string; total: string; pagada: boolean; cierre: string }[];
+};
+
+export function esPlan(x: unknown): x is Plan {
+  const p = x as Plan;
+  return !!p && typeof p.mes === 'string' && Array.isArray(p.viene) && Array.isArray(p.presupuestos) && Array.isArray(p.metas) && Array.isArray(p.tarjetas);
+}
+
+export type PedidoPlan = { ir: 'tar' | 'metas' | 'fijos' | 'presu' } | { viene: number } | { meta: string };
+
+const Barrita = ({ pct, color }: { pct: number; color: string }) => (
+  <View style={s.barraFondo}><View style={[s.barraLlena, { width: `${Math.min(100, Math.max(0, pct))}%`, backgroundColor: color }]} /></View>
+);
+
+export function PlanNativo({ p, pedir, refrescar, refrescando }: { p: Plan; pedir: (q: PedidoPlan) => void; refrescar: () => void; refrescando: boolean }) {
+  const ir = (q: PedidoPlan) => { toque(); pedir(q); };
+  const titulo = (texto: string, destino: 'tar' | 'metas' | 'fijos' | 'presu', ver = 'Ver todo') => (
+    <View style={s.tituloLista}>
+      <Text style={s.subtitulo} accessibilityRole="header">{texto}</Text>
+      <Pressable onPress={() => ir({ ir: destino })} hitSlop={10} accessibilityRole="link" accessibilityLabel={`${ver}: ${texto}`}><Text style={s.verTodos}>{ver}</Text></Pressable>
+    </View>
+  );
+  const atajos: { k: 'tar' | 'metas' | 'fijos' | 'presu'; t: string; ios: SFSymbol; android: string }[] = [
+    { k: 'tar', t: 'Tarjetas', ios: 'creditcard', android: 'credit_card' },
+    { k: 'metas', t: 'Ahorros', ios: 'banknote', android: 'savings' },
+    { k: 'fijos', t: 'Fijos', ios: 'repeat', android: 'repeat' },
+    { k: 'presu', t: 'Presupuestos', ios: 'chart.pie', android: 'pie_chart' },
+  ];
+  return (
+    <ScrollView style={{ backgroundColor: T.fondo }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+      refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} tintColor={T.suave} />}>
+      <Text style={s.hola} accessibilityRole="header">Plan</Text>
+      <Text style={s.mes}>{p.mes.charAt(0).toUpperCase() + p.mes.slice(1)}</Text>
+
+      <View style={s.atajos}>
+        {atajos.map((a) => (
+          <Pressable key={a.k} style={({ pressed }) => [s.atajo, pressed && { opacity: 0.6 }]} onPress={() => ir({ ir: a.k })} accessibilityRole="button">
+            <Icono ios={a.ios} android={a.android} color={T.acento} tam={22} />
+            <Text style={s.atajoTexto} numberOfLines={1}>{a.t}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <View style={[s.tarjeta, { marginTop: 16 }]} accessible accessibilityLabel={`Si pagás lo que viene, te quedan ${p.queda}. Sale ${p.sale}.`}>
+        <Text style={s.etiqueta}>Si pagás lo que viene, te quedan</Text>
+        <Text style={[s.disponible, { fontSize: 32 }]} adjustsFontSizeToFit numberOfLines={1}>{p.queda}</Text>
+        <Text style={[s.movSub, { marginTop: 4 }]}>Sale este mes: {p.sale}</Text>
+      </View>
+
+      <View style={s.tituloLista}><Text style={s.subtitulo} accessibilityRole="header">Lo que viene este mes</Text></View>
+      {p.viene.length === 0 ? <Text style={s.vacioIzq}>Nada pendiente por ahora.</Text> : p.viene.map((x) => (
+        <Pressable key={x.i} style={({ pressed }) => [s.mov, pressed && { opacity: 0.6 }]} onPress={() => ir({ viene: x.i })}
+          accessibilityRole="button" accessibilityLabel={`${x.titulo}, ${x.cuando}, ${x.monto}. ${x.sub}`}>
+          <View style={[s.cuando, x.urgente && { backgroundColor: T.rojo }]}><Text style={[s.cuandoTexto, x.urgente && { color: '#1a0d10' }]} numberOfLines={2}>{x.cuando}</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.movTitulo} numberOfLines={1}>{x.titulo}</Text>
+            <Text style={s.movSub} numberOfLines={1}>{x.sub}</Text>
+          </View>
+          <Text style={[s.movMonto, { color: x.entra ? T.verde : T.texto }]}>{x.monto}</Text>
+        </Pressable>
+      ))}
+
+      {titulo('Presupuestos', 'presu')}
+      {p.presupuestos.length === 0 ? <Text style={s.vacioIzq}>Todavía no pusiste topes por categoría.</Text> : p.presupuestos.map((b) => (
+        <Pressable key={b.cat} style={({ pressed }) => [s.fila, pressed && { opacity: 0.6 }]} onPress={() => ir({ ir: 'presu' })}
+          accessibilityRole="button" accessibilityLabel={`${b.cat}: ${b.gastado} de ${b.limite}, ${b.pct} por ciento`}>
+          <View style={s.filaArriba}>
+            <Text style={s.movTitulo} numberOfLines={1}>{b.emoji} {b.cat}</Text>
+            <Text style={[s.movSub, { marginTop: 0 }]}>{b.gastado} de {b.limite}</Text>
+          </View>
+          <Barrita pct={b.pct} color={b.pct >= 100 ? T.rojo : b.pct >= 80 ? '#fbbf24' : T.acento} />
+        </Pressable>
+      ))}
+
+      {titulo('Ahorros', 'metas')}
+      <Text style={s.movSub}>Juntado en total: {p.ahorro}</Text>
+      {p.metas.length === 0 ? <Text style={s.vacioIzq}>Todavía no tenés metas. Creá una desde «Ver todo».</Text> : p.metas.map((m) => (
+        <Pressable key={m.id} style={({ pressed }) => [s.fila, pressed && { opacity: 0.6 }]} onPress={() => ir({ meta: m.id })}
+          accessibilityRole="button" accessibilityLabel={`${m.nombre}: ${m.juntado}${m.objetivo ? ` de ${m.objetivo}` : ''}`}>
+          <View style={s.filaArriba}>
+            <Text style={s.movTitulo} numberOfLines={1}>{m.nombre}</Text>
+            <Text style={[s.movSub, { marginTop: 0 }]}>{m.juntado}{m.objetivo ? ` de ${m.objetivo}` : ''}</Text>
+          </View>
+          {m.pct !== null && <Barrita pct={m.pct} color={T.turquesa} />}
+        </Pressable>
+      ))}
+
+      {titulo('Tarjetas', 'tar')}
+      {p.tarjetas.length === 0 ? <Text style={s.vacioIzq}>No cargaste tarjetas.</Text> : p.tarjetas.map((c) => (
+        <Pressable key={c.id} style={({ pressed }) => [s.mov, pressed && { opacity: 0.6 }]} onPress={() => ir({ ir: 'tar' })}
+          accessibilityRole="button" accessibilityLabel={`${c.nombre}: resumen del mes ${c.total}${c.pagada ? ', pagado' : ''}`}>
+          <View style={s.emoji}><Icono ios="creditcard.fill" android="credit_card" color={T.azul} tam={20} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.movTitulo} numberOfLines={1}>{c.nombre}</Text>
+            <Text style={s.movSub} numberOfLines={1}>{[c.pagada ? 'pagado' : 'resumen del mes', c.cierre].filter(Boolean).join(' · ')}</Text>
+          </View>
+          <Text style={[s.movMonto, c.pagada && { color: T.verde }]}>{c.total}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+}
+
 const s = StyleSheet.create({
+  atajos: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  atajo: { flex: 1, alignItems: 'center', gap: 6, backgroundColor: T.tarjeta, borderRadius: 14, paddingVertical: 12, minHeight: 64 },
+  atajoTexto: { color: T.texto, fontSize: 12, fontWeight: '600' },
+  cuando: { width: 56, minHeight: 40, borderRadius: 12, backgroundColor: T.tarjeta, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  cuandoTexto: { color: T.texto, fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  fila: { paddingVertical: 10, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: T.linea },
+  filaArriba: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  barraFondo: { height: 8, borderRadius: 4, backgroundColor: T.linea, overflow: 'hidden' },
+  barraLlena: { height: 8, borderRadius: 4 },
+  vacioIzq: { color: T.suave, fontSize: 15, lineHeight: 21, paddingVertical: 8 },
   meses: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, marginBottom: 12 },
   mesTexto: { color: T.texto, fontSize: 17, fontWeight: '700' },
   buscador: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: T.tarjeta, borderRadius: 14, paddingHorizontal: 12, minHeight: 48 },

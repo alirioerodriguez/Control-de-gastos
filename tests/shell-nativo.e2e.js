@@ -74,7 +74,28 @@ async function pagina(b, { shell, iphone, apple }) {
     ok('Movimientos: tocar una fila abre el detalle de la web', (await p.evaluate(() => window.__msgs.filter((m) => m.type === 'seccion').pop().datos)).w === 'det')
     await p.evaluate(() => window.__irA('movs')); await p.waitForTimeout(200)
 
+    // Plan nativo
+    await p.evaluate(() => {
+      BUD = [{ categoria: 'Súper', monto: 20000 }]
+      GOALS = [{ id: 'g1', nombre: 'Vacaciones', objetivo: 100000, moneda: 'ARS' }]; SENT = [{ id: 's1', goal_id: 'g1', monto: 25000, cuenta: 'efectivo', fecha: todayISO() }]
+      REC = [{ id: 'r1', tipo: 'gasto', monto: 8000, descripcion: 'Gimnasio', categoria: 'Salud', cuenta: 'efectivo' }]
+      renderTodo() })
+    await p.waitForTimeout(200)
+    const pl = await p.evaluate(() => window.__msgs.filter((m) => m.type === 'plan').pop()?.datos)
+    ok('Plan: manda lo que viene con el fijo sin registrar', pl && pl.viene.some((x) => x.titulo === 'Gimnasio' && /^− \$/.test(x.monto) && x.cuando === 'sin día'), JSON.stringify(pl))
+    ok('Plan: manda el presupuesto con su porcentaje', pl && pl.presupuestos.length === 1 && pl.presupuestos[0].cat === 'Súper' && pl.presupuestos[0].pct === 62, JSON.stringify(pl && pl.presupuestos))
+    ok('Plan: manda la meta con lo juntado y el porcentaje', pl && pl.metas.length === 1 && pl.metas[0].pct === 25 && /25\.000/.test(pl.metas[0].juntado), JSON.stringify(pl && pl.metas))
+    await p.evaluate(() => window.__planDesdeApp({ ir: 'presu' })); await p.waitForTimeout(200)
+    ok('Plan: «Ver todo» de presupuestos abre esa pantalla de la web', await p.evaluate(() => vista === 'sub' && subView === 'presu'))
+    await p.evaluate(() => window.__planDesdeApp({ meta: 'g1' })); await p.waitForTimeout(200)
+    ok('Plan: tocar una meta abre su detalle', await p.evaluate(() => vista === 'meta' && activeGoalId === 'g1'))
+    const iv = pl.viene.find((x) => x.titulo === 'Gimnasio').i
+    await p.evaluate((i) => window.__planDesdeApp({ viene: i }), iv); await p.waitForTimeout(200)
+    ok('Plan: tocar un fijo pendiente abre Fijos', await p.evaluate(() => vista === 'sub' && subView === 'fijos'))
+    await p.evaluate(() => window.__irA('movs')); await p.waitForTimeout(200)
+
     await p.evaluate(() => window.__ocultarDesdeApp()); await p.waitForTimeout(200)
+    ok('Plan: «ocultar montos» también tapa el Plan', await p.evaluate(() => { const d = window.__msgs.filter((m) => m.type === 'plan').pop().datos; return d.oculto && d.queda === '•••••' && d.metas[0].juntado === '•••••' }))
     ok('Movimientos: «ocultar montos» también tapa las filas', (await movs()).filas.every((f) => /•••••/.test(f.monto)), JSON.stringify((await movs()).filas))
     const o = await p.evaluate(() => window.__msgs.filter((m) => m.type === 'resumen').pop())
     ok('«ocultar montos» desde la app manda •••••', o.datos.oculto && o.datos.disponible === '•••••' && o.datos.movimientos[0].monto === '•••••', JSON.stringify(o.datos))
