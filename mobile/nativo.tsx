@@ -403,7 +403,106 @@ export function PlanNativo({ p, pedir, refrescar, refrescando }: { p: Plan; pedi
   );
 }
 
+// Más: perfil, resumen del mes, Herramientas, Ajustes y otras apps (ver datosMas en index.html)
+type FilaMas = { k: string; n: string; s: string };
+export type Mas = {
+  mes: string; oculto: boolean; nombre: string; email: string; ingresos: string; gastos: string; ahorrado: string;
+  herramientas: FilaMas[]; ajustes: FilaMas[]; otras: { url: string; titulo: string; texto: string }[];
+};
+
+export function esMas(x: unknown): x is Mas {
+  const m = x as Mas;
+  return !!m && typeof m.mes === 'string' && Array.isArray(m.herramientas) && Array.isArray(m.ajustes) && Array.isArray(m.otras);
+}
+
+const ICONO_MAS: Record<string, [SFSymbol, string]> = {
+  metas: ['banknote', 'savings'], movs: ['list.bullet', 'list'], cal: ['calendar', 'calendar_month'], fijos: ['repeat', 'repeat'],
+  presu: ['chart.pie', 'pie_chart'], dividir: ['person.2', 'group'], grupos: ['person.3', 'groups'], graficos: ['chart.bar', 'bar_chart'],
+  impuestos: ['percent', 'percent'], reintegros: ['tag', 'sell'], exportar: ['square.and.arrow.up', 'ios_share'], recorrido: ['sparkles', 'auto_awesome'],
+  escucharte: ['bubble.left', 'chat'], pruebas: ['checklist', 'checklist'], tarjetas: ['creditcard', 'credit_card'], categorias: ['square.grid.2x2', 'category'],
+  tema: ['paintpalette', 'palette'], asistente: ['mic', 'mic'], honorapp: ['stethoscope', 'medical_services'], whatsapp: ['message', 'sms'],
+  ayuda: ['questionmark.circle', 'help'], diagnostico: ['wrench.and.screwdriver', 'build'],
+};
+
+export function MasNativo({ m, abrir, perfil, abrirEnlace, refrescar, refrescando }: {
+  m: Mas; abrir: (k: string) => void; perfil: () => void; abrirEnlace: (url: string) => void; refrescar: () => void; refrescando: boolean;
+}) {
+  const grupo = (titulo: string, filas: FilaMas[]) => (
+    <>
+      <View style={s.tituloLista}><Text style={s.subtitulo} accessibilityRole="header">{titulo}</Text></View>
+      <View style={s.grupo}>
+        {filas.map((f, i) => {
+          const [ios, android] = ICONO_MAS[f.k] ?? ['circle', 'circle'];
+          return (
+            <Pressable key={f.k} style={({ pressed }) => [s.filaMas, i > 0 && s.filaMasLinea, pressed && { opacity: 0.6 }]}
+              onPress={() => { toque(); abrir(f.k); }} accessibilityRole="button" accessibilityLabel={`${f.n}. ${f.s}`}>
+              <View style={s.emoji}><Icono ios={ios} android={android} color={T.acento} tam={20} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.movTitulo} numberOfLines={1}>{f.n}</Text>
+                <Text style={s.movSub} numberOfLines={2}>{f.s}</Text>
+              </View>
+              <Icono ios="chevron.right" android="chevron_right" color={T.suave} tam={16} />
+            </Pressable>
+          );
+        })}
+      </View>
+    </>
+  );
+  const inicial = (m.nombre || m.email || '?').trim().charAt(0).toUpperCase();
+  return (
+    <ScrollView style={{ backgroundColor: T.fondo }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+      refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} tintColor={T.suave} />}>
+      <Text style={s.hola} accessibilityRole="header">Más</Text>
+
+      <Pressable style={({ pressed }) => [s.tarjeta, s.perfil, { marginTop: 16 }, pressed && { opacity: 0.7 }]} onPress={() => { toque(); perfil(); }}
+        accessibilityRole="button" accessibilityLabel={`Tu cuenta: ${m.nombre || 'sin nombre'}, ${m.email}`}>
+        <View style={s.avatar}><Text style={s.avatarTexto}>{inicial}</Text></View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.movTitulo} numberOfLines={1}>{m.nombre || 'Poné tu nombre'}</Text>
+          <Text style={s.movSub} numberOfLines={1}>{m.email}</Text>
+        </View>
+        <Icono ios="chevron.right" android="chevron_right" color={T.suave} tam={16} />
+      </Pressable>
+
+      <View style={[s.tarjeta, { marginTop: 12 }]} accessible
+        accessibilityLabel={`${m.mes}: ingresos ${m.ingresos}, gastos ${m.gastos}, ahorrado ${m.ahorrado}`}>
+        <Text style={s.etiqueta}>{m.mes.charAt(0).toUpperCase() + m.mes.slice(1)}</Text>
+        <View style={s.fila2}>
+          <View style={{ flex: 1 }}><Text style={s.etiqueta}>Ingresos</Text><Text style={[s.cifra, { color: T.verde }]} adjustsFontSizeToFit numberOfLines={1}>{m.ingresos}</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.etiqueta}>Gastos</Text><Text style={[s.cifra, { color: T.rojo }]} adjustsFontSizeToFit numberOfLines={1}>{m.gastos}</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.etiqueta}>Ahorrado</Text><Text style={[s.cifra, { color: T.turquesa }]} adjustsFontSizeToFit numberOfLines={1}>{m.ahorrado}</Text></View>
+        </View>
+      </View>
+
+      {grupo('Herramientas', m.herramientas)}
+      {grupo('Ajustes', m.ajustes)}
+
+      {m.otras.length > 0 && (
+        <>
+          <View style={s.tituloLista}><Text style={s.subtitulo} accessibilityRole="header">Otras apps que te pueden servir</Text></View>
+          {m.otras.map((a) => (
+            <Pressable key={a.url} style={({ pressed }) => [s.tarjeta, s.perfil, { marginBottom: 10, padding: 14 }, pressed && { opacity: 0.7 }]}
+              onPress={() => { toque(); abrirEnlace(a.url); }} accessibilityRole="link" accessibilityLabel={`${a.titulo}. ${a.texto}`}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.movTitulo}>{a.titulo}</Text>
+                <Text style={[s.movSub, { lineHeight: 18 }]}>{a.texto}</Text>
+              </View>
+              <Icono ios="arrow.up.right" android="open_in_new" color={T.suave} tam={16} />
+            </Pressable>
+          ))}
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
 const s = StyleSheet.create({
+  grupo: { backgroundColor: T.tarjeta, borderRadius: 16, paddingHorizontal: 12 },
+  filaMas: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingVertical: 8 },
+  filaMasLinea: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: T.linea },
+  perfil: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: T.acento, alignItems: 'center', justifyContent: 'center' },
+  avatarTexto: { color: T.sobreAcento, fontSize: 20, fontWeight: '800' },
   atajos: { flexDirection: 'row', gap: 8, marginTop: 16 },
   atajo: { flex: 1, alignItems: 'center', gap: 6, backgroundColor: T.tarjeta, borderRadius: 14, paddingVertical: 12, minHeight: 64 },
   atajoTexto: { color: T.texto, fontSize: 12, fontWeight: '600' },

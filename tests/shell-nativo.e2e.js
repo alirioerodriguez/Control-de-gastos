@@ -92,7 +92,19 @@ async function pagina(b, { shell, iphone, apple }) {
     const iv = pl.viene.find((x) => x.titulo === 'Gimnasio').i
     await p.evaluate((i) => window.__planDesdeApp({ viene: i }), iv); await p.waitForTimeout(200)
     ok('Plan: tocar un fijo pendiente abre Fijos', await p.evaluate(() => vista === 'sub' && subView === 'fijos'))
-    await p.evaluate(() => window.__irA('movs')); await p.waitForTimeout(200)
+    // Más nativo
+    const ms = await p.evaluate(() => window.__msgs.filter((m) => m.type === 'mas').pop()?.datos)
+    ok('Más: manda perfil, herramientas, ajustes (sin «Instalar») y otras apps', ms && ms.nombre === 'Lu Pérez' && ms.herramientas.length > 5
+      && !ms.ajustes.some((a) => a.k === 'instalar') && ms.otras.length > 0, JSON.stringify(ms))
+    await p.evaluate(() => window.__masDesdeApp({ k: 'tema' })); await p.waitForTimeout(200)
+    ok('Más: tocar un ajuste abre su pantalla', await p.evaluate(() => vista === 'sub' && subView === 'tema'))
+    await p.evaluate(() => window.__masDesdeApp({ k: 'cal' })); await p.waitForTimeout(200)
+    ok('Más: tocar una herramienta con acción propia la corre', await p.evaluate(() => vista === 'cal'))
+    ok('arranca sin hojas abiertas', await p.evaluate(() => window.__msgs.filter((m) => m.type === 'hoja').every((m) => m.datos === false)))
+    await p.evaluate(() => window.__masDesdeApp({ perfil: true })); await p.waitForTimeout(300)
+    ok('abrir la cuenta avisa que hay una hoja abierta', await p.evaluate(() => window.__msgs.filter((m) => m.type === 'hoja').pop()?.datos === true))
+    await p.evaluate(() => window.__irA('movs')); await p.waitForTimeout(300)
+    ok('al cambiar de pantalla avisa que se cerró', await p.evaluate(() => window.__msgs.filter((m) => m.type === 'hoja').pop()?.datos === false))
 
     await p.evaluate(() => window.__ocultarDesdeApp()); await p.waitForTimeout(200)
     ok('Plan: «ocultar montos» también tapa el Plan', await p.evaluate(() => { const d = window.__msgs.filter((m) => m.type === 'plan').pop().datos; return d.oculto && d.queda === '•••••' && d.metas[0].juntado === '•••••' }))

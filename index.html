@@ -3287,7 +3287,7 @@ function avisarResumen(){
 window.__irA=function(v){ const b=document.querySelector('[data-nav="'+v+'"]'); if(b) b.click(); else show(v); };
 window.__ocultarDesdeApp=function(){ const b=$("eye-btn"); if(b) b.click(); };
 /* Tirar hacia abajo en el Inicio nativo: vuelve a traer los datos; avisa a la app al terminar */
-window.__refrescarDesdeApp=async function(){ try{ if(user) await loadAll(); }catch(e){} finally{ _resumenUlt=""; _movsUlt=""; _planUlt=""; avisarResumen(); avisarMovs(); avisarPlan(); avisarApp("refrescado",true); } };
+window.__refrescarDesdeApp=async function(){ try{ if(user) await loadAll(); }catch(e){} finally{ _resumenUlt=""; _movsUlt=""; _planUlt=""; _masUlt=""; avisarResumen(); avisarMovs(); avisarPlan(); avisarMas(); avisarApp("refrescado",true); } };
 /* Movimientos nativo: la web filtra igual que en su pantalla (mes, tipo, cuenta, categoría o búsqueda en toda la historia)
    y le pasa a la app las filas ya escritas. Los títulos y totales se leen de la pantalla de la web, así nunca difieren. */
 var _movsUlt="";
@@ -3357,6 +3357,43 @@ function avisarPlan(){
   const txt=JSON.stringify(d); if(txt===_planUlt) return; _planUlt=txt;
   avisarApp("plan",d);
 }
+/* Hojas de la web (cuenta, dictado, confirmaciones): mientras haya una abierta, la app esconde sus pantallas nativas
+   para no taparla. Se mira la clase «hidden» de cada .ov. */
+var _hojaUlt=null;
+function avisarHoja(){
+  if(!SHELL_NATIVO) return;
+  const abierta=!!document.querySelector(".ov:not(.hidden)");
+  if(abierta===_hojaUlt) return; _hojaUlt=abierta; avisarApp("hoja",abierta);
+}
+if(SHELL_NATIVO){
+  let _hojaRaf=0;
+  const mirarHojas=()=>{ try{ new MutationObserver(()=>{ if(!_hojaRaf) _hojaRaf=requestAnimationFrame(()=>{ _hojaRaf=0; avisarHoja(); }); })
+    .observe(document.body,{subtree:true,attributes:true,attributeFilter:["class"]}); }catch(e){} };
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",mirarHojas); else mirarHojas();
+}
+/* Más nativo: perfil, resumen del mes, Herramientas, Ajustes y otras apps. Tocar una fila corre lo mismo que en la web
+   (__masDesdeApp). «Instalar la app» no va: ya está instalada. */
+var _masUlt="";
+function datosMas(){
+  const {ing,gas}=totalesMes(VMONTH,CUR), fila=c=>({k:c.k, n:c.n, s:c.s});
+  return { mes:mesLargo(VMONTH), oculto:!!oculto,
+    nombre:(PROFILE&&PROFILE.nombre)||"", email:(user&&user.email)||"",
+    ingresos:money(ing,CUR), gastos:money(gas,CUR), ahorrado:money(ahorroTotal(CUR),CUR),
+    herramientas:MAS.map(fila), ajustes:CFG.filter(c=>c.k!=="instalar").map(fila),
+    otras:OTRAS_APPS.map(a=>({url:a.url, titulo:a.titulo, texto:a.texto})) };
+}
+function avisarMas(){
+  if(!SHELL_NATIVO) return;
+  let d; try{ d=datosMas(); }catch(e){ return; }
+  const txt=JSON.stringify(d); if(txt===_masUlt) return; _masUlt=txt;
+  avisarApp("mas",d);
+}
+window.__masDesdeApp=function(p){
+  p=p||{};
+  if(p.perfil){ const b=$("me-btn"); if(b&&b.onclick) b.onclick(); return; }
+  const h=MAS.find(x=>x.k===p.k); if(h){ if(h.go) h.go(); else openSub(h.k); return; }
+  if(CFG.some(x=>x.k===p.k)) openSub(p.k);
+};
 window.__planDesdeApp=function(p){
   p=p||{};
   if(["tar","metas","fijos","presu"].includes(p.ir)) irPlan(p.ir);
@@ -4070,6 +4107,7 @@ function renderTodo(){
   try{ avisarWidget(datosWidget()); }catch(e){}
   avisarResumen();
   avisarPlan();
+  avisarMas();
   correrAccionPendiente();
 }
 
